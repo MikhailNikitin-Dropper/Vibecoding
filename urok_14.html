@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Урок 14 — Продвинутая работа с AI: примеры и структура | Eduson Kids</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+/* ============ Дизайн-токены Eduson Kids ============ */
+:root{
+  --ek-violet:#8C7FF6; --ek-violet-soft:#A79EF9; --ek-violet-deep:#6F61E8; --ek-violet-bg:#F0EEFE;
+  --ek-green:#3DF79D; --ek-green-soft:#7BF9BD; --ek-green-mint:#C9F7E3; --ek-green-pale:#E7FDF2; --ek-green-deep:#0FBF6E;
+  --ek-ink:#17171C; --ek-gray:#8F8F98; --ek-gray-light:#EFEFF2; --ek-line:#E3E3EA;
+  --ek-red:#FF6B6B; --ek-red-soft:#FF8A8A; --ek-red-deep:#E04848; --ek-red-pale:#FFECEC;
+  --f-head:'Inter Tight','Inter','Segoe UI',system-ui,sans-serif;
+  --f-body:'Inter','Segoe UI',system-ui,sans-serif;
+  --f-mono:'JetBrains Mono','Cascadia Mono','Consolas',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--f-body);background:#E9E9F1;color:var(--ek-ink);-webkit-font-smoothing:antialiased}
+
+/* ============ Хром: прогресс, счётчик, подсказка ============ */
+.progress{position:fixed;top:0;left:0;right:0;height:4px;background:rgba(23,23,28,.08);z-index:100}
+.progress__fill{height:100%;width:0%;background:var(--ek-violet);transition:width 300ms ease}
+.counter{position:fixed;top:14px;right:18px;z-index:90;font:600 13px var(--f-body);color:var(--ek-gray);background:#fff;border:1px solid var(--ek-line);padding:6px 14px;border-radius:999px;font-variant-numeric:tabular-nums}
+.counter b{color:var(--ek-ink)}
+.hint{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:90;font:500 11px var(--f-body);color:var(--ek-gray);background:#fff;border:1px solid var(--ek-line);padding:6px 14px;border-radius:999px;letter-spacing:.03em}
+.hint kbd{font-family:var(--f-mono);background:var(--ek-gray-light);padding:1px 6px;border-radius:4px;font-size:10px;margin:0 2px;color:var(--ek-ink)}
+
+/* ============ Сцена 1280×720 ============ */
+.stage{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform:translate(-50%,-50%);border-radius:18px;overflow:hidden;box-shadow:0 30px 90px rgba(23,23,28,.18);background:#fff}
+.slide{position:absolute;inset:0;background:#fff;opacity:0;transform:translateY(26px);transition:opacity 280ms ease,transform 280ms ease;pointer-events:none;font-family:var(--f-head)}
+.slide.active{opacity:1;transform:none;pointer-events:auto}
+.slide.prev{transform:translateY(-26px)}
+.slide--violet{background:var(--ek-violet)}
+.slide--green{background:var(--ek-green)}
+
+/* Номер страницы на контентных слайдах */
+.slide--content::after{content:attr(data-page);position:absolute;right:54px;bottom:30px;font:800 30px/1 var(--f-head);color:var(--ek-ink);opacity:.5}
+
+/* ============ Декор «Орбита» ============ */
+.sl-orbit{position:absolute;inset:0;pointer-events:none}
+.slide--violet .sl-orbit{--decor:#A79EF9;--letter:#C4BEFA}
+.slide--green .sl-orbit{--decor:#7BF9BD;--letter:#C4FCE0}
+.sl-ring{position:absolute;left:50%;top:50%;width:1040px;height:660px;transform:translate(-50%,-50%);border:3px solid var(--decor);border-radius:50%;opacity:.9}
+.sl-ico{position:absolute;color:var(--decor)}
+.sl-letter{position:absolute;border-radius:50%;background:var(--decor);color:var(--letter);display:flex;align-items:center;justify-content:center;font:800 var(--fs,40px)/1 var(--f-head);font-style:normal}
+
+/* ============ Каверы: карточка-окно и спич-бабл ============ */
+.cover-center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2}
+.cover-card{position:relative;width:860px;background:#fff;border-radius:28px;box-shadow:0 30px 80px rgba(23,23,28,.18)}
+.card-top{display:flex;justify-content:space-between;align-items:center;padding:24px 30px 0}
+.win-dots{display:flex;gap:9px}
+.win-dots i{width:13px;height:13px;border-radius:50%;background:var(--ek-violet)}
+.win-close{position:relative;width:22px;height:22px}
+.win-close::before,.win-close::after{content:"";position:absolute;left:-1px;top:9px;width:24px;height:4px;border-radius:2px;background:var(--ek-violet)}
+.win-close::before{transform:rotate(45deg)}
+.win-close::after{transform:rotate(-45deg)}
+.cover-card .badge{position:absolute;left:50%;top:-30px;transform:translateX(-50%) rotate(-4deg)}
+.cover-card h1{padding:26px 64px 30px;text-align:center;font:800 50px/1.14 var(--f-head);letter-spacing:-.015em;color:var(--ek-ink)}
+.cover-card .cover-sub{padding:0 80px 34px;text-align:center;font:500 19px/1.5 var(--f-body);color:#3C3C45}
+.cover-card .cover-chips{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;padding:0 40px 40px}
+.bubble{position:relative;width:660px;background:#EFEFF1;border-radius:30px;padding:56px 70px;text-align:center}
+.bubble::after{content:"";position:absolute;right:56px;bottom:-24px;width:0;height:0;border-left:38px solid transparent;border-top:28px solid #EFEFF1}
+.bubble h1{font:800 42px/1.25 var(--f-head);letter-spacing:-.01em;color:var(--ek-ink)}
+.bubble p{margin-top:16px;font:500 18px/1.5 var(--f-body);color:#3C3C45}
+
+/* ============ Стикер-бейдж и чипы ============ */
+.badge{display:inline-block;background:var(--ek-green);color:var(--ek-ink);font:800 24px/1 var(--f-head);padding:13px 22px;border-radius:13px;transform:rotate(-3deg);box-shadow:0 10px 24px rgba(23,23,28,.10)}
+.badge--violet{background:var(--ek-violet);color:#fff}
+.badge--sm{font-size:16px;padding:9px 16px;border-radius:10px}
+.chip{display:inline-block;font:700 14px/1 var(--f-body);padding:8px 14px;border-radius:999px;background:var(--ek-violet-bg);color:var(--ek-violet-deep)}
+.chip--green{background:var(--ek-green-pale);color:var(--ek-green-deep)}
+.chip--gray{background:var(--ek-gray-light);color:#3C3C45}
+
+/* ============ Контентные слайды ============ */
+.sl-body{position:absolute;inset:0;padding:56px 80px 62px;display:flex;flex-direction:column;gap:16px;overflow:hidden}
+h2{font:800 38px/1.16 var(--f-head);letter-spacing:-.01em;color:var(--ek-ink)}
+.acc{color:var(--ek-violet-deep)}
+.sl-body>p, .col p{font:500 18px/1.5 var(--f-body);color:#3C3C45}
+.code-chip{font-family:var(--f-mono);font-weight:700;font-size:.88em;background:var(--ek-violet-bg);color:var(--ek-violet-deep);padding:2px 8px;border-radius:8px;white-space:nowrap}
+.hl{color:var(--ek-violet-deep);font-weight:700}
+.out-chip{font-family:var(--f-mono);font-weight:700;font-size:.88em;background:var(--ek-green-pale);color:#0B7A48;padding:2px 8px;border-radius:8px;white-space:nowrap}
+
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;align-items:stretch}
+
+.info-card{background:#F5F5F9;border-radius:18px;padding:18px 22px;font:500 16px/1.55 var(--f-body);color:#3C3C45}
+.info-card h3{font:800 19px/1.3 var(--f-head);color:var(--ek-ink);margin-bottom:8px}
+.ek-note{background:var(--ek-violet-bg);border-left:4px solid var(--ek-violet);border-radius:0 14px 14px 0;padding:14px 20px;font:600 17px/1.5 var(--f-body);color:#3C3560}
+.ek-note--green{background:var(--ek-green-pale);border-left-color:var(--ek-green-deep);color:#0B5B39}
+.ek-note--red{background:var(--ek-red-pale);border-left-color:var(--ek-red);color:#7A2E2E}
+
+ul.clean{list-style:none;display:flex;flex-direction:column;gap:10px}
+ul.clean li{display:flex;gap:14px;align-items:flex-start;font:500 17.5px/1.5 var(--f-body);color:#3C3C45}
+ul.clean li::before{content:'—';flex:0 0 auto;color:var(--ek-violet-deep);font-weight:800}
+
+ol.steps{list-style:none;counter-reset:step;display:flex;flex-direction:column;gap:12px}
+ol.steps li{counter-increment:step;display:flex;gap:16px;align-items:center;padding:14px 20px;background:#F5F5F9;border-radius:16px;font:500 17.5px/1.45 var(--f-body);color:#2E2E36}
+ol.steps li::before{content:counter(step);flex:0 0 40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:var(--ek-violet);font:800 18px var(--f-head);color:#fff}
+ol.steps li:last-child::before{background:var(--ek-green);color:var(--ek-ink)}
+ol.steps.steps--tight{gap:8px}
+ol.steps.steps--tight li{padding:9px 16px;font-size:15.5px;gap:12px}
+ol.steps.steps--tight li::before{flex-basis:32px;height:32px;font-size:14px}
+
+.q-label{font:700 13px/1 var(--f-head);letter-spacing:.08em;text-transform:uppercase;color:var(--ek-gray)}
+
+/* ============ План занятия (agenda) ============ */
+.agenda{display:flex;flex-direction:column;gap:8px}
+.agenda-row{display:flex;gap:16px;align-items:center;padding:10px 18px;background:#F5F5F9;border-radius:14px}
+.agenda-row .t{flex:0 0 84px;text-align:center;font:800 14px/1 var(--f-mono);color:var(--ek-ink);background:var(--ek-green);border-radius:999px;padding:8px 0}
+.agenda-row .tt{font:700 16.5px/1.3 var(--f-head);color:var(--ek-ink)}
+.agenda-row .dd{font:500 14px/1.4 var(--f-body);color:var(--ek-gray)}
+
+/* ============ Ключ-значение (привычки, шпаргалки) ============ */
+.kv{display:flex;flex-direction:column}
+.kv-row{display:grid;grid-template-columns:250px 1fr;gap:18px;align-items:start;padding:11px 4px;border-bottom:1.5px solid var(--ek-line)}
+.kv-row:last-child{border-bottom:none}
+.kv-row .k{font:800 14px/1.35 var(--f-head);letter-spacing:.05em;text-transform:uppercase;color:var(--ek-violet-deep);padding-top:2px}
+.kv-row .v{font:500 16.5px/1.5 var(--f-body);color:#3C3C45}
+
+/* ============ Окно кода (статичное) ============ */
+.code-win{background:#fff;border:2.5px solid var(--ek-ink);border-radius:16px;overflow:hidden;font-family:var(--f-mono);box-shadow:10px 10px 0 rgba(140,127,246,.14)}
+.code-head{display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:2px solid var(--ek-ink)}
+.code-head .win-dots i{width:11px;height:11px}
+.lang-badge{font:700 11px var(--f-mono);letter-spacing:.14em;color:var(--ek-gray)}
+.code-body{padding:14px 20px;font:500 14.5px/1.6 var(--f-mono);color:var(--ek-ink);white-space:pre;overflow:auto;max-height:400px;tab-size:4}
+.code-body .cm{color:var(--ek-gray)}
+.code-body .st{color:var(--ek-green-deep)}
+.code-body .kw{color:var(--ek-violet-deep);font-weight:700}
+
+/* ============ Терминал (тёмное окно) ============ */
+.term{background:var(--ek-ink);border-radius:16px;overflow:hidden;font-family:var(--f-mono);box-shadow:10px 10px 0 rgba(23,23,28,.12)}
+.term-head{display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,.14)}
+.term-head .win-dots i{width:11px;height:11px;background:var(--ek-green)}
+.term-head .lang-badge{color:rgba(255,255,255,.5)}
+.term-body{padding:14px 20px;font:500 14.5px/1.62 var(--f-mono);color:var(--ek-green);white-space:pre-wrap;word-break:break-word;overflow:auto;max-height:420px}
+.term-body .usr{color:#fff}
+.term-body .dim{color:rgba(255,255,255,.55)}
+
+/* ============ Промпт-карточка (диалог с DeepSeek) ============ */
+.prompt-card{position:relative;background:var(--ek-violet-bg);border:2.5px solid var(--ek-violet);border-radius:18px;padding:20px 26px 18px;box-shadow:10px 10px 0 rgba(140,127,246,.18)}
+.prompt-card .pc-tag{position:absolute;top:-16px;left:22px;background:var(--ek-violet);color:#fff;font:800 14px/1 var(--f-head);padding:9px 16px;border-radius:10px;transform:rotate(-2deg);box-shadow:0 8px 18px rgba(23,23,28,.12)}
+.prompt-card .pc-text{margin-top:6px;font:500 15px/1.62 var(--f-mono);color:#2E2A52;white-space:pre-wrap}
+.prompt-card .pc-text .hl{color:var(--ek-violet-deep)}
+.prompt-card--copy .pc-tag{background:var(--ek-green);color:var(--ek-ink)}
+
+/* ============ Сравнение (vs) ============ */
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:stretch}
+.vs-col{border-radius:18px;padding:20px 24px}
+.vs-col h4{font:800 15px/1 var(--f-head);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
+.vs-col p{font:500 16px/1.55 var(--f-body)}
+.vs-col .note{margin-top:12px;font:500 13.5px/1.4 var(--f-body);opacity:.75}
+.vs-col--plain{background:var(--ek-gray-light);color:#3C3C45}
+.vs-col--plain h4{color:var(--ek-gray)}
+.vs-col--win{background:var(--ek-green-pale);color:#124F35;border:2px solid var(--ek-green-soft)}
+.vs-col--win h4{color:var(--ek-green-deep)}
+
+/* ============ Квиз с раскрытием ответа ============ */
+.quiz-box{background:#F5F5F9;border:2.5px solid var(--ek-ink);border-radius:18px;padding:22px 26px;box-shadow:10px 10px 0 rgba(61,247,157,.25)}
+.quiz-box .q-num{display:inline-block;background:var(--ek-green);color:var(--ek-ink);font:800 13px/1 var(--f-head);letter-spacing:.08em;text-transform:uppercase;padding:8px 14px;border-radius:999px;margin-bottom:14px}
+.quiz-box .q-text{font:700 21px/1.42 var(--f-head);color:var(--ek-ink)}
+.quiz-answer{margin-top:16px}
+.quiz-btn{border:0;border-radius:12px;padding:12px 22px;font:800 15px/1 var(--f-head);cursor:pointer;background:var(--ek-violet);color:#fff;transition:background .15s}
+.quiz-btn:hover{background:var(--ek-violet-deep)}
+.quiz-reveal{display:none;margin-top:14px;background:var(--ek-green-pale);border-left:4px solid var(--ek-green-deep);border-radius:0 14px 14px 0;padding:14px 20px;font:500 16.5px/1.55 var(--f-body);color:#0B5B39}
+.quiz-reveal.show{display:block}
+.quiz-reveal p+p{margin-top:8px}
+
+/* Появление контента */
+.slide.active .info-card,.slide.active ul.clean li,.slide.active ol.steps li,.slide.active .grid-2>*,.slide.active .grid-3>*,.slide.active .agenda-row,.slide.active .kv-row{animation:reveal 450ms ease backwards}
+.slide.active .info-card:nth-child(2),.slide.active ul.clean li:nth-child(2),.slide.active ol.steps li:nth-child(2),.slide.active .grid-2>*:nth-child(2),.slide.active .grid-3>*:nth-child(2),.slide.active .agenda-row:nth-child(2),.slide.active .kv-row:nth-child(2){animation-delay:80ms}
+.slide.active ul.clean li:nth-child(3),.slide.active ol.steps li:nth-child(3),.slide.active .grid-3>*:nth-child(3),.slide.active .agenda-row:nth-child(3),.slide.active .kv-row:nth-child(3){animation-delay:160ms}
+.slide.active ol.steps li:nth-child(4),.slide.active .agenda-row:nth-child(4),.slide.active .kv-row:nth-child(4){animation-delay:240ms}
+.slide.active ol.steps li:nth-child(5),.slide.active .agenda-row:nth-child(5),.slide.active .kv-row:nth-child(5){animation-delay:320ms}
+.slide.active .agenda-row:nth-child(6),.slide.active ol.steps li:nth-child(6),.slide.active .kv-row:nth-child(6){animation-delay:400ms}
+.slide.active .agenda-row:nth-child(7),.slide.active ol.steps li:nth-child(7),.slide.active .kv-row:nth-child(7){animation-delay:480ms}
+@keyframes reveal{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@media (prefers-reduced-motion:reduce){.slide.active .info-card,.slide.active ul.clean li,.slide.active ol.steps li,.slide.active .grid-2>*,.slide.active .grid-3>*,.slide.active .agenda-row,.slide.active .kv-row{animation:none}}
+
+/* ============ Заметки преподавателя ============ */
+.notes{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--ek-line);box-shadow:0 -16px 40px rgba(23,23,28,.10);padding:20px 40px;z-index:95;max-height:40vh;overflow-y:auto;transform:translateY(100%);transition:transform 300ms ease}
+.notes.active{transform:translateY(0)}
+.notes__header{font:800 11px var(--f-head);letter-spacing:.2em;text-transform:uppercase;color:var(--ek-violet-deep);margin-bottom:8px}
+.notes__body{font:500 15px/1.55 var(--f-body);color:#3C3C45}
+
+:focus-visible{outline:3px solid var(--ek-violet-soft);outline-offset:2px;border-radius:6px}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(23,23,28,.15);border-radius:4px}
+</style>
+</head>
+<body>
+
+<div class="progress"><div class="progress__fill" id="progress"></div></div>
+<div class="counter"><b id="current">1</b> / <span id="total">38</span></div>
+
+<main class="stage" id="deck">
+<section class="slide slide--violet active"
+  data-notes="Поприветствуйте. Сегодня соберём классификатор настроения mood.py: на любую фразу он выдаёт одну метку из шести, рассуждение и уверенность — всё в формате JSON. Три приёма урока: примеры (few-shot), рассуждение перед ответом (chain-of-thought) и JSON mode. Обязательный минимум — каркас и правки 1–3: примеры, рассуждение, проверка ответа. Анализ переписки и статистика — резерв.">
+<div class="sl-orbit">
+    <i class="sl-ring"></i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:75px;top:20px;width:150px;height:150px;transform:rotate(-10deg)"><use href="#ek-i-trophy"/></svg>
+    <i class="sl-letter" style="left:466px;top:13px;width:78px;height:78px;--fs:36px">M</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1040px;top:15px;width:130px;height:130px;transform:rotate(12deg)"><use href="#ek-i-heart"/></svg>
+    <i class="sl-letter" style="left:68px;top:268px;width:100px;height:100px;--fs:46px">O</i>
+    <i class="sl-letter" style="left:1137px;top:327px;width:95px;height:95px;--fs:44px">O</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:102px;top:532px;width:125px;height:125px;transform:rotate(-15deg)"><use href="#ek-i-star"/></svg>
+    <i class="sl-letter" style="left:361px;top:613px;width:78px;height:78px;--fs:36px">D</i>
+    <i class="sl-letter" style="left:726px;top:613px;width:78px;height:78px;--fs:36px">S</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1045px;top:540px;width:110px;height:110px;transform:rotate(8deg)"><use href="#ek-i-gem"/></svg>
+  </div>
+  <div class="cover-center">
+    <div class="cover-card">
+      <div class="badge">Урок №14</div>
+      <div class="card-top"><span class="win-dots"><i></i><i></i><i></i></span><span class="win-close"></span></div>
+      <h1>Продвинутая работа с AI:<br>примеры и структура</h1>
+      <p class="cover-sub">Соберём классификатор настроения: нейросеть учится на примерах, рассуждает перед ответом и отвечает строго в JSON, а программа проверяет ответ.</p>
+      <div class="cover-chips"><span class="chip chip--green">DeepSeek API</span><span class="chip">Few-shot</span><span class="chip chip--gray">JSON mode</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Теории — минимум: с 10-й минуты каждый делает разминку warmup.py. Обязательный минимум к 55-й минуте — каркас и правки 1–3: это уже программа из карточки, которая определяет эмоции, учится на примерах, рассуждает и не падает на плохом ответе. Правки 4–5 — резерв: каждая правка — полная перегенерация mood.py; не успеваете — отдавайте их в ДЗ. Держите три контрольные точки: к 17-й минуте у всех запущен warmup.py, к 29-й — каркас прогнал phrases.txt командой /test, к 40-й — у всех после правки 2 появилась серая строка 💭. Разбор кода — не дольше полутора минут на слайд. Отстаёте к 29-й минуте больше чем на 3 минуты — опыт на слайде 23 пропустите, квизы проведите устно по 30 секунд, слайды 34–35 покажите за минуту и дайте сфотографировать. Не успели к 40-й — разбор слайда 25 сведите к одной фразе про порядок полей и сразу давайте правку 3. Перед уроком прогоните на своём ключе warmup.py и /test в каркасе и после правки 1: как модель разметит трудные фразы, заранее не проверялось, а от этого зависит, что вы покажете на слайдах 18 и 21. Заодно запустите копию warmup.py без слова JSON в SYSTEM: что тогда делает сервер — сразу даёт ошибку или долго молчит, — в документации не описано, а пригодится на слайде 20. Каждая фраза — один запрос к API, после правки 3 — до двух; /test и /chat — по восемь фраз, то есть от восьми до шестнадцати запросов за раз.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">План занятия</div>
+    <h2>Как пройдут <span class="acc">60 минут</span></h2>
+  </div>
+  <div class="agenda" style="margin-top:14px">
+    <div class="agenda-row"><span class="t">0–5</span><div><div class="tt">Разбор ДЗ</div><div class="dd">Журнал вызовов tools_log.json и испытание описаний.</div></div></div>
+    <div class="agenda-row"><span class="t">5–10</span><div><div class="tt">Примеры, рассуждение, JSON</div><div class="dd">Три приёма урока и правила JSON mode.</div></div></div>
+    <div class="agenda-row"><span class="t">10–17</span><div><div class="tt">Разминка warmup.py</div><div class="dd">Ответ модели превращается в словарь Python.</div></div></div>
+    <div class="agenda-row"><span class="t">17–29</span><div><div class="tt">Каркас mood.py</div><div class="dd">Одна метка из шести и прогон трудных фраз.</div></div></div>
+    <div class="agenda-row"><span class="t">29–50</span><div><div class="tt">Правки через диалог</div><div class="dd">Обязательно: примеры → рассуждение → проверка и уверенность. Резерв, если опережаете: переписка из chat.txt и статистика.</div></div></div>
+    <div class="agenda-row"><span class="t">50–55</span><div><div class="tt">Вопросы и отладка</div><div class="dd">Квизы и ошибки JSON.</div></div></div>
+    <div class="agenda-row"><span class="t">55–60</span><div><div class="tt">Демо в группе</div><div class="dd">Классификатор объясняет решение и честно пишет «не уверен».</div></div></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="На весь блок 5 минут. Откройте 2–3 работы — журнал, код и переписку с DeepSeek — и разбирайте диалог с нейросетью, а не только результат. Покажите запись журнала: аргументы аккуратные, потому что модель заполняла их по схеме из parameters. Но в документации DeepSeek прямо сказано: модель не всегда присылает правильный JSON и может выдумать лишние параметры, а строгий режим мы на уроке 13 не включали. Поэтому на уроке 13 обещание «аргументы — аккуратный JSON» звучало слишком уверенно: правильно говорить «обычно». В журнале arguments может лежать строкой, как пришла от модели, или словарём после json.loads — оба варианта рабочие. Если журнал не читается с ошибкой Extra data — запись дописывали в конец файла; пустой файл при первом запуске даёт Expecting value, а отсутствующий — FileNotFoundError. Испытание описаний: у кого агент со словом «считает» перестал звать калькулятор — описание решает; у кого не перестал — модель видит ещё имя calculate и системный промпт агента. Оба результата честные. Мостик к уроку: JSON в журнале появился, потому что инструмент описан схемой. А как получить JSON, когда инструментов нет? И как объяснить модели, чего мы хотим, кроме описания словами? Сегодня — JSON mode и примеры.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор ДЗ урока 13</div>
+    <h2>Смотрим <span class="acc">журнал вызовов</span> агента</h2>
+  </div>
+  <p>Открываем 2–3 присланные работы: свой инструмент, журнал <span class="code-chip">tools_log.json</span> и испытание описаний «до» и «после».</p>
+  <div class="grid-3" style="margin-top:20px">
+    <div class="info-card"><h3>Журнал вызовов</h3>Аргументы в записях — аккуратный JSON вроде <span class="code-chip" style="text-transform:none;font-variant-ligatures:none">{"expression": "48763*9271"}</span>. Обычно так и есть, но гарантии нет: поэтому в агенте <span class="code-chip">json.loads</span> стоит внутри <span class="code-chip">try</span>.</div>
+    <div class="info-card"><h3>Что переделывали</h3>Журнал не читается: <span class="code-chip">JSONDecodeError: Extra data</span> — записи дописывали в конец файла. Чиним: читаем список целиком, добавляем запись, сохраняем целиком. Вместо русских букв коды <span class="code-chip">\uXXXX</span> — забыли <span class="code-chip">ensure_ascii=False</span>.</div>
+    <div class="info-card"><h3>Вывод</h3>JSON в журнале получился, потому что мы описали инструмент схемой. А если инструментов нет? Сегодня — ответ строго в JSON и обучение модели на примерах.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Свяжите с дневником урока 7: там настроение было свободным текстом. Спросите группу: как посчитать радостные дни, если записано «радостное», «Позитив» и «хорошее 😊»? Без ручной работы — никак. Отсюда идея урока: фиксированный список из шести меток и ответ в формате JSON — анкета вместо сочинения. Если у группы на уроке 7 были другие варианты меток, приведите свои.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Идея урока</div>
+    <h2>Ответ, который <span class="acc">можно посчитать</span></h2>
+  </div>
+  <p>На уроке 7 нейросеть подбирала настроение для дневника своими словами: «радостное», «Позитив», «хорошее 😊». Человек поймёт, что это одно и то же. А программа — нет: как посчитать, сколько было радостных дней?</p>
+  <div class="vs" style="margin-top:18px">
+    <div class="vs-col vs-col--plain">
+      <h4>Ответ-сочинение</h4>
+      <p>«Похоже, автор очень рад — настроение позитивное! 😊» Человек прочитает, а программе непонятно, где здесь метка.</p>
+      <p class="note">каждый раз другими словами</p>
+    </div>
+    <div class="vs-col vs-col--win">
+      <h4>Ответ-анкета</h4>
+      <p><span class="code-chip" style="text-transform:none;font-variant-ligatures:none">{"mood": "радость"}</span> — одно поле, одна метка из шести. Программа берёт её по ключу, проверяет и считает.</p>
+      <p class="note">сегодняшний проект — классификатор <span class="code-chip" style="text-transform:none">mood.py</span></p>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Три приёма урока, каждый закроем делом: примеры — правка 1, рассуждение — правка 2, JSON — разминка, каркас и правка 3. Few-shot значит «несколько примеров», chain-of-thought — «цепочка рассуждений». В руководствах (Guides) API DeepSeek отдельных советов по примерам и рассуждению нет: это общие приёмы работы с чат-моделями, поэтому сегодня проверяем их сами — на своих фразах. Если спросят про статью DeepSeek о модели R1 — ответ в заметке слайда 23.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Как это работает</div>
+    <h2>Три приёма: <span class="acc">примеры</span>, рассуждение, JSON</h2>
+  </div>
+  <p>Сегодня три приёма — каждый попробуете сами:</p>
+  <div class="grid-3" style="margin-top:20px">
+    <div class="info-card"><h3>Примеры · few-shot</h3>Даём модели несколько решённых пар «фраза → ответ», чтобы она отвечала по тому же образцу. Как новичку в игре: пара сыгранных раундов понятнее длинных правил.</div>
+    <div class="info-card"><h3>Рассуждение · chain-of-thought</h3>Просим модель сначала записать ход мысли и только потом ответ. Как на контрольной: пишем решение, а не только ответ.</div>
+    <div class="info-card"><h3>Структура · JSON</h3>Ответ не сочинение, а анкета с полями. Программа берёт нужное поле по имени — и может его проверить и посчитать.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Три условия взяты из документации DeepSeek, там режим называется JSON Output; в уроке говорим JSON mode. Подчеркните второе условие: слово JSON и пример формата нужны именно в тексте промпта, и задачи у них разные. Без просьбы ответить в JSON, по документации, модель может печатать пробелы, пока не упрётся в max_tokens, — долго и за деньги, а json.loads потом всё равно упадёт. Поэтому max_tokens ставим всегда. Ответит ли сервер вместо пробелов сразу ошибкой, в документации не сказано; в любом случае слово JSON не убираем. Пример формата документация тоже требует, но с пробелами его не связывает: это шаблон — какие ключи ждём и что в них писать. Третье условие работает в обе стороны: слишком маленький max_tokens оборвёт JSON на середине.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Новое · JSON mode</div>
+    <h2>JSON mode: ответ <span class="acc">строго в JSON</span></h2>
+  </div>
+  <p>Чтобы модель ответила строго в формате JSON, в запрос добавляют <span class="code-chip">response_format</span>. У JSON mode три условия:</p>
+  <ol class="steps steps--tight">
+    <li><div>В запросе <span class="code-chip" style="text-transform:none;font-variant-ligatures:none">response_format={"type": "json_object"}</span></div></li>
+    <li><div>В промпте слово JSON и пример формата; без слова JSON модель может долго печатать пробелы</div></li>
+    <li><div>Разумный <span class="code-chip">max_tokens</span>: хватает на весь JSON, но ответ не тянется бесконечно</div></li>
+  </ol>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="font-size:14.5px;line-height:1.36;padding:8px 20px;font-variant-ligatures:none">SYSTEM = (<span class="st">"Определи настроение фразы. Ответь в формате JSON: "</span>
+          <span class="st">'{"mood": "настроение одним словом", "emoji": "один эмодзи"}'</span>)
+
+response = client.chat.completions.create(
+    model=<span class="st">"deepseek-flash"</span>,
+    messages=[
+        {<span class="st">"role"</span>: <span class="st">"system"</span>, <span class="st">"content"</span>: SYSTEM},
+        {<span class="st">"role"</span>: <span class="st">"user"</span>, <span class="st">"content"</span>: <span class="st">"Ура, завтра каникулы!"</span>},
+    ],
+    response_format={<span class="st">"type"</span>: <span class="st">"json_object"</span>},  <span class="cm"># JSON mode: ответ — только JSON</span></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Имя deepseek-flash и строка extra_body ученикам знакомы с урока 13. Новое — temperature 0 для задач, где нужен один правильный ответ. Почему выключаем размышления: у deepseek-flash они включены по умолчанию, и в этом режиме temperature не действует — ошибки не будет, но и строгости тоже. Кроме того, как JSON mode сочетается с режимом размышлений, в документации DeepSeek не описано. Прежняя модель deepseek-reasoner больше не используется: режим размышлений теперь параметр той же модели. Если нейросеть-помощник предложит включить размышления или сменить модель — оставляем как в промпте. Число 500 в max_tokens — с запасом для короткого JSON; по умолчанию предел гораздо больше.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Настройки классификатора</div>
+    <h2>Строгий режим: <span class="acc">temperature=0</span></h2>
+  </div>
+  <p>На уроке 11 <span class="code-chip">temperature</span> меняла характер ответа: 0.2 — строго, 0.9 — творчески. Классификатору творчество не нужно: на одну и ту же фразу нам нужна одна и та же метка. Поэтому берём самый строгий режим — <span class="code-chip">temperature=0</span>.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="font-variant-ligatures:none">    response_format={<span class="st">"type"</span>: <span class="st">"json_object"</span>},  <span class="cm"># JSON mode: ответ — только JSON</span>
+    temperature=0,  <span class="cm"># самый строгий режим</span>
+    max_tokens=500,  <span class="cm"># предел длины ответа</span>
+    extra_body={<span class="st">"thinking"</span>: {<span class="st">"type"</span>: <span class="st">"disabled"</span>}},  <span class="cm"># выключаем режим размышлений</span>
+)</div>
+  </div>
+  <div class="ek-note">Режим размышлений выключаем, как на уроке 13: в нём <span class="code-chip">temperature</span> молча не действует. А рассуждать модель всё равно будет — в правке 2 попросим её записывать ход мысли прямо в ответ JSON.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ученики копируют промпт целиком в новый чат DeepSeek. В промпте прямо названы client.chat.completions.create, тип json_object и имя deepseek-flash: нейросеть-помощник по привычке может предложить другой способ вызова, значение json_schema (у DeepSeek такого значения в документации нет) или старое имя модели.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Промпт #1 · разминка</div>
+    <h2><span class="code-chip">warmup.py</span>: настроение <span class="acc">в JSON</span></h2>
+  </div>
+  <p>Попросим определить настроение одной фразы — и достанем ответ по ключу, как из словаря на уроке 7.</p>
+  <div class="prompt-card" style="margin-top:22px">
+    <span class="pc-tag">→ Новый чат DeepSeek</span>
+    <div class="pc-text" style="font-variant-ligatures:none">Ты — опытный Python-разработчик и наставник школьника. Напиши warmup.py — разминку по JSON mode на openai SDK.
+- клиент: OpenAI(api_key=os.getenv("DEEPSEEK_KEY"), base_url="https://api.deepseek.com"), ключ из .env через load_dotenv() из python-dotenv
+- SYSTEM: «Определи настроение фразы. Ответь в формате JSON: {"mood": "настроение одним словом", "emoji": "один эмодзи"}»
+- один запрос: client.chat.completions.create (не client.responses) с model="deepseek-flash" (не меняй имя модели), messages из SYSTEM и user «Ура, завтра каникулы!», response_format={"type": "json_object"} (не json_schema), temperature=0, max_tokens=500, extra_body={"thinking": {"type": "disabled"}}
+- text = response.choices[0].message.content or ""; напечатай «Строка от модели:» и text; потом data = json.loads(text) и напечатай «Настроение:» и data["mood"], «Эмодзи:» и data["emoji"]
+Прокомментируй код для новичка. Ответь одним блоком кода.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Дождитесь, пока у всех появятся три строки. Слово, эмодзи, пробелы и переносы строк в JSON у учеников могут отличаться — это нормально. Ключевой момент К3: первая строка — просто текст, а после json.loads — словарь, из которого программа берёт значение по ключу, как в дневнике урока 7. Файл .env должен лежать в lesson-14: load_dotenv ищет его рядом со скриптом и в папках выше, а в соседней lesson-13 не найдёт.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Запуск и разбор</div>
+    <h2>Из строки — в <span class="acc">словарь</span></h2>
+  </div>
+  <div class="grid-2" style="margin-top:16px">
+    <div>
+      <ol class="steps steps--tight">
+        <li><div>В <span class="code-chip">vibe-coding</span> создайте папку <span class="code-chip">lesson-14</span></div></li>
+        <li><div>Скопируйте в неё <span class="code-chip">.env</span> из <span class="code-chip">lesson-13</span> — там ваш <span class="code-chip">DEEPSEEK_KEY</span></div></li>
+        <li><div>Откройте <span class="code-chip">lesson-14</span> в VS Code: <span class="code-chip">File → Open Folder</span></div></li>
+        <li><div>Создайте <span class="code-chip">warmup.py</span>, вставьте код из ответа и сохраните</div></li>
+        <li><div>Выполните <span class="code-chip">python warmup.py</span></div></li>
+      </ol>
+    </div>
+    <div>
+      <div class="term">
+        <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">ТЕРМИНАЛ</span></div>
+        <div class="term-body"><span class="usr">$ python warmup.py</span>
+Строка от модели: {"mood": "радость", "emoji": "🎉"}
+Настроение: радость
+Эмодзи: 🎉</div>
+      </div>
+      <div class="ek-note ek-note--green" style="margin-top:18px">Модель прислала <span class="hl">строку</span> в формате JSON, а <span class="code-chip">json.loads</span> превратил её в <span class="hl">словарь</span>. Метку программа берёт по ключу <span class="code-chip">data["mood"]</span>. Ответ перестал быть просто текстом — это данные.</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Почините у всех: тот же ключ и та же папка нужны для каркаса. Пустой ответ в JSON mode документация DeepSeek называет редким, причину и частоту не указывает — это не ошибка ученика. Если модель ответила текстом, значит, нейросеть-помощник убрала response_format: верните строку из промпта. Без пакетов первой падает строка с dotenv — она импортируется раньше openai. Если pip не ставит openai, проверьте версию Python: нужна 3.10 или новее. Непонятную ошибку целиком копируем в DeepSeek.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Типичные ситуации запуска</div>
+    <h2>Если <span class="code-chip">warmup.py</span> <span class="acc">не запустился</span></h2>
+  </div>
+  <div class="kv" style="margin-top:8px">
+    <div class="kv-row" style="grid-template-columns:330px 1fr;gap:28px"><div class="k" style="text-transform:none">ошибка про <span class="code-chip">api_key</span></div><div class="v">Ключ не найден: <span class="code-chip">.env</span> не в папке <span class="code-chip">lesson-14</span> или переменная называется не <span class="code-chip">DEEPSEEK_KEY</span>. В свежей версии openai SDK текст ошибки начинается с «Missing credentials».</div></div>
+    <div class="kv-row" style="grid-template-columns:330px 1fr;gap:28px"><div class="k" style="text-transform:none"><span class="code-chip">Error code: 401 / 402</span></div><div class="v">401 — ключ неверный: скопируйте его заново, без пробелов. 402 — на счёте закончились деньги: скажите преподавателю.</div></div>
+    <div class="kv-row" style="grid-template-columns:330px 1fr;gap:28px"><div class="k" style="text-transform:none"><span class="code-chip">JSONDecodeError: Expecting value</span></div><div class="v">Пришла пустая строка: в JSON mode так изредка бывает, запустите ещё раз. Или в коде нет <span class="code-chip">response_format</span>, и модель ответила обычным текстом.</div></div>
+    <div class="kv-row" style="grid-template-columns:330px 1fr;gap:28px"><div class="k" style="text-transform:none"><span class="code-chip">ModuleNotFoundError</span></div><div class="v">Выполните <span class="code-chip">pip install openai python-dotenv</span>; не сработало — <span class="code-chip">py -m pip install openai python-dotenv</span>.</div></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Метки задаём списком в промпте, а программа хранит тот же список в словаре EMOJI. В документации DeepSeek у response_format только два значения — обычный текст и json_object; схемы с допустимыми полями и значениями для обычного ответа нет. Поэтому за метку отвечает промпт, а проверять её будет программа. Сравните с тестом: варианты ответа вместо свободного ответа — проверять и считать проще. Эмодзи для каждой метки выбирает программа, а не модель: так у одной метки всегда один и тот же значок.">
+<div class="sl-body" style="gap:12px">
+  <div>
+    <div class="q-label">Как это работает</div>
+    <h2>Метки — как <span class="acc">варианты ответа</span> в тесте</h2>
+  </div>
+  <p>Свободный ответ похож на сочинение, а нам нужен тест с вариантами ответа. Шесть меток перечисляем в промпте, а программа хранит тот же список в словаре <span class="code-chip">EMOJI</span>: метка → эмодзи.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="font-size:14px;line-height:1.5;padding:10px 20px">EMOJI = {  <span class="cm"># наш список меток: метка → эмодзи</span>
+    <span class="st">"радость"</span>: <span class="st">"😊"</span>,
+    <span class="st">"грусть"</span>: <span class="st">"😢"</span>,
+    <span class="st">"злость"</span>: <span class="st">"😠"</span>,
+    <span class="st">"страх"</span>: <span class="st">"😨"</span>,
+    <span class="st">"удивление"</span>: <span class="st">"😮"</span>,
+    <span class="st">"спокойствие"</span>: <span class="st">"😌"</span>,
+}
+SYSTEM = (
+    <span class="st">"Ты — классификатор настроения сообщений. Определи настроение фразы "</span>
+    <span class="st">"и выбери ровно одну метку из списка: радость, грусть, злость, страх, "</span>
+    <span class="st">"удивление, спокойствие. "</span>
+    <span class="st">'Ответь в формате JSON: {"mood": "метка из списка"}'</span>
+)</div>
+  </div>
+  <div class="ek-note">JSON mode следит только за тем, чтобы ответ был правильным JSON. Какая метка в нём окажется, зависит от промпта — поэтому список меток держим и в программе: по нему проверим ответ в правке 3.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Проговорите по строкам: два сообщения в messages, запрос с JSON mode и строгими настройками, строка ответа, json.loads. Сервер ничего не помнит между запросами — что не отправили, того модель не видит; поэтому без истории каждая фраза оценивается сама по себе. Защита or пустая строка нужна потому, что в JSON mode изредка приходит пустой ответ: тогда json.loads получит пустую строку и остановится с предсказуемой ошибкой Expecting value (слайд 20).">
+<div class="sl-body" style="gap:12px">
+  <div>
+    <div class="q-label">Как это работает</div>
+    <h2>Каждая фраза — <span class="acc">отдельный запрос</span></h2>
+  </div>
+  <p>Классификатор — не чат. Собеседник урока 12 помнил разговор, а здесь каждая фраза уходит отдельным запросом: только <span class="code-chip">system</span> и сама фраза. Иначе прошлые фразы влияли бы на метку новой.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="font-size:14px;line-height:1.5;padding:10px 20px"><span class="kw">def</span> classify(text):
+    messages = [
+        {<span class="st">"role"</span>: <span class="st">"system"</span>, <span class="st">"content"</span>: SYSTEM},
+        {<span class="st">"role"</span>: <span class="st">"user"</span>, <span class="st">"content"</span>: text},  <span class="cm"># каждая фраза — отдельный запрос</span>
+    ]
+    response = client.chat.completions.create(
+        model=<span class="st">"deepseek-flash"</span>,
+        messages=messages,
+        response_format={<span class="st">"type"</span>: <span class="st">"json_object"</span>},  <span class="cm"># JSON mode</span>
+        temperature=0,  <span class="cm"># классификатору нужна строгость</span>
+        max_tokens=500,
+        extra_body={<span class="st">"thinking"</span>: {<span class="st">"type"</span>: <span class="st">"disabled"</span>}},  <span class="cm"># без режима размышлений</span>
+    )
+    content = response.choices[0].message.content <span class="kw">or</span> <span class="st">""</span>  <span class="cm"># строка от модели</span>
+    <span class="kw">return</span> json.loads(content)  <span class="cm"># строка JSON → словарь</span></div>
+  </div>
+  <div class="ek-note"><span class="code-chip">json.loads</span> превращает строку JSON в словарь — как <span class="code-chip">json.load</span> на уроке 7, только из строки, а не из файла. <span class="code-chip">or ""</span> подставит пустую строку, если ответ пустой, — как в стриминге урока 12.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Прочитайте цель вслух. Обязательный минимум — каркас и правки 1–3: классификатор из карточки с примерами, рассуждением и проверкой ответа. Переписка и статистика — для успевающих. Слева теория, справа практика.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Цель · что будет в конце</div>
+    <h2><span class="acc">Цель</span> урока</h2>
+  </div>
+  <div class="ek-note">К 55-й минуте у каждого — классификатор <span class="code-chip">mood.py</span>: на любую фразу он выдаёт одну метку из шести с эмодзи, рассуждение серым и уверенность в процентах. Если ответ модели сломан или метки нет в списке, программа честно пишет «непонятно» и не падает. Успеете — разберёт переписку из <span class="code-chip">chat.txt</span> и посчитает, кто в чате самый весёлый.</div>
+  <div class="grid-2">
+    <div class="info-card">
+      <h3>Узнаете</h3>
+      <ul class="clean">
+        <li>Как учить модель примерами — few-shot</li>
+        <li>Зачем модели рассуждать до ответа — chain-of-thought</li>
+        <li>Как получить ответ строго в JSON — JSON mode</li>
+        <li>Почему ответ модели всё равно нужно проверять</li>
+      </ul>
+    </div>
+    <div class="info-card">
+      <h3>Сделаете</h3>
+      <ul class="clean">
+        <li>Разминку: ответ модели → словарь Python</li>
+        <li>Классификатор на шесть меток с примерами</li>
+        <li>Рассуждение и уверенность в каждом ответе</li>
+        <li>Проверку ответа; успеете — анализ переписки и статистику</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Покажите готовую версию после правки 3 — соберите её заранее. Задайте три фразы при группе. Рассуждения и проценты у вас будут своими словами и числами. Если на бессмыслицу модель поставила высокую уверенность — скажите честно: это её самооценка, а порог 60 мы выбрали сами.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Демо результата</div>
+    <h2>Что <span class="acc">соберём</span> сегодня</h2>
+  </div>
+  <div class="term">
+    <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">ТЕРМИНАЛ</span></div>
+    <div class="term-body"><span class="usr">$ python mood.py</span>
+Классификатор настроения готов. /test — проверка на phrases.txt, /exit — выход
+<span class="usr">Фраза: Спасибо, что съели мой обед, очень мило</span>
+<span class="dim">💭 Слова вежливые, но обед съели — это неприятно. Сарказм: досада.</span>
+😠 злость (85%)
+<span class="usr">Фраза: Да ладно?! Наш физрук — бывший космонавт?</span>
+<span class="dim">💭 Да ладно и ?! — неожиданная новость.</span>
+😮 удивление (90%)
+<span class="usr">Фраза: ывапролдж</span>
+<span class="dim">💭 Набор букв, чувств не видно.</span>
+🤔 не уверен: похоже на спокойствие (10%)
+<span class="usr">Фраза: /exit</span></div>
+  </div>
+  <p>Серая строка 💭 — рассуждение: модель пишет его до метки. В скобках — уверенность, её модель ставит сама. Ниже 60 — программа пишет «не уверен».</p>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Раздайте phrases.txt в чате группы или пусть ученики вставят восемь строк со слайда — около 2 минут. Файл создаём в VS Code: он сохранит его в кодировке UTF-8, и программа его прочитает. Фразы подобраны трудные: сарказм, только эмодзи, смешанные чувства, бессмыслица. Правило про личное — сразу: каждая фраза — обычный запрос к API DeepSeek. В VS Code откройте именно папку lesson-14.">
+<div class="sl-body" style="gap:10px;padding-top:44px">
+  <div>
+    <div class="q-label">Подготовка</div>
+    <h2>Папка <span class="acc">lesson-14</span> и трудные фразы</h2>
+  </div>
+  <ol class="steps steps--tight">
+    <li><div>В <span class="code-chip">lesson-14</span> уже лежат <span class="code-chip">.env</span> и <span class="code-chip">warmup.py</span>; создайте файл <span class="code-chip">mood.py</span></div></li>
+    <li><div>Создайте <span class="code-chip">phrases.txt</span> и вставьте восемь фраз — или возьмите файл у преподавателя</div></li>
+    <li><div>Ставить ничего не нужно: <span class="code-chip">openai</span> и <span class="code-chip">python-dotenv</span> стоят с урока 11</div></li>
+  </ol>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">TEXT</span></div>
+    <div class="code-body" style="font-size:14px;line-height:1.45;padding:8px 20px">Ура, каникулы! 🎉
+Ну просто замечательно: опять дождь, а мы без зонта
+Спасибо, что съели мой обед, очень мило
+Завтра контрольная, а я ничего не понимаю 😬
+Вроде рад, что переезжаем, но грустно оставлять друзей
+Да ладно?! Наш физрук — бывший космонавт?
+🙃🙃🙃
+ывапролдж</div>
+  </div>
+  <div class="ek-note ek-note--red" style="padding:10px 20px">Всё, что вы вводите, уходит в запросе на сервер DeepSeek. Не отправляйте личные данные и чужие настоящие переписки.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Скопировать промпт целиком в новый чат DeepSeek — все правки дальше пойдут в этот же чат. Каркас: шесть меток, JSON mode, строгие настройки и команда /test для прогона файла. Примеров, рассуждения и проверки ответа намеренно нет — их добавят правки 1–3, и группа увидит, что даёт каждая. HERE — папка, где лежит mood.py: phrases.txt найдётся, даже если программу запустили из другой папки.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Промпт #2 · стартовый</div>
+    <h2><span class="acc">Каркас</span> классификатора</h2>
+  </div>
+  <div class="prompt-card" style="margin-top:10px">
+    <span class="pc-tag">→ Новый чат DeepSeek</span>
+    <div class="pc-text" style="font-size:13.5px;line-height:1.5;font-variant-ligatures:none">Ты — <span class="hl">опытный Python-разработчик</span> и наставник школьника. Напиши mood.py — классификатор настроения фраз в терминале на openai SDK.
+- клиент: OpenAI(api_key=os.getenv("DEEPSEEK_KEY"), base_url="https://api.deepseek.com"), ключ из .env через load_dotenv() из python-dotenv
+- HERE = Path(__file__).resolve().parent. Словарь EMOJI (метка → эмодзи): радость 😊, грусть 😢, злость 😠, страх 😨, удивление 😮, спокойствие 😌
+- SYSTEM: «Ты — классификатор настроения сообщений. Определи настроение фразы и выбери ровно одну метку из списка: радость, грусть, злость, страх, удивление, спокойствие. Ответь в формате JSON: {"mood": "метка из списка"}»
+- classify(text): messages из system и user с фразой — каждая фраза отдельным запросом, историю не копи. client.chat.completions.create (не client.responses) с model="deepseek-flash" (не меняй имя), response_format={"type": "json_object"} (не json_schema), temperature=0, max_tokens=500, extra_body={"thinking": {"type": "disabled"}}. content = response.choices[0].message.content or ""; верни json.loads(content)
+- show(data): mood = data["mood"]; напечатай EMOJI.get(mood, "❓") и mood
+- run_test(): строки файла HERE / "phrases.txt" (encoding="utf-8"), пустые пропусти; для каждой напечатай «▶» и фразу, потом show(classify(фраза))
+- при запуске напечатай «Классификатор настроения готов. /test — проверка на phrases.txt, /exit — выход». Цикл: text = input("Фраза: ").strip(); /exit — выход; пустую строку пропусти; /test — run_test(); иначе show(classify(text))
+Прокомментируй код для новичка. Ответь одним блоком кода.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Дождитесь, пока у всех на первую фразу появится метка с эмодзи. Подчеркните: эмодзи подставляет программа по словарю, модель присылает только слово — так значки всегда одинаковые. Если программа упала сразу после фразы — слайд 20.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Запуск каркаса</div>
+    <h2>Запускаем и <span class="acc">проверяем</span> первую фразу</h2>
+  </div>
+  <ol class="steps steps--tight">
+    <li><div>Скопируйте код из ответа DeepSeek в <span class="code-chip">mood.py</span> и сохраните (<span class="code-chip">Ctrl+S</span>)</div></li>
+    <li><div>Выполните <span class="code-chip">python mood.py</span></div></li>
+    <li><div>Напишите «Ура, каникулы!» — появится метка с эмодзи, например <span class="code-chip">😊 радость</span></div></li>
+    <li><div>Наберите <span class="code-chip">/test</span> — программа проверит все фразы из <span class="code-chip">phrases.txt</span></div></li>
+    <li><div>Выход — <span class="code-chip">/exit</span></div></li>
+  </ol>
+  <div class="ek-note">Эмодзи выбирает не модель, а программа — по словарю <span class="code-chip">EMOJI</span>. Модель присылает только метку.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Дайте 2–3 минуты: пусть каждый пройдёт по своим меткам и отметит спорные. Терминал на слайде — пример, и в нём показаны пять фраз из восьми: как модель разметит фразы у вас, заранее неизвестно. Если модель угадала всё — не страшно: обсудите строку из трёх 🙃 и ывапролдж — какую метку ждёт группа? Единого правила для таких случаев у модели нет — его задаём мы. Для бессмыслицы это пятый пример правки 3, а для строки из одних эмодзи примера в уроке нет: кто успеет, добавит свой на слайде 36. Знак ❓ означает, что модель написала метку не из нашего списка: JSON правильный, а метка чужая.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Первый прогон</div>
+    <h2>Прогон <span class="acc">трудных фраз</span></h2>
+  </div>
+  <div class="term">
+    <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">ТЕРМИНАЛ</span></div>
+    <div class="term-body"><span class="usr">$ python mood.py</span>
+Классификатор настроения готов. /test — проверка на phrases.txt, /exit — выход
+<span class="usr">Фраза: /test</span>
+<span class="dim">▶ Ура, каникулы! 🎉</span>
+😊 радость
+<span class="dim">▶ Ну просто замечательно: опять дождь, а мы без зонта</span>
+❓ раздражение
+<span class="dim">▶ Спасибо, что съели мой обед, очень мило</span>
+😊 радость
+<span class="dim">▶ 🙃🙃🙃</span>
+😊 радость
+<span class="dim">▶ ывапролдж</span>
+❓ нейтральное</div>
+  </div>
+  <p>Это пример — ваши метки могут быть другими. Пройдитесь по своему прогону: где вы поставили бы другую метку? Где появился ❓ — метка не из нашего списка?</p>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Момент урока: ответ модели — данные. Свяжите с разминкой: строка → json.loads → словарь → значение по ключу. Обещайте только то, что даёт каждая правка: примеры задают правила, рассуждение объясняет метку, проверка не даёт программе упасть на плохом ответе. Что модель станет угадывать все фразы, не обещайте.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Момент урока</div>
+    <h2>Ответ модели стал <span class="acc">данными</span></h2>
+  </div>
+  <div class="ek-note ek-note--green">Модель прислала строку JSON, <span class="code-chip">json.loads</span> превратил её в словарь, а программа взяла метку по ключу <span class="code-chip">data["mood"]</span> и подставила эмодзи. Такой ответ можно проверить, вывести цветом и посчитать.</div>
+  <ul class="clean">
+    <li>Правка 1 · примеры — покажем модели наши правила на трудных фразах</li>
+    <li>Правка 2 · рассуждение — модель объяснит, почему выбрала метку</li>
+    <li>Правка 3 · проверка — сломанный ответ больше не роняет программу, а чужая метка не проходит проверку</li>
+  </ul>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пробегитесь по пяти ситуациям и помогите лично тем, у кого не работает. Падение на пустом ответе в каркасе ожидаемо: проверку и повтор добавит правка 3. При KeyError сравните SYSTEM ученика с промптом: нейросеть-помощник могла переписать пример формата. Строка про 400 и паузу даёт проверку, а не диагноз. Без слова JSON, по документации, модель может печатать пробелы до предела max_tokens, и json.loads на них падает. Ответит ли сервер DeepSeek вместо этого сразу ошибкой, в документации не сказано, поэтому первая проверка у 400 и у паузы одна — сверить код с промптом. Ошибка 400 значит, что сервер не принял запрос, а текст после дефиса — сообщение сервера. Долгая пауза бывает и при правильном промпте: пока запрос ждёт, сервер держит соединение и закрывает его, только если ответ не начался за 10 минут. FileNotFoundError в последней строке называет путь, который программа искала, — по нему видно, где должен лежать файл.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Если каркас не запустился</div>
+    <h2>Типичные ситуации <span class="acc">каркаса</span></h2>
+  </div>
+  <div class="kv">
+    <div class="kv-row" style="grid-template-columns:330px 1fr;padding:16px 4px"><div class="k" style="text-transform:none"><span class="code-chip">JSONDecodeError: Expecting value</span></div><div class="v" style="font-size:19px">Пришла пустая строка — в JSON mode так изредка бывает. Запустите снова: в правке 3 программа научится повторять запрос сама.</div></div>
+    <div class="kv-row" style="grid-template-columns:330px 1fr;padding:16px 4px"><div class="k" style="text-transform:none"><span class="code-chip">KeyError: 'mood'</span></div><div class="v" style="font-size:19px">В ответе нет ключа <span class="code-chip">mood</span>. Сверьте пример формата в <span class="code-chip">SYSTEM</span> с промптом: там должно быть <span class="code-chip" style="font-variant-ligatures:none">{"mood": "метка из списка"}</span>.</div></div>
+    <div class="kv-row" style="grid-template-columns:330px 1fr;padding:16px 4px"><div class="k" style="text-transform:none"><span class="code-chip">Error code: 400</span> или долгая пауза</div><div class="v" style="font-size:19px">Сверьте <span class="code-chip">SYSTEM</span> и <span class="code-chip">create(...)</span> с промптом каркаса: слово JSON и <span class="code-chip">response_format</span> на месте? Если всё совпадает, при 400 скопируйте ошибку в DeepSeek, при паузе подождите — сервер иногда не сразу начинает ответ.</div></div>
+    <div class="kv-row" style="grid-template-columns:330px 1fr;padding:16px 4px"><div class="k" style="text-transform:none"><span class="code-chip">FileNotFoundError</span></div><div class="v" style="font-size:19px">Нет <span class="code-chip">phrases.txt</span> рядом с <span class="code-chip">mood.py</span> или файл назван иначе.</div></div>
+    <div class="kv-row" style="grid-template-columns:330px 1fr;padding:16px 4px"><div class="k" style="text-transform:none">❓ и чужая метка</div><div class="v" style="font-size:19px">Это не поломка: модель написала метку не из списка. Поправим правками 1 и 3.</div></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Правка в тот же чат, где собран каркас. Перезапуск обязателен: уже запущенная программа работает со старым кодом, и /test без перезапуска покажет прежние метки. Примеры не совпадают с фразами из phrases.txt — иначе проверка была бы нечестной. Метки не изменились? Если они и были верными — модель справлялась без примеров. Если спорной осталась строка из одних эмодзи или бессмыслица — похожего примера пока нет: таких фраз среди четырёх нет. Бессмыслицу закроет пятый пример правки 3, строку из эмодзи — собственный пример ученика на слайде 36. Если спорным остался сарказм — похожий пример про телефон есть, но модель держится своего прочтения фразы; это тоже честный результат. В любом случае покажите опыт со слайда 23.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 1 · примеры</div>
+    <h2>Учим модель <span class="acc">на примерах</span></h2>
+  </div>
+  <p>Покажем модели четыре решённые фразы — в том числе сарказм и эмодзи. Ответы в примерах пишем мы сами: это наши правила.</p>
+  <div class="prompt-card prompt-card--copy" style="margin-top:8px">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text">Научи классификатор на примерах (few-shot).
+- сразу после SYSTEM добавь список EXAMPLES — пары (фраза, словарь-ответ):
+("Наконец-то пятница 🎉", {"mood": "радость"})
+("Класс, телефон сел в самый нужный момент 🙃", {"mood": "злость"})
+("Завтра выступать перед всей школой 😬", {"mood": "страх"})
+("Ого, у нас в классе теперь живёт хомяк?!", {"mood": "удивление"})
+- в classify собирай messages так: сначала system; потом для каждой пары из EXAMPLES — {"role": "user", "content": фраза} и {"role": "assistant", "content": json.dumps(ответ, ensure_ascii=False)}; в конце user с проверяемой фразой
+Остальной код не меняй. Верни весь файл.</div>
+  </div>
+  <div class="ek-note">После каждой правки замените всё содержимое <span class="code-chip">mood.py</span> кодом из ответа DeepSeek, сохраните и перезапустите программу: <span class="code-chip">/exit</span>, потом <span class="code-chip">python mood.py</span>. Теперь <span class="code-chip">/test</span> — сравните с первым прогоном: какие метки изменились? Остались ли ❓?</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Главная мысль К1: модель от примеров не меняется. Сервер не помнит запросов, поэтому примеры уходят заново в каждом запросе — как будто это прошлый разговор, а реплики ассистента в нём сочинили мы. Роль assistant знакома с урока 12, где она хранила память собеседника. Без ensure_ascii=False русские буквы превратились бы в коды — как в журналах урока 13 у тех, кто забыл этот параметр. Запрос с примерами длиннее, поэтому стоит чуть дороже: цена считается по числу токенов.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2>Примеры — как <span class="acc">прошлый разговор</span></h2>
+  </div>
+  <p>Примеры встают в <span class="code-chip">messages</span> между <span class="code-chip">system</span> и вашей фразой: <span class="code-chip">user</span> → <span class="code-chip">assistant</span>, и так четыре раза. Модель видит образец — какой ответ мы ждём на похожие фразы.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body">def classify(text):
+    messages = [{"role": "system", "content": SYSTEM}]
+    for phrase, answer in EXAMPLES:  <span class="cm"># примеры — как будто прошлый разговор</span>
+        reply = json.dumps(answer, ensure_ascii=False)  <span class="cm"># словарь → строка JSON</span>
+        messages.append({"role": "user", "content": phrase})
+        messages.append({"role": "assistant", "content": reply})
+    messages.append({"role": "user", "content": text})  <span class="cm"># фраза, которую проверяем</span></div>
+  </div>
+  <div class="ek-note">Ответы <span class="code-chip">assistant</span> пишем мы сами, и они должны быть правильным JSON — таким же, какой ждём от модели. <span class="code-chip">json.dumps</span> превращает словарь в строку JSON без ошибок в кавычках, а <span class="code-chip">ensure_ascii=False</span> оставляет русские буквы читаемыми.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ключевой слайд для К1. Отдельной страницы про примеры в руководствах (Guides) API DeepSeek нет. Ближе всего — руководство JSON Output: оно советует показать в промпте пример нужного JSON, и в его образце такой пример стоит прямо в system. Few-shot с несколькими парами — общая техника работы с чат-моделями, а пары user и assistant опираются на обычный формат диалога из документации. Поэтому говорим «проверяем сами», а не «так советует DeepSeek». Если спросят «А DeepSeek же писал, что примеры вредят?» — да, но про другую модель. В статье о DeepSeek-R1 (январь 2025) авторы среди ограничений модели пишут: примеры в промпте стабильно ухудшают её результаты, поэтому задачу и формат ответа лучше описывать прямо, без примеров — это и есть zero-shot. Но R1 — рассуждающая модель, она думает перед ответом. Мы работаем с deepseek-flash и режим размышлений выключили, поэтому вывод статьи на наш случай напрямую не переносится. Ни совету, ни запрету не верим на слово — проверяем примеры сами, на phrases.txt. Укладываетесь во время — пусть ученики сделают опыт, около 2 минут: в EXAMPLES у примера с телефоном заменить метку злость на грусть, сохранить, перезапустить и ввести «Спасибо, что съели мой обед, очень мило». Сменилась метка на грусть — модель следует нашим примерам. Не сменилась — модель уверена в своём прочтении фразы; это тоже честный результат. Потом вернуть злость. Отстаёте — покажите опыт на своём экране или пропустите.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Полезное знание</div>
+    <h2>Zero-shot и <span class="acc">few-shot</span></h2>
+  </div>
+  <div class="vs">
+    <div class="vs-col vs-col--plain">
+      <h4 style="font-size:18px">Zero-shot: только инструкция</h4>
+      <p style="font-size:20px">«Выбери одну метку из списка». Как понимать сарказм или строку из одних эмодзи, модель решает сама — и не обязательно так, как вы.</p>
+      <p class="note" style="font-size:16px;opacity:1;color:#2E2E36">zero — «ноль»: ни одного примера</p>
+    </div>
+    <div class="vs-col vs-col--win">
+      <h4 style="font-size:18px">Few-shot: инструкция и примеры</h4>
+      <p style="font-size:20px">Решённые пары «фраза → ответ» показывают ваши правила на деле: сарказм про неприятность — злость, тревожный 😬 — страх.</p>
+      <p class="note" style="font-size:16px;opacity:1;color:#0B3D28">few — «несколько»: у нас четыре примера</p>
+    </div>
+  </div>
+  <p style="font-size:20px">Как выбирать примеры: разные метки, трудные случаи и ни одной фразы из <span class="code-chip">phrases.txt</span> — иначе проверка будет нечестной. Это общий приём для чат-моделей, поэтому проверяем его сами — на своих фразах.</p>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Правка в тот же чат. Шаги просим короткие — 2–3, иначе ответ растянется и может упереться в max_tokens. Рассуждения в примерах тоже короткие: модель берёт с них образец длины и стиля. Если серой строки нет — проверьте, что show печатает reasoning до метки.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 2 · рассуждение</div>
+    <h2>Сначала <span class="acc">рассуждение</span>, потом метка</h2>
+  </div>
+  <p>Попросим модель записывать ход мысли до метки — в поле <span class="code-chip">reasoning</span>. Это chain-of-thought — цепочка рассуждений.</p>
+  <div class="prompt-card prompt-card--copy" style="margin-top:8px">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text">Научи классификатор рассуждать перед ответом (chain-of-thought).
+- в SYSTEM предложение «Ответь в формате JSON: …» замени на: «Сначала запиши в поле reasoning 2–3 коротких шага: какие слова и эмодзи важны, есть ли сарказм. Потом выбери метку. Ответь в формате JSON: {"reasoning": "твои шаги", "mood": "метка из списка"}»
+- в каждый словарь-ответ в EXAMPLES добавь "reasoning" первым ключом, перед "mood": пятница — «Ждали пятницу, 🎉 — праздник.»; телефон — «Класс, но телефон сел. Это сарказм: досада.»; выступать — «Выступать страшно, 😬 — волнение.»; хомяк — «Ого и ?! — неожиданность.»
+- добавь GRAY = "\033[90m" и RESET = "\033[0m"; в show() сначала печатай серым «💭» и data.get("reasoning", ""), потом метку, как раньше
+Остальной код не меняй. Верни весь файл.</div>
+  </div>
+  <div class="ek-note">Как после правки 1: замените код в <span class="code-chip">mood.py</span>, сохраните, перезапустите — и снова <span class="code-chip">/test</span>: у каждой фразы появится серая строка 💭 с объяснением.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Объясните порядок полей — к нему вернёмся в квизе 2 (К2). Рассуждение стоит первым и в формате из SYSTEM, и во всех примерах. Словарь Python помнит порядок, в каком в него записали ключи, а json.dumps по умолчанию переносит этот порядок в строку — поэтому и в строке примера reasoning идёт первым. Если нейросеть-помощник допишет в json.dumps sort_keys=True, ключи встанут по алфавиту и reasoning окажется последним: этот параметр уберите. Объяснение «модель пишет слева направо, поэтому рассуждение до вывода» — наш методический выбор, а не правило из документации DeepSeek. API не гарантирует порядок полей в ответе, мы его только показываем примером. Программе порядок не важен: show берёт поля по ключу. В режиме размышлений DeepSeek рассуждение приходит отдельным полем ответа API рядом с текстом; у нас его нет, потому что режим выключен.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2>Почему <span class="acc">reasoning</span> стоит первым</h2>
+  </div>
+  <p>Модель пишет ответ по порядку, слева направо. Мы показываем ей формат, где <span class="code-chip">reasoning</span> стоит первым, — тогда метку она выбирает уже после того, как записала рассуждение.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body">EXAMPLES = [  <span class="cm"># пары «фраза → наш ответ»: учим модель на примерах</span>
+    ("Наконец-то пятница 🎉",
+     {"reasoning": "Ждали пятницу, 🎉 — праздник.", "mood": "радость"}),
+    ("Класс, телефон сел в самый нужный момент 🙃",
+     {"reasoning": "Класс, но телефон сел. Это сарказм: досада.", "mood": "злость"}),
+    ("Завтра выступать перед всей школой 😬",
+     {"reasoning": "Выступать страшно, 😬 — волнение.", "mood": "страх"}),
+    ("Ого, у нас в классе теперь живёт хомяк?!",
+     {"reasoning": "Ого и ?! — неожиданность.", "mood": "удивление"}),
+]</div>
+  </div>
+  <div class="ek-note">Это не режим размышлений DeepSeek, который мы выключили: там рассуждение приходит отдельно от ответа. Наше рассуждение — обычное поле нашего JSON: программа его видит и печатает серым.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Правка в тот же чат. Это самая длинная правка — дайте на неё около 7 минут. Проговорите, зачем она: JSON mode отвечает только за то, что ответ — правильный JSON, но не за поля и не за метку; а пустой ответ, по документации, изредка приходит и в JSON mode. Пятый пример учит модель нашему правилу для бессмыслицы: спокойствие с уверенностью 10.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 3 · проверка</div>
+    <h2>Проверка ответа и <span class="acc">уверенность</span></h2>
+  </div>
+  <p>JSON mode обещает одно: ответ — правильный JSON. Есть ли в нём <span class="code-chip">mood</span> и из нашего ли списка метка, проверяет программа. Заодно попросим модель оценить свою уверенность.</p>
+  <div class="prompt-card prompt-card--copy" style="margin-top:8px">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text" style="font-size:14px;line-height:1.35">Добавь проверку ответа и уверенность модели.
+- в SYSTEM предложение «Ответь в формате JSON: …» замени на: «Ответь в формате JSON: {"reasoning": "твои шаги", "mood": "метка из списка", "confidence": 80}, где confidence — целое число от 0 до 100: насколько ты уверен.»
+- в словари-ответы EXAMPLES добавь "confidence" последним ключом: пятница 95, телефон 85, выступать 90, хомяк 90. Пятый пример: ("кхм ыыы 123", {"reasoning": "Набор букв и цифр, чувств не видно.", "mood": "спокойствие", "confidence": 10})
+- функция check(content): json.loads в try, при json.JSONDecodeError верни None; если результат не dict — None; mood = str(data.get("mood", "")).strip().lower(), если mood нет в EMOJI — None; confidence не int и не float или не от 0 до 100 — считай 0; запиши mood и confidence в data и верни data
+- в classify запрос и разбор делай в цикле for attempt in range(2): data = check(response.choices[0].message.content or ""), если data — верни data; после цикла верни None
+- show(data): если data is None — напечатай «🤔 непонятно»; иначе серое рассуждение, потом при confidence &lt; 60 — «🤔 не уверен: похоже на {mood} ({confidence}%)», иначе «{эмодзи} {mood} ({confidence}%)»
+Остальной код не меняй. Верни весь файл.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Проговорите check по строкам: три причины вернуть None — не JSON (в том числе пустая строка), не объект в фигурных скобках, метки нет в списке. Непонятная уверенность — не повод для повтора: считаем её нулём, и программа напишет «не уверен». Метод get со вторым аргументом не падает, если ключа mood нет, а возвращает пустую строку; в каркасе такой ответ ронял show с KeyError. Метод strip убирает пробелы по краям, lower делает буквы строчными, и русские тоже: по документации Python lower работает по правилам Unicode, а там у кириллицы есть заглавные и строчные буквы. « Радость» превращается в «радость». Оба метода возвращают новую строку и не меняют исходную, поэтому результат записываем в mood. В наших шести метках буквы ё нет; если в ДЗ появятся метки с ё, добавьте замену ё на е и в ответ модели, и в свой список. Повтор нужен прежде всего на пустой ответ, который бывает по документации. Confidence модель пишет сама, как и метку: это её самооценка, а не точная вероятность, поэтому порог 60 — наш выбор. Опыт с print(check(...)) обязателен: так ученики своими глазами видят защиту без модели (К3). Строку ставим под функцией check, а не у цикла: так она сработает, даже если DeepSeek убрал цикл внутрь функции. None None напечатается до приветствия программы.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2>check: <span class="acc">не верим</span> ответу вслепую</h2>
+  </div>
+  <p style="font-size:17px;line-height:1.3;margin:0"><span class="code-chip">check</span> возвращает <span class="code-chip">None</span>, если из ответа не получился словарь или метки нет в списке. Тогда <span class="code-chip">classify</span> спрашивает модель ещё раз, а после второй неудачи программа пишет «🤔 непонятно». Если непонятна только уверенность, <span class="code-chip">check</span> ставит <span class="code-chip">0</span> и возвращает словарь — программа напишет «🤔 не уверен».</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="font-variant-ligatures:none;font-size:15px;line-height:1.28">def check(content):
+    try:
+        data = json.loads(content)  <span class="cm"># строка JSON → словарь</span>
+    except json.JSONDecodeError:
+        return None  <span class="cm"># пусто или не JSON</span>
+    if not isinstance(data, dict):
+        return None  <span class="cm"># JSON, но не объект в фигурных скобках</span>
+    mood = str(data.get("mood", "")).strip().lower()  <span class="cm"># « Радость» → «радость»</span>
+    if mood not in EMOJI:
+        return None  <span class="cm"># метки нет в нашем списке</span>
+    conf = data.get("confidence")
+    if not isinstance(conf, (int, float)) or not 0 &lt;= conf &lt;= 100:
+        conf = 0  <span class="cm"># уверенность непонятна — считаем, что её нет</span>
+    data["mood"] = mood
+    data["confidence"] = conf
+    return data</div>
+  </div>
+  <div class="ek-note ek-note--green" style="font-size:16px;line-height:1.3;padding:8px 14px;margin:0">Проверьте защиту без модели: под функцией <span class="code-chip">check</span> с начала строки, без отступа, временно допишите <span class="code-chip" style="font-variant-ligatures:none">print(check("привет"), check('{"mood": "сарказм"}'))</span>, сохраните и перезапустите <span class="code-chip">mood.py</span> — <span class="out-chip">None None</span>. Потом удалите строку.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Резервная правка — только если группа успевает. Обязательный минимум к 55-й минуте — каркас и правки 1–3; не успеваете — перенесите правку в ДЗ и переходите к квизам. Подготовьте chat.txt заранее и пришлите в чат группы. Содержимое — восемь строк: Аня: Всем привет! Кто сделал алгебру? / Миша: Я нет, весь вечер был на тренировке / Лиза: Ура, физкультуру отменили! 🎉 / Миша: Супер, значит, вместо неё будет контрольная 🙃 / Аня: Ой, я про контрольную совсем забыла 😨 / Лиза: Да ладно?! А когда её объявили? / Аня: Ладно, сяду повторять, чай уже заварила / Лиза: Ахаха, Миша, ну даёшь 😂. Каждая строка — с новой строки в файле. Цвета — те же коды ANSI, что на уроке 11.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 4 · резерв</div>
+    <h2>Настроение <span class="acc">переписки</span></h2>
+  </div>
+  <p>Преподаватель пришлёт <span class="code-chip">chat.txt</span> — выдуманную переписку трёх одноклассников, строки вида «Имя: текст». Положите его рядом с <span class="code-chip">mood.py</span>.</p>
+  <div class="prompt-card prompt-card--copy" style="margin-top:8px">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text">Добавь анализ переписки из файла chat.txt.
+- словарь COLORS (метка → цвет ANSI): радость "\033[93m", грусть "\033[94m", злость "\033[91m", страх "\033[95m", удивление "\033[96m", спокойствие "\033[92m". В show() строку с уверенной меткой печатай её цветом, в конце RESET
+- run_chat(): строки файла HERE / "chat.txt" (encoding="utf-8"); строку без «:» пропусти; name, text = line.split(":", 1), обе части .strip(); пустой text пропусти; напечатай f"▶ {name}: {text}", потом show(classify(text))
+- команда /chat в цикле вызывает run_chat(); приветствие: «Классификатор настроения готов. /test — проверка на phrases.txt, /chat — переписка из chat.txt, /exit — выход»
+Остальной код не меняй. Верни весь файл.</div>
+  </div>
+  <div class="ek-note ek-note--red">Только выдуманные переписки: настоящие сообщения одноклассников в нейросеть не отправляем.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Проговорите: chat.txt читаем так же, как phrases.txt, только каждую строку делим на имя и текст. Метод splitlines делит текст на строки и сам убирает переводы строк — файл, сохранённый в Windows, разбирается так же. Число 1 в split — не больше одного деления, поэтому двоеточие внутри сообщения не ломает разбор: «Лиза: время: 18:00» даст имя «Лиза» и текст «время: 18:00», а без единицы split разрезал бы строку по каждому двоеточию — на четыре части. Проверка на двоеточие перед split обязательна: в строке без двоеточия split вернёт одну часть, и деление на имя и текст уронит программу с ValueError: not enough values to unpack. Метку определяет та же функция classify — с примерами, рассуждением и проверкой. Если /chat пишет FileNotFoundError — chat.txt не рядом с mood.py.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2>Имя и текст — через <span class="acc">двоеточие</span></h2>
+  </div>
+  <p><span class="code-chip">line.split(":", 1)</span> делит строку по первому двоеточию: слева имя, справа текст — даже если в самом сообщении есть ещё двоеточия. Строки без двоеточия программа пропускает.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body">def run_chat():
+    lines = (HERE / "chat.txt").read_text(encoding="utf-8").splitlines()
+    for line in lines:
+        if ":" not in line:
+            continue  <span class="cm"># строка не в формате «Имя: текст»</span>
+        name, text = line.split(":", 1)  <span class="cm"># делим по первому двоеточию</span>
+        name, text = name.strip(), text.strip()
+        if not text:
+            continue  <span class="cm"># пустое сообщение пропускаем</span>
+        print(f"▶ {name}: {text}")
+        show(classify(text))</div>
+  </div>
+  <div class="ek-note">Замените код в <span class="code-chip">mood.py</span>, сохраните, перезапустите программу и наберите <span class="code-chip">/chat</span>: каждое сообщение получит метку своим цветом. Восемь строк — восемь запросов к модели, а с повторами из правки 3 — до шестнадцати.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Резервная правка. После неё /chat в конце печатает полоски по меткам, самого весёлого участника и сохраняет отчёт. Пусть ученики откроют mood_report.json в VS Code: русские буквы читаются благодаря ensure_ascii=False, а сам файл — снова JSON, его можно прочитать json.load. Ловушка из ДЗ урока 13: два JSON подряд в одном файле дают ошибку Extra data.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Правка 5 · резерв</div>
+      <h2>Статистика и <span class="acc">отчёт</span></h2>
+    </div>
+    <p>Посчитаем, каких настроений в чате больше и кто самый весёлый, и сохраним отчёт в файл <span class="code-chip">mood_report.json</span>.</p>
+    <div class="prompt-card prompt-card--copy" style="margin-top:6px">
+      <span class="pc-tag">→ В тот же чат</span>
+      <div class="pc-text" style="font-size:14.5px;line-height:1.4">Добавь статистику переписки и отчёт.
+- в run_chat() собирай список results: на каждое сообщение {"name": name, "text": text, "mood": mood}, где mood = data["mood"], а если data is None — "непонятно". После цикла вызови report(results)
+- report(results): словари by_mood (метка → сколько) и by_person (имя → {метка → сколько}). Напечатай «Настроение чата:» и для каждой метки строку: эмодзи из EMOJI (для «непонятно» — 🤔), метка, полоска "█" * count, число. Найди, у кого больше всего меток «радость», и напечатай «Самый весёлый в чате:» и имя (ни у кого нет — «никто»)
+- сохрани {"messages": results, "by_mood": by_mood, "by_person": by_person} в HERE / "mood_report.json": open в режиме "w", encoding="utf-8", json.dump с ensure_ascii=False и indent=2. Напечатай «Отчёт сохранён в mood_report.json»
+Остальной код не меняй. Верни весь файл.</div>
+    </div>
+    <div class="ek-note" style="padding:10px 20px;font-size:16px">Отчёт пишем режимом <span class="code-chip">"w"</span>: файл каждый раз перезаписывается целиком. Режим <span class="code-chip">"a"</span> дописал бы второй JSON в конец — и файл перестал бы читаться, как журнал из ДЗ урока 13.</div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Свяжите с идеей урока на слайде 4: единые метки из JSON можно считать. Метод get с нулём возвращает ноль для метки, которой ещё нет в словаре, и сам словарь не меняет. Метод setdefault для нового участника добавляет в by_person пустой словарь и сразу его возвращает — в него и считаем метки; для знакомого имени он вернёт уже собранный словарь. По документации Python значение по умолчанию у get и setdefault передаётся только вторым аргументом, без default=. При равенстве самым весёлым останется тот, кто встретился раньше: словарь помнит порядок, в каком добавляли имена, а сравнение строгое. Кто окажется самым весёлым в вашем чате, зависит от меток модели.">
+<div class="sl-body" style="gap:12px">
+    <div>
+      <div class="q-label">Разбор кода</div>
+      <h2>Кто в чате <span class="acc">самый весёлый</span></h2>
+    </div>
+    <p>Два словаря-счётчика: <span class="code-chip">by_mood</span> — сколько раз встретилась каждая метка, <span class="code-chip">by_person</span> — то же для каждого участника. Полоска — строка из символов <span class="code-chip">█</span>, их столько же, сколько сообщений с этой меткой.</p>
+    <div class="code-win">
+      <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+      <div class="code-body" style="font-size:14.5px;line-height:1.36;padding:8px 20px;font-variant-ligatures:none">def report(results):
+    by_mood = {}<span class="cm">  # метка → сколько раз встретилась</span>
+    by_person = {}<span class="cm">  # имя → {метка → сколько раз}</span>
+    for r in results:
+        by_mood[r["mood"]] = by_mood.get(r["mood"], 0) + 1
+        person = by_person.setdefault(r["name"], {})<span class="cm">  # нет имени — пустой словарь</span>
+        person[r["mood"]] = person.get(r["mood"], 0) + 1
+    print("Настроение чата:")
+    for mood, count in by_mood.items():
+        print(EMOJI.get(mood, "🤔"), mood, "█" * count, count)<span class="cm">  # полоска из «█»</span>
+    happy, best = "никто", 0
+    for name, moods in by_person.items():
+        if moods.get("радость", 0) &gt; best:<span class="cm">  # у кого больше всего радости</span>
+            happy, best = name, moods["радость"]
+    print("Самый весёлый в чате:", happy)</div>
+    </div>
+    <div class="ek-note ek-note--green" style="padding:10px 20px;font-size:16px">Итог по метке — это просто данные: раз метки одинаковые, их можно сложить. С ответами-сочинениями из урока 7 так бы не вышло.</div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Вопрос на К1. Дайте 10–15 секунд, потом раскройте ответ. Свяжите с уроком 12: там роль assistant хранила настоящие ответы собеседника, а здесь — сочинённые нами образцы.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Проверка · вопрос 1</div>
+      <h2>Изучите ситуацию и <span class="acc">ответьте</span></h2>
+    </div>
+    <div class="quiz-box" style="margin-top:10px">
+      <span class="q-num">Вопрос 1</span>
+      <p class="q-text">Миша открыл <span class="code-chip">mood.py</span> после правки 1 и удивился: «В <span class="code-chip">messages</span> уже есть ответы <span class="code-chip">assistant</span>, а модель ещё ничего не отвечала. Откуда они?» Что ему ответить?</p>
+      <div class="quiz-answer">
+        <button class="quiz-btn" type="button">Показать ответ</button>
+        <div class="quiz-reveal">
+          <p>Эти ответы написали мы сами — в списке <span class="code-chip">EXAMPLES</span>. Сервер не помнит прошлых разговоров и каждый раз получает историю целиком, поэтому в неё можно подставить готовые примеры, как будто это прошлый разговор. Модель видит образец ответа на похожие фразы. Это и есть <span class="hl">few-shot</span> — обучение на примерах. Сама модель при этом не меняется: примеры уходят заново в каждом запросе.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Вопрос на К2. Программа у Ани работает, потому что show берёт поля по ключу, порядок ей не важен. Важен он модели: это наш методический выбор, а не правило DeepSeek.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Проверка · вопрос 2</div>
+      <h2>Изучите ситуацию и <span class="acc">ответьте</span></h2>
+    </div>
+    <div class="quiz-box" style="margin-top:10px">
+      <span class="q-num">Вопрос 2</span>
+      <p class="q-text">Аня переставила поля: теперь в <span class="code-chip">SYSTEM</span> и в примерах сначала <span class="code-chip">mood</span>, а потом <span class="code-chip">reasoning</span>. Программа работает, рассуждение печатается. Что Аня потеряла?</p>
+      <div class="quiz-answer">
+        <button class="quiz-btn" type="button">Показать ответ</button>
+        <div class="quiz-reveal">
+          <p>Модель пишет ответ по порядку, слева направо, — вы видели это на уроке 12, когда ответ появлялся кусочками. Если <span class="code-chip">mood</span> стоит первым, модель выбирает метку сразу, ещё ничего не обдумав, а <span class="code-chip">reasoning</span> пишет потом — как объяснение готового решения. Когда <span class="code-chip">reasoning</span> стоит первым, метка выбирается уже после рассуждения. Поэтому рассуждение ставим до ответа.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ошибки JSON ученики встретят и в ДЗ: дневник moods.json и facts.py. Научите читать последнюю строку traceback: после двоеточия — что не так, line и column — где. Пустая строка даёт Expecting value: line 1 column 1 (char 0). Ошибки API — Error code 400, 401, 402, 429 — те же, что на уроке 13.">
+<div class="sl-body" style="gap:12px">
+    <div>
+      <div class="q-label">Отладка</div>
+      <h2>Читаем <span class="acc">ошибки JSON</span></h2>
+    </div>
+    <p>Ошибка разбора JSON в Python — <span class="code-chip">JSONDecodeError</span>. После двоеточия написано, что не так, а <span class="code-chip">line … column …</span> — где именно.</p>
+    <div class="kv">
+      <div class="kv-row" style="grid-template-columns:330px 1fr;padding:8px 4px"><div class="k" style="text-transform:none"><span class="code-chip">Expecting value</span></div><div class="v">Строка пустая или вообще не JSON, например обычный текст. Проверьте <span class="code-chip">response_format</span> и слово JSON в промпте.</div></div>
+      <div class="kv-row" style="grid-template-columns:330px 1fr;padding:8px 4px"><div class="k" style="text-transform:none"><span class="code-chip">Extra data</span></div><div class="v">В файле два JSON подряд: запись дописывали в конец. Файл-отчёт пишем режимом <span class="code-chip">"w"</span>, а список читаем и сохраняем целиком.</div></div>
+      <div class="kv-row" style="grid-template-columns:330px 1fr;padding:8px 4px"><div class="k" style="text-transform:none"><span class="code-chip">Unterminated string</span></div><div class="v">Строка в JSON не закрыта кавычкой — так бывает, если ответ оборвался на середине. Проверьте <span class="code-chip">max_tokens</span>.</div></div>
+      <div class="kv-row" style="grid-template-columns:330px 1fr;padding:8px 4px"><div class="k" style="text-transform:none"><span class="code-chip" style="white-space:normal">Expecting property name enclosed in double quotes</span></div><div class="v">Одинарные кавычки вместо двойных: так выходит, если писать JSON руками. <span class="code-chip">json.dumps</span> всегда пишет правильно.</div></div>
+      <div class="kv-row" style="grid-template-columns:330px 1fr;padding:8px 4px"><div class="k" style="text-transform:none"><span class="code-chip">KeyError: 'mood'</span></div><div class="v">Ключа нет в словаре. Берите <span class="code-chip">data.get("mood")</span> и проверяйте ответ, как в <span class="code-chip">check</span>.</div></div>
+    </div>
+    <div class="ek-note" style="padding:10px 20px;font-size:16px">Непонятная ошибка — копируйте traceback целиком в тот же чат DeepSeek и просите объяснить и починить.</div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пять привычек урока, дайте сфотографировать слайд. Особо подчеркните четвёртую: она продолжает привычку урока 13 «не верим вслепую». Тогда мы проверяли просьбы модели о вызове функций, сегодня — её ответы.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Запомните</div>
+      <h2>Привычки работы с <span class="acc">ответами AI</span></h2>
+    </div>
+    <div class="kv">
+      <div class="kv-row" style="padding:18px 4px;grid-template-columns:330px 1fr"><div class="k" style="font-size:17px">01 · Покажите, а не только расскажите</div><div class="v" style="font-size:20px">Трудные случаи объясняем примерами: пары «фраза → ответ» показывают правило на деле.</div></div>
+      <div class="kv-row" style="padding:18px 4px;grid-template-columns:330px 1fr"><div class="k" style="font-size:17px">02 · Сначала рассуждение</div><div class="v" style="font-size:20px"><span class="code-chip">reasoning</span> стоит до ответа: метка выбирается после хода мысли.</div></div>
+      <div class="kv-row" style="padding:18px 4px;grid-template-columns:330px 1fr"><div class="k" style="font-size:17px">03 · Просите JSON по правилам</div><div class="v" style="font-size:20px"><span class="code-chip">response_format</span>, слово JSON и пример формата в промпте, разумный <span class="code-chip">max_tokens</span>.</div></div>
+      <div class="kv-row" style="padding:18px 4px;grid-template-columns:330px 1fr"><div class="k" style="font-size:17px">04 · Не верим вслепую</div><div class="v" style="font-size:20px">JSON mode гарантирует JSON, но не поля: метку сверяем со списком, уверенность — число от 0 до 100.</div></div>
+      <div class="kv-row" style="padding:18px 4px;grid-template-columns:330px 1fr"><div class="k" style="font-size:17px">05 · Строгие задачи — строгие настройки</div><div class="v" style="font-size:20px"><span class="code-chip">temperature=0</span> без режима размышлений, каждая фраза — отдельный запрос.</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Демо в группе. Кто отметил всё — пусть покажет свою трудную фразу до и после нового примера. В EXAMPLES попадает похожая фраза, а не она сама: иначе модель может просто повторить готовый ответ из примера, и проверка будет нечестной — то же правило, что на слайде 23. Новый пример пишут по образцу соседних: reasoning, метка из списка и confidence. Метка не исправилась — это тоже честный результат, как в опыте слайда 23. Проверьте у всех защиту: опыт со слайда 27 печатает None None, и программа не падает. Если на бессмыслицу модель поставила высокую уверенность — это её самооценка; обсудите, какой порог выбрали бы сами. После демо напомните удалить строку с print(check(...)), если она осталась.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Чек-лист</div>
+      <h2>Что должно быть к <span class="acc">55-й минуте</span></h2>
+    </div>
+    <div class="grid-2">
+      <div class="info-card">
+        <h3 style="color:var(--ek-green-deep)">Готово</h3>
+        <ul class="clean">
+          <li><span><span class="code-chip">python mood.py</span> запускается, <span class="code-chip">/test</span> проходит по всем фразам <span class="code-chip">phrases.txt</span></span></li>
+          <li><span>В <span class="code-chip">EXAMPLES</span> пять примеров, ответы в них собирает <span class="code-chip">json.dumps</span></span></li>
+          <li><span>Перед меткой серая строка 💭 с рассуждением</span></li>
+          <li><span>Метка с уверенностью, например <span class="code-chip">😊 радость (95%)</span>; ниже 60 — «🤔 не уверен»</span></li>
+          <li><span>Опыт со слайда 27 напечатал <span class="code-chip">None None</span> — защита работает без модели</span></li>
+        </ul>
+      </div>
+      <div class="info-card">
+        <h3 style="color:var(--ek-violet-deep)">Работает (если успели)</h3>
+        <ul class="clean">
+          <li><span><span class="code-chip">/chat</span> — у каждого сообщения <span class="code-chip">chat.txt</span> метка своим цветом</span></li>
+          <li><span>После <span class="code-chip">/chat</span> — полоски по меткам, «Самый весёлый в чате» и файл <span class="code-chip">mood_report.json</span></span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="ek-note ek-note--green" style="padding:10px 20px;font-size:16px">Всё отмечено? Найдите фразу, на которой модель ошибается. Добавьте в <span class="code-chip">EXAMPLES</span> похожую, но другую фразу с правильным ответом, перезапустите и проверьте исходную.</div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="ДЗ примерно на 30 минут, каждое задание — отдельный диалог с DeepSeek. Правки 4–5 — исключение: их промпты опираются на код из чата урока, поэтому в новом чате без вставленного mood.py DeepSeek напишет отдельный кусок. В дневнике та же ловушка, что в журнале урока 13: если дописывать json.dump в конец файла, получится несколько JSON подряд, и файл не прочитается. В facts.py возраст должен прийти числом — пусть ученики проверят это так же, как confidence в check. Разберём на слайде 3 урока 15: moods.json помнит настроение между запусками, facts.py умеет доставать факты, а собеседник урока 12 после закрытия забывает всё. На разборе moods.json открывайте только с согласия автора: там могут быть настоящие чувства.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Домашнее задание · около 30 минут</div>
+      <h2>Прокачайте <span class="acc">классификатор</span></h2>
+    </div>
+    <p>Три задания — каждое в новом чате DeepSeek: вставьте свой <span class="code-chip">mood.py</span> и опишите задачу.</p>
+    <div class="grid-3">
+      <div class="info-card">
+        <h3>Дневник настроения</h3>
+        <p>При каждом запуске — фраза дня → метка → запись с датой в <span class="code-chip">moods.json</span>. Команда «моя неделя» показывает статистику. Список читайте и сохраняйте целиком. Пришлите <span class="code-chip">moods.json</span> и вывод «моей недели».</p>
+      </div>
+      <div class="info-card">
+        <h3>Достаньте факты</h3>
+        <p><span class="code-chip">facts.py</span> в JSON mode достаёт из фразы «Меня зовут Аня, мне 13, обожаю котов и боюсь контрольных» поля <span class="code-chip">name</span>, <span class="code-chip">age</span>, <span class="code-chip">likes</span>, <span class="code-chip">fears</span>. Проверьте на трёх своих выдуманных фразах и пришлите полученный JSON.</p>
+      </div>
+      <div class="info-card">
+        <h3>Свой классификатор</h3>
+        <p>Спам или не спам, тема сообщения или вежливость — со своим списком меток, тремя примерами few-shot и проверкой метки по списку. Пришлите свои метки и три примера.</p>
+      </div>
+    </div>
+    <div class="ek-note ek-note--red" style="padding:10px 20px;font-size:16px">Недоделанные правки 4–5 — тоже дома: в чате урока, а если его нет — в новом чате, вставив свой <span class="code-chip">mood.py</span> и под ним промпт правки. Фразы уходят на сервер DeepSeek, а дневник могут открыть на разборе: пишите только то, что не жалко показать, или придумайте фразы. Без личных данных, настоящих имён, чужих секретов и настоящих переписок.</div>
+  </div>
+</section>
+
+<section class="slide slide--green"
+  data-notes="Закройте урок. Сегодня классификатор определяет настроение по шести меткам: примеры задают правила, рассуждение стоит до метки, ответ приходит в JSON, а программа его проверяет и не падает на плохом ответе. На уроке 15 — память: JSON-файлы из ДЗ станут записной книжкой собеседника.">
+<div class="sl-orbit">
+    <i class="sl-ring"></i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:75px;top:20px;width:150px;height:150px;transform:rotate(-10deg)"><use href="#ek-i-trophy"/></svg>
+    <i class="sl-letter" style="left:466px;top:13px;width:78px;height:78px;--fs:36px">M</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1040px;top:15px;width:130px;height:130px;transform:rotate(12deg)"><use href="#ek-i-heart"/></svg>
+    <i class="sl-letter" style="left:68px;top:268px;width:100px;height:100px;--fs:46px">O</i>
+    <i class="sl-letter" style="left:1137px;top:327px;width:95px;height:95px;--fs:44px">O</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:102px;top:532px;width:125px;height:125px;transform:rotate(-15deg)"><use href="#ek-i-star"/></svg>
+    <i class="sl-letter" style="left:340px;top:600px;width:78px;height:78px;--fs:36px">D</i>
+    <i class="sl-letter" style="left:726px;top:613px;width:78px;height:78px;--fs:36px">S</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1045px;top:540px;width:110px;height:110px;transform:rotate(8deg)"><use href="#ek-i-gem"/></svg>
+  </div>
+  <div class="cover-center">
+    <div class="bubble">
+      <h1>До встречи<br>на уроке 15!</h1>
+      <p>Сегодня нейросеть научилась отвечать по образцу, рассуждать перед ответом и присылать данные в JSON, а программа — проверять её ответы. На уроке 15 научим программу помнить разговоры между запусками.</p>
+    </div>
+  </div>
+</section>
+</main>
+
+<div class="notes" id="notes">
+  <div class="notes__header">Заметки преподавателя &middot; N — скрыть</div>
+  <div class="notes__body" id="notesBody">—</div>
+</div>
+
+<div class="hint"><kbd>←</kbd><kbd>→</kbd> слайды &middot; <kbd>N</kbd> заметки &middot; <kbd>F</kbd> весь экран</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="ek-i-trophy" viewBox="0 0 100 100"><path fill="currentColor" d="M24 16h52v12h8c6 0 10 4 10 10 0 15-11 25-23 27-3 5-8 9-14 10v8h14c4 0 7 3 7 7v4H22v-4c0-4 3-7 7-7h14v-8c-6-1-11-5-14-10C17 63 6 53 6 38c0-6 4-10 10-10h8V16zM24 36h-7c-2 0-4 2-4 4 0 8 5 15 12 18-1-5-1-10-1-16v-6zM76 36v6c0 6 0 11-1 16 7-3 12-10 12-18 0-2-2-4-4-4h-7z"/></symbol>
+<symbol id="ek-i-heart" viewBox="0 0 100 100"><path fill="currentColor" d="M50 88C28 72 10 56 10 38 10 24 21 14 34 14c6 0 12 3 16 8 4-5 10-8 16-8 13 0 24 10 24 24 0 18-18 34-40 50z"/></symbol>
+<symbol id="ek-i-star" viewBox="0 0 100 100"><path fill="currentColor" d="M50 8l12 27 29 3-22 20 6 29-25-15-25 15 6-29L9 38l29-3z"/></symbol>
+<symbol id="ek-i-gem" viewBox="0 0 100 100"><path fill="currentColor" d="M30 12h40l18 24-38 52L12 36zM36 20l-12 16h20zM64 20l-8 16h20zM50 22l-9 14h18zM26 44l20 30-8-30zM62 44l-8 30 20-30zM46 44h8l-4 26z"/></symbol>
+</defs></svg>
+
+<script>
+/* ============ Автомасштаб сцены ============ */
+(function(){
+  'use strict';
+  var stage = document.getElementById('deck');
+  function fit(){
+    var w = window.innerWidth, h = window.innerHeight;
+    if (!w || !h) return;
+    var s = Math.min(w / 1320, h / 780);
+    if (document.fullscreenElement) s = Math.min(w / 1280, h / 720);
+    stage.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+    stage.style.borderRadius = document.fullscreenElement ? '0' : '18px';
+  }
+  window.addEventListener('resize', fit);
+  document.addEventListener('fullscreenchange', fit);
+  fit();
+})();
+
+/* ============ Навигация по слайдам ============ */
+(function(){
+  'use strict';
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var total = slides.length;
+  var idx = 0;
+  document.getElementById('total').textContent = total;
+
+  var progressEl = document.getElementById('progress');
+  var currentEl = document.getElementById('current');
+  var notesPanel = document.getElementById('notes');
+  var notesBody = document.getElementById('notesBody');
+
+  slides.forEach(function(s, i){
+    if (s.classList.contains('slide--content')) s.setAttribute('data-page', i + 1);
+  });
+
+  function render(){
+    slides.forEach(function(s, i){
+      s.classList.remove('active', 'prev');
+      if (i === idx) s.classList.add('active');
+      else if (i < idx) s.classList.add('prev');
+    });
+    progressEl.style.width = ((idx + 1) / total * 100).toFixed(2) + '%';
+    currentEl.textContent = idx + 1;
+    notesBody.textContent = slides[idx].getAttribute('data-notes') || '—';
+  }
+
+  function go(n){ idx = Math.max(0, Math.min(total - 1, n)); render(); }
+  function next(){ go(idx + 1); }
+  function prev(){ go(idx - 1); }
+
+  document.addEventListener('keydown', function(e){
+    var active = document.activeElement;
+    if (active && (active.isContentEditable || active.tagName === 'TEXTAREA' || active.tagName === 'INPUT')) return;
+    switch (e.key){
+      case 'ArrowRight': case 'PageDown': case ' ':
+        e.preventDefault(); next(); break;
+      case 'ArrowLeft': case 'PageUp':
+        e.preventDefault(); prev(); break;
+      case 'Home': e.preventDefault(); go(0); break;
+      case 'End': e.preventDefault(); go(total - 1); break;
+      case 'f': case 'F': case 'а': case 'А':
+        e.preventDefault();
+        if (!document.fullscreenElement){ if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen(); }
+        else if (document.exitFullscreen) document.exitFullscreen();
+        break;
+      case 'n': case 'N': case 'т': case 'Т':
+        e.preventDefault(); notesPanel.classList.toggle('active'); break;
+      case 'Escape':
+        if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
+        notesPanel.classList.remove('active'); break;
+    }
+  });
+
+  var tx = 0, ty = 0;
+  document.addEventListener('touchstart', function(e){ tx = e.changedTouches[0].screenX; ty = e.changedTouches[0].screenY; }, { passive: true });
+  document.addEventListener('touchend', function(e){
+    var dx = e.changedTouches[0].screenX - tx, dy = e.changedTouches[0].screenY - ty;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)){ if (dx < 0) next(); else prev(); }
+  }, { passive: true });
+
+  document.addEventListener('click', function(e){
+    if (e.target.closest('a,button,input,textarea,code,pre,[contenteditable],.code-win,.term,.prompt-card,.quiz-box,.notes')) return;
+    var x = e.clientX, w = window.innerWidth;
+    if (x < w * 0.25) prev();
+    else if (x > w * 0.75) next();
+  });
+
+  render();
+})();
+
+/* ============ Квизы: показать ответ ============ */
+(function(){
+  'use strict';
+  Array.prototype.slice.call(document.querySelectorAll('.quiz-btn')).forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var box = btn.closest('.quiz-box');
+      var reveal = box && box.querySelector('.quiz-reveal');
+      if (!reveal) return;
+      var shown = reveal.classList.toggle('show');
+      btn.textContent = shown ? 'Скрыть ответ' : 'Показать ответ';
+    });
+  });
+})();
+</script>
+</body>
+</html>

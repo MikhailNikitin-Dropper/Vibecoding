@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Урок 13 — Нейросеть учится пользоваться калькулятором | Eduson Kids</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+/* ============ Дизайн-токены Eduson Kids ============ */
+:root{
+  --ek-violet:#8C7FF6; --ek-violet-soft:#A79EF9; --ek-violet-deep:#6F61E8; --ek-violet-bg:#F0EEFE;
+  --ek-green:#3DF79D; --ek-green-soft:#7BF9BD; --ek-green-mint:#C9F7E3; --ek-green-pale:#E7FDF2; --ek-green-deep:#0FBF6E;
+  --ek-ink:#17171C; --ek-gray:#8F8F98; --ek-gray-light:#EFEFF2; --ek-line:#E3E3EA;
+  --ek-red:#FF6B6B; --ek-red-soft:#FF8A8A; --ek-red-deep:#E04848; --ek-red-pale:#FFECEC;
+  --f-head:'Inter Tight','Inter','Segoe UI',system-ui,sans-serif;
+  --f-body:'Inter','Segoe UI',system-ui,sans-serif;
+  --f-mono:'JetBrains Mono','Cascadia Mono','Consolas',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--f-body);background:#E9E9F1;color:var(--ek-ink);-webkit-font-smoothing:antialiased}
+
+/* ============ Хром: прогресс, счётчик, подсказка ============ */
+.progress{position:fixed;top:0;left:0;right:0;height:4px;background:rgba(23,23,28,.08);z-index:100}
+.progress__fill{height:100%;width:0%;background:var(--ek-violet);transition:width 300ms ease}
+.counter{position:fixed;top:14px;right:18px;z-index:90;font:600 13px var(--f-body);color:var(--ek-gray);background:#fff;border:1px solid var(--ek-line);padding:6px 14px;border-radius:999px;font-variant-numeric:tabular-nums}
+.counter b{color:var(--ek-ink)}
+.hint{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:90;font:500 11px var(--f-body);color:var(--ek-gray);background:#fff;border:1px solid var(--ek-line);padding:6px 14px;border-radius:999px;letter-spacing:.03em}
+.hint kbd{font-family:var(--f-mono);background:var(--ek-gray-light);padding:1px 6px;border-radius:4px;font-size:10px;margin:0 2px;color:var(--ek-ink)}
+
+/* ============ Сцена 1280×720 ============ */
+.stage{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform:translate(-50%,-50%);border-radius:18px;overflow:hidden;box-shadow:0 30px 90px rgba(23,23,28,.18);background:#fff}
+.slide{position:absolute;inset:0;background:#fff;opacity:0;transform:translateY(26px);transition:opacity 280ms ease,transform 280ms ease;pointer-events:none;font-family:var(--f-head)}
+.slide.active{opacity:1;transform:none;pointer-events:auto}
+.slide.prev{transform:translateY(-26px)}
+.slide--violet{background:var(--ek-violet)}
+.slide--green{background:var(--ek-green)}
+
+/* Номер страницы на контентных слайдах */
+.slide--content::after{content:attr(data-page);position:absolute;right:54px;bottom:30px;font:800 30px/1 var(--f-head);color:var(--ek-ink);opacity:.5}
+
+/* ============ Декор «Орбита» ============ */
+.sl-orbit{position:absolute;inset:0;pointer-events:none}
+.slide--violet .sl-orbit{--decor:#A79EF9;--letter:#C4BEFA}
+.slide--green .sl-orbit{--decor:#7BF9BD;--letter:#C4FCE0}
+.sl-ring{position:absolute;left:50%;top:50%;width:1040px;height:660px;transform:translate(-50%,-50%);border:3px solid var(--decor);border-radius:50%;opacity:.9}
+.sl-ico{position:absolute;color:var(--decor)}
+.sl-letter{position:absolute;border-radius:50%;background:var(--decor);color:var(--letter);display:flex;align-items:center;justify-content:center;font:800 var(--fs,40px)/1 var(--f-head);font-style:normal}
+
+/* ============ Каверы: карточка-окно и спич-бабл ============ */
+.cover-center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2}
+.cover-card{position:relative;width:860px;background:#fff;border-radius:28px;box-shadow:0 30px 80px rgba(23,23,28,.18)}
+.card-top{display:flex;justify-content:space-between;align-items:center;padding:24px 30px 0}
+.win-dots{display:flex;gap:9px}
+.win-dots i{width:13px;height:13px;border-radius:50%;background:var(--ek-violet)}
+.win-close{position:relative;width:22px;height:22px}
+.win-close::before,.win-close::after{content:"";position:absolute;left:-1px;top:9px;width:24px;height:4px;border-radius:2px;background:var(--ek-violet)}
+.win-close::before{transform:rotate(45deg)}
+.win-close::after{transform:rotate(-45deg)}
+.cover-card .badge{position:absolute;left:50%;top:-30px;transform:translateX(-50%) rotate(-4deg)}
+.cover-card h1{padding:26px 64px 30px;text-align:center;font:800 50px/1.14 var(--f-head);letter-spacing:-.015em;color:var(--ek-ink)}
+.cover-card .cover-sub{padding:0 80px 34px;text-align:center;font:500 19px/1.5 var(--f-body);color:#3C3C45}
+.cover-card .cover-chips{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;padding:0 40px 40px}
+.bubble{position:relative;width:660px;background:#EFEFF1;border-radius:30px;padding:56px 70px;text-align:center}
+.bubble::after{content:"";position:absolute;right:56px;bottom:-24px;width:0;height:0;border-left:38px solid transparent;border-top:28px solid #EFEFF1}
+.bubble h1{font:800 42px/1.25 var(--f-head);letter-spacing:-.01em;color:var(--ek-ink)}
+.bubble p{margin-top:16px;font:500 18px/1.5 var(--f-body);color:#3C3C45}
+
+/* ============ Стикер-бейдж и чипы ============ */
+.badge{display:inline-block;background:var(--ek-green);color:var(--ek-ink);font:800 24px/1 var(--f-head);padding:13px 22px;border-radius:13px;transform:rotate(-3deg);box-shadow:0 10px 24px rgba(23,23,28,.10)}
+.badge--violet{background:var(--ek-violet);color:#fff}
+.badge--sm{font-size:16px;padding:9px 16px;border-radius:10px}
+.chip{display:inline-block;font:700 14px/1 var(--f-body);padding:8px 14px;border-radius:999px;background:var(--ek-violet-bg);color:var(--ek-violet-deep)}
+.chip--green{background:var(--ek-green-pale);color:var(--ek-green-deep)}
+.chip--gray{background:var(--ek-gray-light);color:#3C3C45}
+
+/* ============ Контентные слайды ============ */
+.sl-body{position:absolute;inset:0;padding:56px 80px 62px;display:flex;flex-direction:column;gap:16px;overflow:hidden}
+h2{font:800 38px/1.16 var(--f-head);letter-spacing:-.01em;color:var(--ek-ink)}
+.acc{color:var(--ek-violet-deep)}
+.sl-body>p, .col p{font:500 18px/1.5 var(--f-body);color:#3C3C45}
+.code-chip{font-family:var(--f-mono);font-weight:700;font-size:.88em;background:var(--ek-violet-bg);color:var(--ek-violet-deep);padding:2px 8px;border-radius:8px;white-space:nowrap}
+.hl{color:var(--ek-violet-deep);font-weight:700}
+.out-chip{font-family:var(--f-mono);font-weight:700;font-size:.88em;background:var(--ek-green-pale);color:#0B7A48;padding:2px 8px;border-radius:8px;white-space:nowrap}
+
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;align-items:stretch}
+
+.info-card{background:#F5F5F9;border-radius:18px;padding:18px 22px;font:500 16px/1.55 var(--f-body);color:#3C3C45}
+.info-card h3{font:800 19px/1.3 var(--f-head);color:var(--ek-ink);margin-bottom:8px}
+.ek-note{background:var(--ek-violet-bg);border-left:4px solid var(--ek-violet);border-radius:0 14px 14px 0;padding:14px 20px;font:600 17px/1.5 var(--f-body);color:#3C3560}
+.ek-note--green{background:var(--ek-green-pale);border-left-color:var(--ek-green-deep);color:#0B5B39}
+.ek-note--red{background:var(--ek-red-pale);border-left-color:var(--ek-red);color:#7A2E2E}
+
+ul.clean{list-style:none;display:flex;flex-direction:column;gap:10px}
+ul.clean li{display:flex;gap:14px;align-items:flex-start;font:500 17.5px/1.5 var(--f-body);color:#3C3C45}
+ul.clean li::before{content:'—';flex:0 0 auto;color:var(--ek-violet-deep);font-weight:800}
+
+ol.steps{list-style:none;counter-reset:step;display:flex;flex-direction:column;gap:12px}
+ol.steps li{counter-increment:step;display:flex;gap:16px;align-items:center;padding:14px 20px;background:#F5F5F9;border-radius:16px;font:500 17.5px/1.45 var(--f-body);color:#2E2E36}
+ol.steps li::before{content:counter(step);flex:0 0 40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:var(--ek-violet);font:800 18px var(--f-head);color:#fff}
+ol.steps li:last-child::before{background:var(--ek-green);color:var(--ek-ink)}
+ol.steps.steps--tight{gap:8px}
+ol.steps.steps--tight li{padding:9px 16px;font-size:15.5px;gap:12px}
+ol.steps.steps--tight li::before{flex-basis:32px;height:32px;font-size:14px}
+
+.q-label{font:700 13px/1 var(--f-head);letter-spacing:.08em;text-transform:uppercase;color:var(--ek-gray)}
+
+/* ============ План занятия (agenda) ============ */
+.agenda{display:flex;flex-direction:column;gap:8px}
+.agenda-row{display:flex;gap:16px;align-items:center;padding:10px 18px;background:#F5F5F9;border-radius:14px}
+.agenda-row .t{flex:0 0 84px;text-align:center;font:800 14px/1 var(--f-mono);color:var(--ek-ink);background:var(--ek-green);border-radius:999px;padding:8px 0}
+.agenda-row .tt{font:700 16.5px/1.3 var(--f-head);color:var(--ek-ink)}
+.agenda-row .dd{font:500 14px/1.4 var(--f-body);color:var(--ek-gray)}
+
+/* ============ Ключ-значение (привычки, шпаргалки) ============ */
+.kv{display:flex;flex-direction:column}
+.kv-row{display:grid;grid-template-columns:250px 1fr;gap:18px;align-items:start;padding:11px 4px;border-bottom:1.5px solid var(--ek-line)}
+.kv-row:last-child{border-bottom:none}
+.kv-row .k{font:800 14px/1.35 var(--f-head);letter-spacing:.05em;text-transform:uppercase;color:var(--ek-violet-deep);padding-top:2px}
+.kv-row .v{font:500 16.5px/1.5 var(--f-body);color:#3C3C45}
+
+/* ============ Окно кода (статичное) ============ */
+.code-win{background:#fff;border:2.5px solid var(--ek-ink);border-radius:16px;overflow:hidden;font-family:var(--f-mono);box-shadow:10px 10px 0 rgba(140,127,246,.14)}
+.code-head{display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:2px solid var(--ek-ink)}
+.code-head .win-dots i{width:11px;height:11px}
+.lang-badge{font:700 11px var(--f-mono);letter-spacing:.14em;color:var(--ek-gray)}
+.code-body{padding:14px 20px;font:500 14.5px/1.6 var(--f-mono);color:var(--ek-ink);white-space:pre;overflow:auto;max-height:400px;tab-size:4}
+.code-body .cm{color:var(--ek-gray)}
+.code-body .st{color:var(--ek-green-deep)}
+.code-body .kw{color:var(--ek-violet-deep);font-weight:700}
+
+/* ============ Терминал (тёмное окно) ============ */
+.term{background:var(--ek-ink);border-radius:16px;overflow:hidden;font-family:var(--f-mono);box-shadow:10px 10px 0 rgba(23,23,28,.12)}
+.term-head{display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,.14)}
+.term-head .win-dots i{width:11px;height:11px;background:var(--ek-green)}
+.term-head .lang-badge{color:rgba(255,255,255,.5)}
+.term-body{padding:14px 20px;font:500 14.5px/1.62 var(--f-mono);color:var(--ek-green);white-space:pre-wrap;word-break:break-word;overflow:auto;max-height:420px}
+.term-body .usr{color:#fff}
+.term-body .dim{color:rgba(255,255,255,.55)}
+
+/* ============ Промпт-карточка (диалог с DeepSeek) ============ */
+.prompt-card{position:relative;background:var(--ek-violet-bg);border:2.5px solid var(--ek-violet);border-radius:18px;padding:20px 26px 18px;box-shadow:10px 10px 0 rgba(140,127,246,.18)}
+.prompt-card .pc-tag{position:absolute;top:-16px;left:22px;background:var(--ek-violet);color:#fff;font:800 14px/1 var(--f-head);padding:9px 16px;border-radius:10px;transform:rotate(-2deg);box-shadow:0 8px 18px rgba(23,23,28,.12)}
+.prompt-card .pc-text{margin-top:6px;font:500 15px/1.62 var(--f-mono);color:#2E2A52;white-space:pre-wrap}
+.prompt-card .pc-text .hl{color:var(--ek-violet-deep)}
+.prompt-card--copy .pc-tag{background:var(--ek-green);color:var(--ek-ink)}
+
+/* ============ Сравнение (vs) ============ */
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:stretch}
+.vs-col{border-radius:18px;padding:20px 24px}
+.vs-col h4{font:800 15px/1 var(--f-head);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
+.vs-col p{font:500 16px/1.55 var(--f-body)}
+.vs-col .note{margin-top:12px;font:500 13.5px/1.4 var(--f-body);opacity:.75}
+.vs-col--plain{background:var(--ek-gray-light);color:#3C3C45}
+.vs-col--plain h4{color:var(--ek-gray)}
+.vs-col--win{background:var(--ek-green-pale);color:#124F35;border:2px solid var(--ek-green-soft)}
+.vs-col--win h4{color:var(--ek-green-deep)}
+
+/* ============ Квиз с раскрытием ответа ============ */
+.quiz-box{background:#F5F5F9;border:2.5px solid var(--ek-ink);border-radius:18px;padding:22px 26px;box-shadow:10px 10px 0 rgba(61,247,157,.25)}
+.quiz-box .q-num{display:inline-block;background:var(--ek-green);color:var(--ek-ink);font:800 13px/1 var(--f-head);letter-spacing:.08em;text-transform:uppercase;padding:8px 14px;border-radius:999px;margin-bottom:14px}
+.quiz-box .q-text{font:700 21px/1.42 var(--f-head);color:var(--ek-ink)}
+.quiz-answer{margin-top:16px}
+.quiz-btn{border:0;border-radius:12px;padding:12px 22px;font:800 15px/1 var(--f-head);cursor:pointer;background:var(--ek-violet);color:#fff;transition:background .15s}
+.quiz-btn:hover{background:var(--ek-violet-deep)}
+.quiz-reveal{display:none;margin-top:14px;background:var(--ek-green-pale);border-left:4px solid var(--ek-green-deep);border-radius:0 14px 14px 0;padding:14px 20px;font:500 16.5px/1.55 var(--f-body);color:#0B5B39}
+.quiz-reveal.show{display:block}
+.quiz-reveal p+p{margin-top:8px}
+
+/* Появление контента */
+.slide.active .info-card,.slide.active ul.clean li,.slide.active ol.steps li,.slide.active .grid-2>*,.slide.active .grid-3>*,.slide.active .agenda-row,.slide.active .kv-row{animation:reveal 450ms ease backwards}
+.slide.active .info-card:nth-child(2),.slide.active ul.clean li:nth-child(2),.slide.active ol.steps li:nth-child(2),.slide.active .grid-2>*:nth-child(2),.slide.active .grid-3>*:nth-child(2),.slide.active .agenda-row:nth-child(2),.slide.active .kv-row:nth-child(2){animation-delay:80ms}
+.slide.active ul.clean li:nth-child(3),.slide.active ol.steps li:nth-child(3),.slide.active .grid-3>*:nth-child(3),.slide.active .agenda-row:nth-child(3),.slide.active .kv-row:nth-child(3){animation-delay:160ms}
+.slide.active ol.steps li:nth-child(4),.slide.active .agenda-row:nth-child(4),.slide.active .kv-row:nth-child(4){animation-delay:240ms}
+.slide.active ol.steps li:nth-child(5),.slide.active .agenda-row:nth-child(5),.slide.active .kv-row:nth-child(5){animation-delay:320ms}
+.slide.active .agenda-row:nth-child(6),.slide.active ol.steps li:nth-child(6),.slide.active .kv-row:nth-child(6){animation-delay:400ms}
+.slide.active .agenda-row:nth-child(7),.slide.active ol.steps li:nth-child(7),.slide.active .kv-row:nth-child(7){animation-delay:480ms}
+@keyframes reveal{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@media (prefers-reduced-motion:reduce){.slide.active .info-card,.slide.active ul.clean li,.slide.active ol.steps li,.slide.active .grid-2>*,.slide.active .grid-3>*,.slide.active .agenda-row,.slide.active .kv-row{animation:none}}
+
+/* ============ Заметки преподавателя ============ */
+.notes{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--ek-line);box-shadow:0 -16px 40px rgba(23,23,28,.10);padding:20px 40px;z-index:95;max-height:40vh;overflow-y:auto;transform:translateY(100%);transition:transform 300ms ease}
+.notes.active{transform:translateY(0)}
+.notes__header{font:800 11px var(--f-head);letter-spacing:.2em;text-transform:uppercase;color:var(--ek-violet-deep);margin-bottom:8px}
+.notes__body{font:500 15px/1.55 var(--f-body);color:#3C3C45}
+
+:focus-visible{outline:3px solid var(--ek-violet-soft);outline-offset:2px;border-radius:6px}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(23,23,28,.15);border-radius:4px}
+</style>
+</head>
+<body>
+
+<div class="progress"><div class="progress__fill" id="progress"></div></div>
+<div class="counter"><b id="current">1</b> / <span id="total">38</span></div>
+
+<main class="stage" id="deck">
+<section class="slide slide--violet active"
+  data-notes="Поприветствуйте. Сегодня соберём AI-агента agent.py: нейросеть получит инструменты — часы, калькулятор и папку с файлами — и сама будет решать, когда какой нужен. Главная мысль урока: модель только просит вызвать функцию, а запускает её программа, и программа же решает, разрешить ли. Обязательный минимум — каркас и правки 1–3 (калькулятор, файлы, цикл с лимитом шагов). Запись с подтверждением и погода — резерв.">
+<div class="sl-orbit">
+    <i class="sl-ring"></i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:75px;top:20px;width:150px;height:150px;transform:rotate(-10deg)"><use href="#ek-i-trophy"/></svg>
+    <i class="sl-letter" style="left:466px;top:13px;width:78px;height:78px;--fs:36px">T</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1040px;top:15px;width:130px;height:130px;transform:rotate(12deg)"><use href="#ek-i-heart"/></svg>
+    <i class="sl-letter" style="left:68px;top:268px;width:100px;height:100px;--fs:46px">S</i>
+    <i class="sl-letter" style="left:1137px;top:327px;width:95px;height:95px;--fs:44px">O</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:102px;top:532px;width:125px;height:125px;transform:rotate(-15deg)"><use href="#ek-i-star"/></svg>
+    <i class="sl-letter" style="left:361px;top:613px;width:78px;height:78px;--fs:36px">L</i>
+    <i class="sl-letter" style="left:726px;top:613px;width:78px;height:78px;--fs:36px">O</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1045px;top:540px;width:110px;height:110px;transform:rotate(8deg)"><use href="#ek-i-gem"/></svg>
+  </div>
+  <div class="cover-center">
+    <div class="cover-card">
+      <div class="badge">Урок №13</div>
+      <div class="card-top"><span class="win-dots"><i></i><i></i><i></i></span><span class="win-close"></span></div>
+      <h1>Нейросеть учится<br>пользоваться калькулятором</h1>
+      <p class="cover-sub">Соберём AI-агента с инструментами: он узнаёт время, точно считает и читает ваши файлы. Нейросеть только просит — решает ваша программа.</p>
+      <div class="cover-chips"><span class="chip chip--green">DeepSeek API</span><span class="chip">Function calling</span><span class="chip chip--gray">Python</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Теории — минимум: с 10-й минуты каждый делает разминку warmup.py. Обязательный минимум к 55-й минуте — каркас и правки 1–3: это уже агент из карточки (считает, узнаёт время, читает файлы) с защитой от опасных просьб и зацикливания. Правки 4–5 — резерв: каждая правка — полная перегенерация agent.py; не успеваете — отдавайте их в ДЗ. Блоки «Каркас» и «Правки» самые плотные — держите две контрольные точки: к 17-й минуте у всех запущен warmup.py, к 29-й — каркас отвечает на «Который час?». Разбор кода на слайдах 11–13 — не дольше полутора минут на слайд. Отстаёте к 29-й минуте больше чем на 3 минуты — опыт на слайде 25 пропустите, квизы проведите устно по 30 секунд, слайды 34–35 покажите за минуту и дайте сфотографировать. Перед уроком прогоните на своём ключе warmup.py и вопрос «Который час?» в каркасе: зовёт ли модель инструменты на этих вопросах, заранее не проверялось. Каждый вопрос агенту — 2–3 запроса к API. По оценке исследования, урок группы при выключенных размышлениях стоит порядка одного доллара.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">План занятия</div>
+    <h2>Как пройдут <span class="acc">60 минут</span></h2>
+  </div>
+  <div class="agenda" style="margin-top:14px">
+    <div class="agenda-row"><span class="t">0–5</span><div><div class="tt">Разбор ДЗ</div><div class="dd">Пятая личность, /save и «диалог двух»; проверяем /start, /help, /clear.</div></div></div>
+    <div class="agenda-row"><span class="t">5–10</span><div><div class="tt">Как нейросеть зовёт функции</div><div class="dd">Модель просит — программа решает. Описание инструмента.</div></div></div>
+    <div class="agenda-row"><span class="t">10–17</span><div><div class="tt">Разминка warmup.py</div><div class="dd">Видим просьбу модели «вызови calculate» вместо ответа.</div></div></div>
+    <div class="agenda-row"><span class="t">17–29</span><div><div class="tt">Каркас agent.py</div><div class="dd">Первый инструмент get_time: агент узнаёт время.</div></div></div>
+    <div class="agenda-row"><span class="t">29–50</span><div><div class="tt">Правки через диалог</div><div class="dd">Обязательно: калькулятор → файлы → цикл с лимитом шагов. Резерв, если опережаете: запись с подтверждением, погода и кубик.</div></div></div>
+    <div class="agenda-row"><span class="t">50–55</span><div><div class="tt">Вопросы и отладка</div><div class="dd">Читаем ошибки агента, проверяем понимание.</div></div></div>
+    <div class="agenda-row"><span class="t">55–60</span><div><div class="tt">Демо в группе</div><div class="dd">Агент считает, узнаёт время, читает файлы и не выходит из папки files.</div></div></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="На весь блок 5 минут. Откройте 2–3 работы — код и переписку с DeepSeek — и разбирайте диалог с нейросетью, а не только результат. Программы не запускаем: companion.py написан на старом имени модели deepseek-chat (подробнее — слайд 7). Быстро спросите группу: у кого нет /start, /help, /clear — добавьте дома, это требование урока 12. Подведите к главному: /save — обычная функция Python, её запускает человек командой. А если дать нейросети список функций, чтобы она сама просила нужную? Это и есть function calling.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор ДЗ урока 12</div>
+    <h2>Смотрим <span class="acc">собеседников</span> из <span class="code-chip">companion.py</span></h2>
+  </div>
+  <p>Открываем 2–3 присланные работы: пятая личность, команда <span class="code-chip">/save</span> и «диалог двух». Заодно проверяем, что у всех есть <span class="code-chip">/start</span>, <span class="code-chip">/help</span> и <span class="code-chip">/clear</span>.</p>
+  <div class="grid-3" style="margin-top:20px">
+    <div class="info-card"><h3>Что сработало</h3>Детальный системный промпт пятой личности; <span class="code-chip">/save</span> сохраняет весь диалог в файл с датой в имени.</div>
+    <div class="info-card"><h3>Что переделывали</h3>Где <span class="code-chip">/save</span> записывал только последний ответ: сохранять нужно весь список <span class="code-chip">messages</span>.</div>
+    <div class="info-card"><h3>Вывод</h3><span class="code-chip">/save</span> — функция, которую запускаете вы, набирая команду. Сегодня функцию попросит запустить сама нейросеть — когда поймёт, что функция нужна.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Главная мысль урока — на этом слайде. Ученики companion.py не запускают: он написан на старом имени модели deepseek-chat, а что API отвечает на это имя сегодня, в документации не описано (слайд 7). Живую проверку на своём экране делайте, только если заранее перевели свой companion.py на deepseek-flash с выключенными размышлениями (как на слайде 7) и проверили его: модель либо честно скажет, что не знает, либо назовёт время наугад. Иначе просто проговорите вопрос. Обязательно поправьте формулировку финала урока 12: нейросеть ничего не запускает на компьютере ученика, она присылает просьбу, а выполняет её программа. Термин AI-агент здесь значит просто программу, где нейросеть может пользоваться инструментами.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Идея урока</div>
+    <h2>Дадим нейросети <span class="acc">инструменты</span></h2>
+  </div>
+  <p>Представьте, что вы спросили собеседника из <span class="code-chip">companion.py</span>: «Который час?» Откуда ему знать? Модель видит только текст, который пришёл в запросе, — часов вашего компьютера там нет. А длинное произведение вроде <span class="code-chip">987654321 * 123456789</span> она пишет «в уме», и проверить ответ нечем.</p>
+  <div class="ek-note">Сегодня дадим модели <span class="hl">инструменты</span>: часы, калькулятор и папку с файлами. Модель сама решает, какой нужен, и <span class="hl">просит</span> программу его вызвать. Это называется <span class="hl">function calling</span>, а программа с инструментами — <span class="hl">AI-агент</span>.</div>
+  <div class="ek-note">Уточним финал урока 12. Там прозвучало: «нейросеть сама запускает ваши функции». Точнее так: модель только <span class="hl">просит</span>, а запускает функцию ваша программа — и она же решает, разрешить ли. В документации DeepSeek прямо сказано: модель сама функции не выполняет.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Это ключевая схема урока, к ней вернёмся в разборе каркаса. Подчеркните: модель не имеет доступа к компьютеру ученика, она присылает только просьбу — имя функции и данные для неё. Четыре шага — ровно сценарий из документации DeepSeek: вопрос, просьба вызвать функцию, результат от программы, ответ словами.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Как это работает</div>
+    <h2>Модель <span class="acc">просит</span>, программа решает</h2>
+  </div>
+  <p>Как на контрольной: ученик поднимает руку — «Можно калькулятор?», а учитель решает, дать или нет. Function calling устроен так же — круг из четырёх шагов:</p>
+  <ol class="steps">
+    <li><div>Вы спрашиваете: «Который час?»</div></li>
+    <li><div>Модель отвечает не текстом, а просьбой: «Вызови <span class="code-chip">get_time</span>»</div></li>
+    <li><div>Программа запускает свою функцию <span class="code-chip">get_time()</span> и отправляет модели результат</div></li>
+    <li><div>Модель отвечает словами: «Сейчас 17:42»</div></li>
+  </ol>
+  <div class="ek-note">Программа может и не выполнить просьбу: функции нет в списке разрешённых или действие опасное. Так мы защитим компьютер в правках 1–4.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Покажите три поля. name — так модель назовёт инструмент в своей просьбе. description — главное поле: из него модель понимает, когда звать инструмент; к нему вернёмся в «Полезном знании». parameters — какие данные нужны, в формате схемы JSON: здесь одна строка expression, и она обязательна (required). Это описание целиком войдёт в разминку.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Новое · описание инструмента</div>
+    <h2>Инструмент для модели — это <span class="acc">описание</span></h2>
+  </div>
+  <p>Код функции модель не видит. В запрос уходит только описание в списке <span class="code-chip">tools</span>: имя (<span class="code-chip">name</span>), что делает и когда звать (<span class="code-chip">description</span>), какие данные нужны (<span class="code-chip">parameters</span>). Как инструкция на коробке: по ней модель решает, звать ли инструмент и что ему передать.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body">tools = [{
+    <span class="st">"type"</span>: <span class="st">"function"</span>,
+    <span class="st">"function"</span>: {
+        <span class="st">"name"</span>: <span class="st">"calculate"</span>,
+        <span class="st">"description"</span>: <span class="st">"Калькулятор для любых вычислений, даже простых. Пример: 2*(3+4)"</span>,
+        <span class="st">"parameters"</span>: {
+            <span class="st">"type"</span>: <span class="st">"object"</span>,
+            <span class="st">"properties"</span>: {
+                <span class="st">"expression"</span>: {<span class="st">"type"</span>: <span class="st">"string"</span>, <span class="st">"description"</span>: <span class="st">"Выражение, например 2*(3+4)"</span>},
+            },
+            <span class="st">"required"</span>: [<span class="st">"expression"</span>],
+        },
+    },
+}]</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Здесь ученики впервые видят код урока — объясните смену имени модели. Что API отвечает на старое имя сейчас, в документации не описано. Старые программы writer.py и companion.py тоже стоит перевести на deepseek-flash, но одного слова мало: в create нужна ещё та же строка extra_body, что в warmup.py. Без неё размышления останутся включены, и в writer.py перестанет действовать temperature — ошибки не будет, но и настройка ничего не изменит. Если нейросеть-помощник в чате по привычке напишет deepseek-chat, верните deepseek-flash. Параметры tools и extra_body — части того же запроса create, что и на уроке 11.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Что изменилось в DeepSeek</div>
+    <h2>Новое имя модели и <span class="acc">без размышлений</span></h2>
+  </div>
+  <p>На предыдущих занятиях мы писали <span class="code-chip">deepseek-chat</span>. На текущий момент в документации модель называется <span class="code-chip">deepseek-flash</span>. Поэтому сегодня в коде новое имя.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body">response = client.chat.completions.create(
+    model=<span class="st">"deepseek-flash"</span>,
+    messages=[{<span class="st">"role"</span>: <span class="st">"user"</span>, <span class="st">"content"</span>: <span class="st">"Сколько будет 987654321 * 123456789?"</span>}],
+    tools=tools,
+    extra_body={<span class="st">"thinking"</span>: {<span class="st">"type"</span>: <span class="st">"disabled"</span>}},  <span class="cm"># выключаем режим размышлений</span>
+)</div>
+  </div>
+  <div class="ek-note">У новых моделей по умолчанию включён <span class="hl">режим размышлений</span>. С инструментами в нём больше правил: например, программа обязана возвращать модели её рассуждения, иначе API ответит ошибкой 400. Нам это ни к чему — выключаем одной строкой <span class="code-chip">extra_body</span>, как в примере из документации DeepSeek про инструменты.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ученики копируют промпт целиком в новый чат DeepSeek. В промпте прямо названы client.chat.completions.create, tools и имя deepseek-flash: без этого нейросеть-помощник может предложить другой способ (client.responses или устаревший параметр functions) или старое имя модели. Функцию calculate намеренно не пишем: цель — увидеть сырую просьбу модели.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Промпт #1 · разминка</div>
+    <h2><span class="code-chip">warmup.py</span>: подсмотрим <span class="acc">просьбу</span> модели</h2>
+  </div>
+  <p>Опишем модели калькулятор, но саму функцию писать не будем. Посмотрим, что модель пришлёт вместо обычного ответа.</p>
+  <div class="prompt-card" style="margin-top:22px">
+    <span class="pc-tag">→ Новый чат DeepSeek</span>
+    <div class="pc-text">Ты — опытный Python-разработчик и наставник школьника. Напиши warmup.py — разминку по function calling на openai SDK.
+- клиент: OpenAI(api_key=os.getenv("DEEPSEEK_KEY"), base_url="https://api.deepseek.com"), ключ из .env через load_dotenv() из python-dotenv
+- запрос: client.chat.completions.create (не client.responses) с model="deepseek-flash" (это новое имя модели, не меняй его на deepseek-chat) и extra_body={"thinking": {"type": "disabled"}}
+- tools=[...] (не functions): один инструмент calculate с параметром expression типа string (required), описание «Калькулятор для любых вычислений, даже простых. Пример: 2*(3+4)»
+- один вопрос от role user: «Сколько будет 987654321 * 123456789?»
+- саму функцию calculate НЕ пиши и не вызывай. Если в ответе есть message.tool_calls — для каждого tc напечатай «Модель просит вызвать:» и tc.function.name, потом «С аргументами:» и tc.function.arguments. Если tool_calls нет — напечатай «Модель ответила сама:» и message.content
+Прокомментируй код для новичка. Ответь одним блоком кода.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ключевой момент К1: дождитесь, пока у всех появится строка с calculate. Аргументы у разных учеников могут отличаться пробелами — это нормально. Обратите внимание: аргументы пришли строкой, похожей на JSON с урока 7, — в каркасе превратим её в словарь. Файл .env должен лежать в lesson-13: load_dotenv ищет его рядом со скриптом и в папках выше, а в соседней lesson-12 не найдёт.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Запуск и разбор</div>
+    <h2>Вместо ответа — <span class="acc">просьба</span> вызвать функцию</h2>
+  </div>
+  <div class="grid-2" style="margin-top:16px">
+    <div>
+      <ol class="steps steps--tight">
+        <li><div>В <span class="code-chip">vibe-coding</span> создайте папку <span class="code-chip">lesson-13</span></div></li>
+        <li><div>Скопируйте в неё <span class="code-chip">.env</span> из <span class="code-chip">lesson-12</span> — там ваш <span class="code-chip">DEEPSEEK_KEY</span></div></li>
+        <li><div>Откройте <span class="code-chip">lesson-13</span> в VS Code: <span class="code-chip">File → Open Folder</span></div></li>
+        <li><div>Создайте <span class="code-chip">warmup.py</span>, вставьте код из ответа и сохраните</div></li>
+        <li><div>Выполните <span class="code-chip">python warmup.py</span></div></li>
+      </ol>
+    </div>
+    <div>
+      <div class="term">
+        <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">ТЕРМИНАЛ</span></div>
+        <div class="term-body"><span class="usr">$ python warmup.py</span>
+Модель просит вызвать: calculate
+С аргументами: {"expression": "987654321 * 123456789"}</div>
+      </div>
+      <div class="ek-note ek-note--green" style="margin-top:18px">Модель сама решила, что нужен калькулятор, и сама заполнила аргументы — <span class="hl">строкой в формате JSON</span>. Но ничего не посчитала: функцию пока никто не запустил.</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Почините у всех: тот же ключ и та же папка нужны для агента. Параметр tool_choice со значением required работает только при выключенных размышлениях — у нас они выключены. Это подстраховка только для разминки, в агенте её не используем: там модель должна выбирать сама. Если pip не ставит openai, проверьте версию Python: нужна 3.10 или новее. Если Python пишет, что не может открыть warmup.py, — терминал смотрит в другую папку: откройте lesson-13 в VS Code и терминал заново, как на уроках 6–7. Непонятную ошибку целиком копируем в DeepSeek.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Типичные ситуации запуска</div>
+    <h2>Если <span class="code-chip">warmup.py</span> <span class="acc">не запустился</span></h2>
+  </div>
+  <div class="kv" style="margin-top:8px">
+    <div class="kv-row"><div class="k" style="text-transform:none">ошибка про <span class="code-chip">api_key</span></div><div class="v">Ключ не найден: <span class="code-chip">.env</span> не в папке <span class="code-chip">lesson-13</span> или переменная называется не <span class="code-chip">DEEPSEEK_KEY</span>. В свежей версии openai SDK текст ошибки начинается с «Missing credentials».</div></div>
+    <div class="kv-row"><div class="k" style="text-transform:none"><span class="code-chip">Error code: 401 / 402</span></div><div class="v">401 — ключ неверный: скопируйте его заново, без пробелов. 402 — на счёте закончились деньги: скажите преподавателю.</div></div>
+    <div class="kv-row"><div class="k" style="text-transform:none">«Модель ответила сама»</div><div class="v">Модель решила обойтись без калькулятора, так бывает. Запустите ещё раз или напишите в тот же чат: «Добавь в create параметр <span class="code-chip">tool_choice="required"</span>» — он заставляет вызвать инструмент.</div></div>
+    <div class="kv-row"><div class="k" style="text-transform:none">нет модуля <span class="code-chip">openai</span></div><div class="v">Выполните <span class="code-chip">pip install openai python-dotenv</span>; не сработало — <span class="code-chip">py -m pip install openai python-dotenv</span>. Если не находится команда <span class="code-chip">python</span>, пишите <span class="code-chip">py</span>.</div></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Свяжите с привычкой урока 12 «три роли диалога». Проговорите по строкам. Ответ модели дописываем целиком — объект вместе с tool_calls, так сделано в примере документации DeepSeek. Затем на каждый вызов — сообщение роли tool с tool_call_id, чтобы модель поняла, на какую просьбу этот результат. Второй запрос уходит с той же историей: модель видит результат и отвечает словами. Цикл for нужен потому, что просьб в одном ответе может быть несколько.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Как это работает</div>
+    <h2>Четвёртая роль — <span class="acc">tool</span></h2>
+  </div>
+  <p>На уроке 12 в диалоге было три роли: <span class="code-chip">system</span>, <span class="code-chip">user</span>, <span class="code-chip">assistant</span>. Сегодня добавим четвёртую — <span class="code-chip">tool</span>: с ней программа передаёт модели результат инструмента. Сервер ничего не помнит между запросами, поэтому и просьбу модели, и результат дописываем в <span class="code-chip">messages</span>.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body">    message = ask_model(messages)
+    messages.append(message)  <span class="cm"># ответ модели целиком, вместе с tool_calls</span>
+    <span class="kw">if</span> message.tool_calls:  <span class="cm"># модель просит инструменты</span>
+        <span class="kw">for</span> tc <span class="kw">in</span> message.tool_calls:
+            result = run_tool(tc)
+            messages.append({<span class="st">"role"</span>: <span class="st">"tool"</span>, <span class="st">"tool_call_id"</span>: tc.id, <span class="st">"content"</span>: result})
+        message = ask_model(messages)  <span class="cm"># второй запрос: модель видит результат</span>
+        messages.append(message)
+    print(<span class="st">"AI:"</span>, message.content)</div>
+  </div>
+  <div class="ek-note ek-note--red">Порядок важен: сначала ответ модели с просьбой (<span class="code-chip">tool_calls</span>) — целиком, потом по сообщению <span class="code-chip">tool</span> на каждую просьбу, с её <span class="code-chip">tc.id</span>. Пропустили или перепутали — запрос составлен неверно, и API может ответить ошибкой 400.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Подчеркните разницу: get_time — обычная функция Python, она выполняется на компьютере ученика. В TOOLS лежит только её описание для модели. Параметров нет, поэтому и поля parameters нет: так в документации описывается функция без аргументов. Формат времени — год-месяц-день и часы:минуты. День недели (код %A) специально не берём: его название берётся из локали, и вместо «среда» легко получить английское Wednesday. Поэтому про расписание спрашиваем с названием дня — «в среду», «в пятницу», а не «сегодня»: иначе модели пришлось бы самой вычислять день недели по дате, без инструмента.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Первый инструмент</div>
+    <h2><span class="code-chip">get_time</span>: <span class="acc">часы</span> для нейросети</h2>
+  </div>
+  <p>Самый простой инструмент — без параметров. Функция берёт время вашего компьютера, а описание объясняет модели, когда её звать. Словарь <span class="code-chip">FUNCTIONS</span> связывает имя из просьбы с функцией Python.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body"><span class="kw">def</span> get_time():
+    <span class="kw">return</span> datetime.now().strftime(<span class="st">"%Y-%m-%d %H:%M"</span>)  <span class="cm"># например 2026-10-28 17:42</span>
+
+
+TOOLS = [
+    {
+        <span class="st">"type"</span>: <span class="st">"function"</span>,
+        <span class="st">"function"</span>: {  <span class="cm"># без parameters: инструменту не нужны данные</span>
+            <span class="st">"name"</span>: <span class="st">"get_time"</span>,
+            <span class="st">"description"</span>: <span class="st">"Текущие дата и время на компьютере пользователя. "</span>
+                           <span class="st">"Вызывай, когда спрашивают о времени или дате."</span>,
+        },
+    },
+]
+FUNCTIONS = {<span class="st">"get_time"</span>: get_time}  <span class="cm"># имя инструмента → функция Python</span></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Это первая защита урока (К3): данным от модели не доверяем без проверки. Серая строка с гаечным ключом — след: видно, какой инструмент и с какими данными попросила модель. Если VS Code подчёркивает tc.function красным, это подсказки редактора о типах — программа при этом работает.">
+<div class="sl-body" style="gap:10px;padding-top:44px">
+  <div>
+    <div class="q-label">Как это работает</div>
+    <h2>Просьбе модели <span class="acc">не верим</span> вслепую</h2>
+  </div>
+  <p>Аргументы приходят строкой JSON — превращаем её в словарь через <span class="code-chip">json.loads</span>, как на уроке 7. В документации DeepSeek честно сказано: модель не всегда присылает правильный JSON и может выдумать лишние параметры. Поэтому <span class="code-chip">run_tool</span> всё проверяет.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="font-size:14px;line-height:1.5"><span class="kw">def</span> run_tool(tc):
+    name = tc.function.name
+    <span class="kw">try</span>:
+        args = json.loads(tc.function.arguments <span class="kw">or</span> <span class="st">"{}"</span>)  <span class="cm"># строка JSON → словарь</span>
+    <span class="kw">except</span> json.JSONDecodeError:
+        <span class="kw">return</span> <span class="st">"ошибка: аргументы не в формате JSON"</span>
+    shown = <span class="st">", "</span>.join(str(v) <span class="kw">for</span> v <span class="kw">in</span> args.values())
+    print(f<span class="st">"{GRAY}🔧 {name}({shown}){RESET}"</span>)  <span class="cm"># след: что просит модель</span>
+    <span class="kw">if</span> name <span class="kw">not in</span> FUNCTIONS:  <span class="cm"># запускаем только свои инструменты</span>
+        <span class="kw">return</span> <span class="st">"ошибка: нет такого инструмента"</span>
+    <span class="kw">try</span>:
+        <span class="kw">return</span> str(FUNCTIONS[name](**args))
+    <span class="kw">except</span> Exception <span class="kw">as</span> e:  <span class="cm"># ошибку отдаём модели, программа не падает</span>
+        <span class="kw">return</span> f<span class="st">"ошибка: {e}"</span></div>
+  </div>
+  <div class="ek-note"><span class="code-chip">FUNCTIONS</span> — список разрешённого: попросит модель то, чего там нет, — программа ничего не запустит. Любая ошибка инструмента возвращается модели строкой, и программа не падает.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Прочитайте цель вслух. Обязательный минимум — каркас и правки 1–3: агент из карточки, который считает, узнаёт время и читает файлы, с защитой от опасных просьб и зацикливания. Запись с подтверждением и погода — для успевающих. Слева теория, справа практика.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Цель · что будет в конце</div>
+    <h2><span class="acc">Цель</span> урока</h2>
+  </div>
+  <div class="ek-note">К 55-й минуте у каждого — AI-агент <span class="code-chip">agent.py</span> в терминале: узнаёт время, точно считает и читает ваши файлы из папки <span class="code-chip">files</span>, а на вопросы в несколько шагов отвечает цепочкой инструментов — не больше 5 шагов. Успеете — агент будет записывать заметки только после вашего «да» и узнавать погоду.</div>
+  <div class="grid-2">
+    <div class="info-card">
+      <h3>Узнаете</h3>
+      <ul class="clean">
+        <li>Как модель просит программу вызвать функцию — function calling</li>
+        <li>Как описать инструмент, чтобы модель выбирала его правильно</li>
+        <li><div>Что такое <span class="code-chip">tool_calls</span> и четвёртая роль <span class="code-chip">tool</span></div></li>
+        <li>Как защитить компьютер от опасных просьб и зацикливания</li>
+      </ul>
+    </div>
+    <div class="info-card">
+      <h3>Сделаете</h3>
+      <ul class="clean">
+        <li><div>Агента с часами <span class="code-chip">get_time</span></div></li>
+        <li><div>Калькулятор, где <span class="code-chip">eval</span> работает только после проверки</div></li>
+        <li><div>Чтение файлов только из папки <span class="code-chip">files</span></div></li>
+        <li>Цикл с лимитом шагов; успеете — запись с подтверждением и погоду</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Покажите готовую версию — соберите её заранее со своим files/schedule.txt. Задайте три вопроса при группе. Ответы модели у вас будут своими словами, а время — вашим. Если модель посчитала минуты сама, без калькулятора, задайте вопрос ещё раз: выбор инструмента остаётся за моделью. Произведение калькулятор считает точно: целые числа в Python не ограничены по длине.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Демо результата</div>
+    <h2>Что <span class="acc">соберём</span> сегодня</h2>
+  </div>
+  <div class="term">
+    <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">ТЕРМИНАЛ</span></div>
+    <div class="term-body"><span class="usr">$ python agent.py</span>
+AI-агент готов. Выход — /exit
+<span class="usr">Вы: Сколько будет 987654321 * 123456789?</span>
+<span class="dim">🔧 [1/5] calculate(987654321 * 123456789)</span>
+AI: 987654321 × 123456789 = 121932631112635269.
+<span class="usr">Вы: Сколько минут осталось до 18:00? Посчитай калькулятором.</span>
+<span class="dim">🔧 [1/5] get_time()</span>
+<span class="dim">🔧 [2/5] calculate(18*60 - (17*60 + 42))</span>
+AI: До 18:00 осталось 18 минут.
+<span class="usr">Вы: Что у меня в среду?</span>
+<span class="dim">🔧 [1/5] read_file(schedule.txt)</span>
+AI: В среду физика, литература и информатика.</div>
+  </div>
+  <p>Серые строки 🔧 — след агента: какой инструмент и с какими данными он попросил. <span class="code-chip">[2/5]</span> — второй шаг из пяти разрешённых: на вопрос про минуты модели понадобились два инструмента подряд.</p>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="В VS Code откройте именно папку lesson-13 и запускайте программы из неё. Если библиотека всё же не найдена — та же команда установки, что на слайде 10. Ключ в коде не пишем никогда: он берётся из .env через load_dotenv. По условиям DeepSeek ключом нельзя делиться с другими, а за убытки от утёкшего ключа отвечает его владелец. Как ключи выдаются группе, решает школа.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Подготовка</div>
+    <h2>Папка <span class="acc">lesson-13</span></h2>
+  </div>
+  <div class="grid-2">
+    <div class="col">
+      <ol class="steps steps--tight">
+        <li><div>В <span class="code-chip">lesson-13</span> уже лежат <span class="code-chip">warmup.py</span> и <span class="code-chip">.env</span> — с разминки</div></li>
+        <li><div>Создайте файл <span class="code-chip">agent.py</span></div></li>
+        <li><div>Создайте пустую папку <span class="code-chip">files</span> — в правке 2 положим туда расписание и домашние задания</div></li>
+        <li><div><span class="code-chip">openai</span> и <span class="code-chip">python-dotenv</span> стоят с урока 11 — ставить ничего не нужно</div></li>
+      </ol>
+    </div>
+    <div class="col">
+      <div class="term">
+        <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">ТЕРМИНАЛ</span></div>
+        <div class="term-body">vibe-coding/lesson-13/
+├── .env
+├── warmup.py
+├── agent.py
+└── files/</div>
+      </div>
+      <div class="ek-note ek-note--red" style="margin-top:14px">Ключ — это пароль: только в <span class="code-chip">.env</span>, никому не пересылаем и не публикуем, на скриншотах замазываем.</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Скопировать промпт целиком в новый чат DeepSeek — все правки дальше пойдут в этот же чат. Каркас: один инструмент get_time и ровно один круг — просьба, выполнение, второй запрос, ответ. Цикл повторов намеренно не просим: его добавит правка 3, и группа увидит, зачем он нужен. Строка tools=TOOLS в запросе обязательна: без неё модель не узнает об инструментах.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Промпт #2 · стартовый</div>
+    <h2><span class="acc">Каркас</span> агента</h2>
+  </div>
+  <div class="prompt-card" style="margin-top:10px">
+    <span class="pc-tag">→ Новый чат DeepSeek</span>
+    <div class="pc-text" style="font-size:14px;line-height:1.6">Ты — <span class="hl">опытный Python-разработчик</span> и наставник школьника. Напиши agent.py — AI-агента в терминале, который вызывает инструменты (function calling), на openai SDK.
+- клиент: OpenAI(api_key=os.getenv("DEEPSEEK_KEY"), base_url="https://api.deepseek.com"), ключ из .env через load_dotenv() из python-dotenv
+- ask_model(messages): client.chat.completions.create (не client.responses) с model="deepseek-flash" (это новое имя модели, не меняй его), tools=TOOLS и extra_body={"thinking": {"type": "disabled"}}; верни response.choices[0].message
+- инструмент get_time() возвращает datetime.now().strftime("%Y-%m-%d %H:%M"). Список TOOLS в формате tools (не functions): get_time без parameters, описание «Текущие дата и время на компьютере пользователя. Вызывай, когда спрашивают о времени или дате.» Словарь FUNCTIONS = {"get_time": get_time}
+- run_tool(tc): аргументы через json.loads(tc.function.arguments or "{}") в try/except json.JSONDecodeError; печать серым (\033[90m … \033[0m) строки «🔧 имя(значения аргументов через запятую)»; если имени нет в FUNCTIONS — верни «ошибка: нет такого инструмента»; функцию вызывай в try/except Exception и возвращай результат через str()
+- messages начинается с system: «Ты — AI-агент, помощник школьника. Отвечай коротко, по-русски. Если для ответа нужен инструмент — вызывай его, а не придумывай.»
+- при запуске напечатай «AI-агент готов. Выход — /exit». Цикл: input("Вы: "), выход по /exit, вопрос — role user. message = ask_model(messages), messages.append(message) целиком. Если есть message.tool_calls — для каждого tc добавь {"role": "tool", "tool_call_id": tc.id, "content": run_tool(tc)}, потом ещё раз ask_model и снова append. Напечатай «AI:» и message.content
+Сделай ровно один круг инструментов — не больше двух запросов к модели на вопрос. Прокомментируй код для новичка. Ответь одним блоком кода.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Дождитесь, пока у всех появится серая строка с get_time. Шаг 4 важен для К2: инструмент не вызывается на каждый вопрос, модель выбирает по описанию. Если серой строки нет и на вопрос о времени — проверьте, что в create передан tools=TOOLS, и спросите ещё раз.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Запуск каркаса</div>
+    <h2>Запускаем и <span class="acc">проверяем</span> выбор модели</h2>
+  </div>
+  <ol class="steps steps--tight">
+    <li><div>Скопируйте код из ответа DeepSeek в <span class="code-chip">agent.py</span> и сохраните (<span class="code-chip">Ctrl+S</span>)</div></li>
+    <li><div>Выполните <span class="code-chip">python agent.py</span></div></li>
+    <li><div>Спросите «Который час?» — появится серая строка <span class="code-chip">🔧 get_time()</span></div></li>
+    <li><div>Напишите «Привет! Как дела?» — инструмент не нужен, серой строки нет</div></li>
+    <li><div>Выход — <span class="code-chip">/exit</span></div></li>
+  </ol>
+  <div class="ek-note">Модель сама решает, нужен ли инструмент: на вопрос о времени зовёт часы, на приветствие отвечает сразу. Сверьте время с часами на экране: оно берётся с вашего компьютера.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Момент урока: круг замкнулся. Проговорите его по серой строке: модель попросила get_time, программа выполнила функцию и вернула время сообщением роли tool, модель ответила словами. Не обещайте, что агент уже умеет считать или читать файлы — это правки 1 и 2.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Момент урока</div>
+    <h2>Агент <span class="acc">узнал время</span></h2>
+  </div>
+  <div class="term">
+    <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">ТЕРМИНАЛ</span></div>
+    <div class="term-body"><span class="usr">$ python agent.py</span>
+AI-агент готов. Выход — /exit
+<span class="usr">Вы: Который час?</span>
+<span class="dim">🔧 get_time()</span>
+AI: Сейчас 17:42.
+<span class="usr">Вы: Привет! Как дела?</span>
+AI: Привет! Всё отлично, готов помогать. Что нужно?</div>
+  </div>
+  <div class="ek-note ek-note--green">В начале урока модель не могла знать, который час. Теперь у неё есть инструмент, и полный круг function calling работает: <span class="hl">просьба → функция → результат → ответ</span>.</div>
+  <div class="ek-note">Пока агент умеет только узнавать время. Дальше правками: калькулятор, ваши файлы, цепочки из нескольких шагов — с защитой от опасных просьб и зацикливания.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пробегитесь по четырём ситуациям и помогите лично тем, у кого не работает. Ошибка 400 означает, что тело запроса неверно; точный текст сервера DeepSeek для случая с tool_calls в документации не приводится, поэтому ориентируемся на код 400 и порядок сообщений. После None в истории осталась просьба без ответа, и следующий вопрос тоже может упасть — поэтому перезапуск.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Если агент не запустился</div>
+    <h2>Типичные ситуации <span class="acc">каркаса</span></h2>
+  </div>
+  <div class="kv">
+    <div class="kv-row"><div class="k" style="text-transform:none"><span class="code-chip">Error code: 400</span></div><div class="v">Запрос составлен неверно. Чаще всего — порядок <span class="code-chip">messages</span>: сначала ответ модели с <span class="code-chip">tool_calls</span> целиком, потом по сообщению <span class="code-chip">tool</span> на каждый вызов, с его <span class="code-chip">tool_call_id</span>. Отправьте ошибку целиком в тот же чат DeepSeek.</div></div>
+    <div class="kv-row"><div class="k" style="text-transform:none"><span class="code-chip">AI: None</span></div><div class="v">После результата модель попросила ещё один инструмент, а каркас делает только один круг. Перезапустите программу — правка 3 это исправит.</div></div>
+    <div class="kv-row"><div class="k">старое имя модели</div><div class="v">Проверьте, что в коде <span class="code-chip">model="deepseek-flash"</span>: нейросеть-помощник может по привычке написать <span class="code-chip">deepseek-chat</span>.</div></div>
+    <div class="kv-row"><div class="k">красное подчёркивание</div><div class="v">VS Code может подчёркивать <span class="code-chip">tc.function</span>: это подсказки редактора, программа при этом работает.</div></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Правка в тот же чат, где собран каркас. Нейросеть-помощник может предложить для калькулятора голый eval без проверок — поэтому проверки перечислены в промпте прямо. После правки дождитесь, пока у всех на двух вопросах вызовутся два разных инструмента: это и есть К2 в действии.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 1 · калькулятор</div>
+    <h2>Второй инструмент — <span class="acc">калькулятор</span></h2>
+  </div>
+  <p>Python считает целые числа точно, какой бы длины они ни были. Но <span class="code-chip">eval</span> выполнит любую строку как код Python — поэтому сначала проверяем выражение, а уже потом считаем.</p>
+  <div class="prompt-card prompt-card--copy" style="margin-top:8px">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text">Добавь в agent.py второй инструмент calculate(expression) — калькулятор. eval вызывай только после проверок:
+- выражение длиннее 100 символов — верни «ошибка: слишком длинное выражение»
+- есть ** — верни «ошибка: степень запрещена»
+- любой символ не из 0123456789+-*/(). и не пробел — верни «ошибка: только цифры, скобки и знаки + - * /»
+- потом str(eval(expression)) в try; сначала except SyntaxError — верни «ошибка: Python не понял запись, например 08 вместо 8», потом except Exception — «ошибка: не получилось посчитать»
+- описание для модели: «Калькулятор. Используй для любых вычислений, даже простых. Пиши как в Python: * — умножить, / — разделить. Пример: 2*(3+4)»; параметр expression типа string, required
+Добавь calculate в TOOLS и FUNCTIONS. Остальной код не меняй. Верни весь файл.</div>
+  </div>
+  <div class="ek-note">Проверьте выбор: спросите «Который час?», потом «Сколько будет 48763 * 9271?» — в серых строках разные инструменты. Агент выбирает сам, по описаниям.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Документация Python прямо предупреждает: eval выполняет любой код, и вызывать его с данными от пользователя опасно. Данные от модели — такие же чужие. Поэтому порядок такой: сначала проверки, потом eval. Длина до 100 символов и запрет степени держат числа небольшими. Покажите, что ошибки вроде деления на ноль не роняют агента: функция возвращает строку с ошибкой, и модель объясняет её словами. Отдельная ветка SyntaxError — для записи, которую Python не понял. На уроке так может выйти с числом, у которого ноль впереди: Python не принимает 08, а 8 принимает. Фильтр символов такую запись пропустит, ведь в ней только цифры и знаки, поэтому ошибку ловим при вычислении. Текст ошибки читает модель — для неё и подсказка «08 вместо 8»: по ней модель может исправить вызов сама (подробнее — слайд 27).">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2>eval — только <span class="acc">после проверок</span></h2>
+  </div>
+  <p>Каждый символ сверяем со списком разрешённых: цифры, скобки, точка, пробел и знаки. Буквам взяться неоткуда — значит, через <span class="code-chip">eval</span> не выполнить никакую команду. Степень <span class="code-chip">**</span> запрещаем: целые числа в Python без предела, и степень быстро даёт гигантские числа, а число длиннее 4300 цифр Python по умолчанию даже не переведёт в строку.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body"><span class="kw">def</span> calculate(expression):
+    <span class="kw">if</span> len(expression) &gt; 100:
+        <span class="kw">return</span> <span class="st">"ошибка: слишком длинное выражение"</span>
+    <span class="kw">if</span> <span class="st">"**"</span> <span class="kw">in</span> expression:  <span class="cm"># степень даёт гигантские числа — запрещаем</span>
+        <span class="kw">return</span> <span class="st">"ошибка: степень запрещена"</span>
+    <span class="kw">for</span> ch <span class="kw">in</span> expression:  <span class="cm"># пропускаем только цифры, скобки и знаки</span>
+        <span class="kw">if</span> ch <span class="kw">not</span> <span class="kw">in</span> <span class="st">"0123456789+-*/(). "</span>:
+            <span class="kw">return</span> <span class="st">"ошибка: только цифры, скобки и знаки + - * /"</span>
+    <span class="kw">try</span>:
+        <span class="kw">return</span> str(eval(expression))  <span class="cm"># eval — только после проверок</span>
+    <span class="kw">except</span> SyntaxError:  <span class="cm"># Python не понял запись — подсказываем модели</span>
+        <span class="kw">return</span> <span class="st">"ошибка: Python не понял запись, например 08 вместо 8"</span>
+    <span class="kw">except</span> Exception:  <span class="cm"># например, деление на ноль</span>
+        <span class="kw">return</span> <span class="st">"ошибка: не получилось посчитать"</span></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="На создание файлов дайте 2–3 минуты: в schedule.txt — пять коротких строк вида «Среда: физика, литература, информатика», в homework.txt — 2–3 строки; пусть пишут своё расписание. Среда и пятница нужны обязательно: про них спрашиваем на слайдах 24 и 36. Программа читает файлы в кодировке UTF-8. Если файл сохранён в другой кодировке, например cp1251, чтение даст UnicodeDecodeError — агент не упадёт, а сообщит об ошибке чтения; такой файл пересохраните в UTF-8. В описании инструмента мы перечислили файлы: так модель знает, какое имя передать.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 2 · файлы</div>
+    <h2>Агент читает <span class="acc">ваши файлы</span></h2>
+  </div>
+  <p>В VS Code создайте в папке <span class="code-chip">files</span> два файла: <span class="code-chip">schedule.txt</span> — расписание с понедельника по пятницу, по строке на день, и <span class="code-chip">homework.txt</span> — 2–3 домашних задания. А рядом с <span class="code-chip">agent.py</span> — тестовый <span class="code-chip">secret.txt</span> со строкой «пароль: котик123»: на нём проверим защиту.</p>
+  <div class="prompt-card prompt-card--copy" style="margin-top:8px">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text">Добавь инструмент read_file(name) — чтение текстового файла только из папки files рядом с agent.py:
+- BASE = Path(__file__).resolve().parent / "files"
+- target = (BASE / name).resolve(); если not target.is_relative_to(BASE) — верни «доступ запрещён: читать можно только папку files»
+- если not target.is_file() — верни «файл не найден»
+- иначе верни target.read_text(encoding="utf-8")
+- описание для модели: «Читает текстовый файл из папки files. Там лежат schedule.txt — расписание уроков на неделю и homework.txt — домашние задания.»; параметр name типа string, required
+Добавь read_file в TOOLS и FUNCTIONS. Остальной код не меняй. Верни весь файл.</div>
+  </div>
+  <div class="ek-note ek-note--red">Всё, что прочитает агент, уходит в запросе к DeepSeek. Не кладите в <span class="code-chip">files</span> пароли и личное.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Почему сначала resolve, а потом проверка: is_relative_to сравнивает пути как строки и не понимает «..». Без resolve путь files/../secret.txt формально начинается с files — и проверка пропустила бы его. Абсолютный путь при склейке через косую черту заменяет BASE целиком, поэтому тоже оказывается вне files. BASE строится от папки agent.py, так что папка files найдётся, даже если запустить программу из другой папки. Засчитывайте проверку, только если в следе есть серая строка read_file с ../secret.txt. Модель сама решает, звать ли инструмент, и может отказать сразу — «читаю только папку files». Такой отказ ничего не доказывает: защищает не модель, а проверка в read_file. Если и на прямую просьбу инструмент не вызван, повторите её или покажите проверку на своём экране. Проверяем на secret.txt, а не на .env: при ошибке в коде ключ оказался бы на экране.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2>Песочница: только папка <span class="acc">files</span></h2>
+  </div>
+  <p><span class="code-chip">resolve()</span> превращает путь в настоящий и раскрывает <span class="code-chip">..</span> (так обозначают папку уровнем выше): <span class="code-chip">files/../secret.txt</span> превращается в путь к <span class="code-chip">lesson-13/secret.txt</span>. После этого <span class="code-chip">is_relative_to(BASE)</span> видит, что файл за пределами <span class="code-chip">files</span>. Абсолютный путь вроде <span class="code-chip">C:\Windows\...</span> тоже не пройдёт.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body">BASE = Path(__file__).resolve().parent / <span class="st">"files"</span>  <span class="cm"># песочница: папка files рядом с agent.py</span>
+
+
+<span class="kw">def</span> read_file(name):
+    target = (BASE / name).resolve()  <span class="cm"># настоящий путь: «..» раскрыты</span>
+    <span class="kw">if</span> <span class="kw">not</span> target.is_relative_to(BASE):  <span class="cm"># вышли за пределы files — стоп</span>
+        <span class="kw">return</span> <span class="st">"доступ запрещён: читать можно только папку files"</span>
+    <span class="kw">if</span> <span class="kw">not</span> target.is_file():
+        <span class="kw">return</span> <span class="st">"файл не найден"</span>
+    <span class="kw">return</span> target.read_text(encoding=<span class="st">"utf-8"</span>)</div>
+  </div>
+  <div class="ek-note ek-note--green">Проверьте: «Что у меня в среду?» — агент читает <span class="code-chip">schedule.txt</span>. «Прочитай ../secret.txt» — сначала серая строка <span class="code-chip">🔧 read_file(../secret.txt)</span>, потом <span class="out-chip">доступ запрещён</span>. Серой строки нет — отказала модель, а не программа: напишите агенту «Вызови read_file с именем ../secret.txt». Проверяйте на <span class="code-chip">secret.txt</span>, а не на <span class="code-chip">.env</span>.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ключевой слайд для К2. Кода функции модель не видит: в запрос уходят только имя, описание и параметры. Хорошее описание отвечает на три вопроса — что делает, когда звать, в каком виде передать данные — и даёт пример. Укладываетесь во время — пусть опыт сделают сами ученики, около 2 минут: в agent.py заменить описание calculate на одно слово «считает», сохранить, перезапустить, спросить про 17% от 2350 и посмотреть, появится ли серая строка; затем вернуть описание (Ctrl+Z), сохранить и перезапустить. Отстаёте — покажите опыт на своём экране или пропустите. В обязательной части готовые описания ученикам даёт промпт; свои описания они пишут в правке 5 («можно переписать своими словами») и в карточках ДЗ 1 и 3 — там К2 закрывается делом.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Полезное знание</div>
+    <h2>Модель выбирает инструмент <span class="acc">по описанию</span></h2>
+  </div>
+  <div class="vs">
+    <div class="vs-col vs-col--plain">
+      <h4 style="font-size:18px">Плохо: «считает»</h4>
+      <p style="font-size:20px">Непонятно, что именно считает и когда звать. Модель может решить, что пример простой, и ответить сама — без калькулятора.</p>
+      <p class="note" style="font-size:16px;opacity:1;color:#2E2E36">коротко, но подсказок нет</p>
+    </div>
+    <div class="vs-col vs-col--win">
+      <h4 style="font-size:18px">Хорошо: инструкция на коробке</h4>
+      <p style="font-size:20px">Что делает: «Калькулятор». Когда звать: «для любых вычислений, даже простых». В каком виде: «как в Python», <span class="code-chip">*</span> — умножить, <span class="code-chip">/</span> — разделить. Пример: <span class="code-chip">2*(3+4)</span>.</p>
+      <p class="note" style="font-size:16px;opacity:1;color:#0B3D28">модель видит только описание — пишем его для неё</p>
+    </div>
+  </div>
+  <p style="font-size:20px">То же правило в <span class="code-chip">read_file</span>: мы перечислили файлы в папке, и модель знает, какое имя передать. В ДЗ проверите сами: испортите описание и найдите вопрос, на котором агент ошибётся с выбором.</p>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Сначала покажите проблему на своём экране, до правки: задайте вопрос про минуты. Если появилось None или пустая строка — вот она, проблема: модель снова попросила инструмент, а программа уже печатала ответ. Если модель посчитала сама, задайте вопрос ещё раз. После None перезапустите программу. Если урок идёт позже 18:00, возьмите время конца урока.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 3 · несколько шагов</div>
+    <h2>Цепочка инструментов с <span class="acc">пределом шагов</span></h2>
+  </div>
+  <p>Спросите: «Сколько минут осталось до 18:00? Посчитай калькулятором». Модели нужно сначала время, потом калькулятор, а каркас делает один круг — вместо ответа может появиться <span class="code-chip">None</span> или пустота. Нужен цикл: повторять, пока модель просит инструменты. Но не бесконечно — не больше 5 шагов.</p>
+  <div class="prompt-card prompt-card--copy" style="margin-top:8px">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text">Сейчас агент делает один круг инструментов, и на вопросы в два шага печатает None. Замени этот круг циклом с лимитом шагов:
+- константа MAX_STEPS = 5
+- функция answer(messages): for step in range(1, MAX_STEPS + 1) — message = ask_model(messages), messages.append(message); если нет message.tool_calls — верни message.content; иначе для каждого tc добавь {"role": "tool", "tool_call_id": tc.id, "content": run_tool(tc, step)}
+- после цикла верни «остановился: слишком много шагов»
+- run_tool(tc, step) печатает след серым с номером шага: «🔧 [step/MAX_STEPS] имя(аргументы)», например «🔧 [1/5] get_time()»
+- в главном цикле после вопроса: print("AI:", answer(messages))
+Остальной код не меняй. Верни весь файл.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Проговорите цикл: шаг — это один запрос к модели. Нет просьб — ответ готов, выходим. Есть просьбы — выполняем все и идём на следующий шаг. Шаги кончились — стоп-кран. Опыт с MAX_STEPS = 1 обязателен: так ученики своими глазами видят защиту от зацикливания (К3). Число 5 — наш выбор, а не требование API. Функция get_time пишет часы и минуты двумя цифрами: 17:08, 09:15. Если вопрос про минуты задают с 01-й по 09-ю минуту часа (например, в 17:08) или на уроке до 10 утра, модель может перенести число в выражение как есть, с нулём впереди; в 17:00 и 17:10 такого не бывает. Python не принимает целое число с нулём впереди: 08 нельзя, 8 можно. Фильтр символов такую запись пропускает — в ней только цифры и знаки. Калькулятор вернёт модели «ошибка: Python не понял запись, например 08 вместо 8», и модель может повторить вызов уже без нуля — тогда в следе появится шаг [3/5]. Это не поломка: ошибка инструмента ушла модели строкой, а модель её исправила.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2>Цикл агента и <span class="acc">стоп-кран</span></h2>
+  </div>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body"><span class="kw">def</span> answer(messages):
+    <span class="kw">for</span> step <span class="kw">in</span> range(1, MAX_STEPS + 1):
+        message = ask_model(messages)
+        messages.append(message)  <span class="cm"># ответ модели целиком, вместе с tool_calls</span>
+        <span class="kw">if</span> <span class="kw">not</span> message.tool_calls:  <span class="cm"># просьб нет — это готовый ответ</span>
+            <span class="kw">return</span> message.content
+        <span class="kw">for</span> tc <span class="kw">in</span> message.tool_calls:  <span class="cm"># выполняем все просьбы этого шага</span>
+            result = run_tool(tc, step)
+            messages.append({"role": <span class="st">"tool"</span>, "tool_call_id": tc.id, "content": result})
+    <span class="kw">return</span> <span class="st">"остановился: слишком много шагов"</span>  <span class="cm"># стоп-кран</span></div>
+  </div>
+  <div class="ek-note">В документации DeepSeek нет обещания, что модель не зациклится, поэтому предел ставим сами. Так делают и полноценные библиотеки для агентов: например, в OpenAI Agents SDK есть параметр <span class="code-chip">max_turns</span>.</div>
+  <div class="ek-note ek-note--green">Проверьте стоп-кран: поставьте <span class="code-chip">MAX_STEPS = 1</span>, сохраните, перезапустите <span class="code-chip">agent.py</span> и спросите про минуты — <span class="out-chip">остановился: слишком много шагов</span>. Потом верните 5.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Резервная правка — только если группа успевает. Обязательный минимум к 55-й минуте — каркас и правки 1–3. Если времени нет, перенесите правку в ДЗ и переходите к квизам. Если успеваете: дайте ученикам попросить агента записать дело в todo.txt, ответить сначала «нет», потом «да» — и открыть файл в VS Code.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 4 · резерв</div>
+    <h2>Запись — только после <span class="acc">«да»</span></h2>
+  </div>
+  <p>Чтение ничего не портит, а запись меняет файлы. Поэтому <span class="code-chip">write_note</span> пишет только в папку <span class="code-chip">files</span>, только в <span class="code-chip">.txt</span>, только дописывает в конец — и только после вашего «да».</p>
+  <div class="prompt-card prompt-card--copy" style="margin-top:8px">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text" style="font-variant-ligatures:none">Добавь опасный инструмент write_note(name, text) — дописывает строку text в текстовый файл в папке files. Защита:
+- target = (BASE / name).resolve(); если not target.is_relative_to(BASE) — верни «доступ запрещён: писать можно только в папку files»
+- если target.suffix.lower() != ".txt" — верни «доступ запрещён: можно записывать только .txt»
+- спроси человека: reply = input(f"🔐 Агент хочет записать {name}. Разрешить? (да/нет) "); если reply.strip().lower() не «да» — верни «пользователь запретил запись»
+- только дописывание в конец: open(target, "a", encoding="utf-8"), запиши text + "\n", верни f"записано в {name}"
+- описание для модели: «Дописывает строку в текстовый файл в папке files, например в список дел todo.txt. Перед записью программа спросит разрешения у человека.»; параметры name и text типа string, оба required
+Добавь write_note в TOOLS и FUNCTIONS. Остальной код не меняй. Верни весь файл.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Три замка подряд: путь только внутри files (та же песочница, что у read_file), только файлы .txt, только после ответа «да». Ответ «нет» модель получает строкой и сообщает, что запись отменена. Подчеркните: модель не может сама нажать «да» — вопрос задаёт программа человеку в терминале.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2>Решение остаётся за <span class="acc">человеком</span></h2>
+  </div>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="font-variant-ligatures:none"><span class="kw">def</span> write_note(name, text):
+    target = (BASE / name).resolve()
+    <span class="kw">if</span> <span class="kw">not</span> target.is_relative_to(BASE):
+        <span class="kw">return</span> <span class="st">"доступ запрещён: писать можно только в папку files"</span>
+    <span class="kw">if</span> target.suffix.lower() != <span class="st">".txt"</span>:  <span class="cm"># ни .py, ни .env не перезаписать</span>
+        <span class="kw">return</span> <span class="st">"доступ запрещён: можно записывать только .txt"</span>
+    reply = input(f<span class="st">"🔐 Агент хочет записать {name}. Разрешить? (да/нет) "</span>)
+    <span class="kw">if</span> reply.strip().lower() != <span class="st">"да"</span>:  <span class="cm"># решает человек</span>
+        <span class="kw">return</span> <span class="st">"пользователь запретил запись"</span>
+    <span class="kw">with</span> open(target, <span class="st">"a"</span>, encoding=<span class="st">"utf-8"</span>) <span class="kw">as</span> f:  <span class="cm"># "a" — дописать в конец</span>
+        f.write(text + <span class="st">"\n"</span>)
+    <span class="kw">return</span> f<span class="st">"записано в {name}"</span></div>
+  </div>
+  <p>Разрешаем только <span class="code-chip">.txt</span> — значит, ни <span class="code-chip">agent.py</span>, ни <span class="code-chip">.env</span> агент не перезапишет. Режим <span class="code-chip">"a"</span> дописывает в конец: старые строки не стираются. Попросите: «Запиши в todo.txt: сделать алгебру» — агент спросит <span class="out-chip">🔐 Агент хочет записать todo.txt. Разрешить? (да/нет)</span>.</p>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Резервная правка. Ключ OpenWeather получает взрослый: при регистрации нужна отметка «мне 16 лет и больше». Новый ключ может заработать не сразу — до двух часов, поэтому заводите его заранее. Бесплатный тариф OpenWeather — 60 вызовов в минуту на аккаунт: если вся группа на одном ключе, не просите всех спросить погоду одновременно. Без ключа get_weather честно ответит, что ключа нет, а кубик работает у всех. Если requests не найден — pip install requests.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Правка 5 · резерв</div>
+      <h2>Погода и кубик — <span class="acc">новые инструменты</span></h2>
+    </div>
+    <p>Погода — из OpenWeather, как на уроке 8: добавьте в <span class="code-chip">.env</span> строку <span class="code-chip">OPENWEATHER_KEY=…</span> с ключом урока 8. Ключа нет — работает кубик. Описания в «ёлочках» можно переписать своими словами: главное, чтобы было ясно, что делает инструмент и когда его звать.</p>
+    <div class="prompt-card prompt-card--copy" style="margin-top:10px">
+      <span class="pc-tag">→ В тот же чат</span>
+      <div class="pc-text">Добавь ещё два инструмента (нужны import random и import requests) и внеси их в TOOLS и FUNCTIONS. Остальной код не меняй. Верни весь файл.
+1) get_weather(city): key = os.getenv("OPENWEATHER_KEY"); нет ключа — верни «нет ключа OpenWeather в .env». url = "https://api.openweathermap.org/data/2.5/weather", params = {"q": city, "appid": key, "units": "metric", "lang": "ru"}, r = requests.get(url, params=params, timeout=10). До r.json() проверь r.status_code: 401 — «ключ OpenWeather неверный или ещё не активирован», 404 — «город не найден», не 200 — f"ошибка OpenWeather: {r.status_code}". Верни f"{data['name']}: {data['main']['temp']} °C, {data['weather'][0]['description']}". Описание: «Погода сейчас в городе: температура в °C и описание. Название города — в именительном падеже, например Казань.»; city — string, required
+2) roll_dice(sides): sides = int(sides); если меньше 2 или больше 100 — «ошибка: граней должно быть от 2 до 100»; иначе str(random.randint(1, sides)). Описание: «Бросает кубик с sides гранями. Вызывай, когда просят бросить кубик или выбрать случайное число.»; sides — integer, required</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Параметр units со значением metric даёт градусы Цельсия, а перевод в Фаренгейты агент делает калькулятором — цепочка из двух инструментов, ради неё и нужен цикл правки 3. 401 у OpenWeather значит неверный или ещё не активированный ключ, 404 — чаще всего неверное название города. Без проверки кода ответа агент бы не упал — run_tool ловит любую ошибку инструмента, — но вместо причины модель увидела бы невнятный текст ошибки. Запрос по названию города OpenWeather пометил как устаревший, но он по-прежнему доступен.">
+<div class="sl-body" style="gap:12px">
+    <div>
+      <div class="q-label">Разбор кода</div>
+      <h2>Сначала <span class="acc">код ответа</span>, потом данные</h2>
+    </div>
+    <p>Новый инструмент = функция + описание в <span class="code-chip">TOOLS</span> + строка в <span class="code-chip">FUNCTIONS</span>. Код ответа проверяем до <span class="code-chip">r.json()</span>: при 401 или 404 нужных полей в ответе нет, и модель получила бы непонятную ошибку. А так она получит понятную строку и объяснит её словами.</p>
+    <div class="code-win">
+      <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+      <div class="code-body" style="font-size:14.5px;line-height:1.36;padding:8px 20px;font-variant-ligatures:none"><span class="kw">def</span> get_weather(city):
+    key = os.getenv(<span class="st">"OPENWEATHER_KEY"</span>)  <span class="cm"># ключ — тоже только в .env</span>
+    <span class="kw">if</span> <span class="kw">not</span> key:
+        <span class="kw">return</span> <span class="st">"нет ключа OpenWeather в .env"</span>
+    url = <span class="st">"https://api.openweathermap.org/data/2.5/weather"</span>
+    params = {<span class="st">"q"</span>: city, <span class="st">"appid"</span>: key, <span class="st">"units"</span>: <span class="st">"metric"</span>, <span class="st">"lang"</span>: <span class="st">"ru"</span>}
+    r = requests.get(url, params=params, timeout=10)
+    <span class="kw">if</span> r.status_code == 401:
+        <span class="kw">return</span> <span class="st">"ключ OpenWeather неверный или ещё не активирован"</span>
+    <span class="kw">if</span> r.status_code == 404:
+        <span class="kw">return</span> <span class="st">"город не найден"</span>
+    <span class="kw">if</span> r.status_code != 200:
+        <span class="kw">return</span> f<span class="st">"ошибка OpenWeather: {r.status_code}"</span>
+    data = r.json()
+    <span class="kw">return</span> f<span class="st">"{data['name']}: {data['main']['temp']} °C, {data['weather'][0]['description']}"</span></div>
+    </div>
+    <div class="ek-note" style="padding:10px 20px;font-size:16px">Спросите: «Какая погода в Казани и сколько это по Фаренгейту?» — агент возьмёт погоду, потом калькулятор. Без ключа: «Брось кубик на 20 граней».</div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Вопрос на главную идею урока (К1) и защиту (К3). Дайте 10–15 секунд, потом раскройте ответ. Свяжите с аналогией: ученик просит калькулятор, а учитель решает, дать ли.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Проверка · вопрос 1</div>
+      <h2>Изучите ситуацию и <span class="acc">ответьте</span></h2>
+    </div>
+    <div class="quiz-box" style="margin-top:10px">
+      <span class="q-num">Вопрос 1</span>
+      <p class="q-text">Миша боится: «Дам агенту инструменты — а вдруг нейросеть сама удалит мои файлы?» Что ему ответить?</p>
+      <div class="quiz-answer">
+        <button class="quiz-btn" type="button">Показать ответ</button>
+        <div class="quiz-reveal">
+          <p>Модель ничего не запускает сама: она только присылает просьбу в <span class="code-chip">tool_calls</span>. Выполняет ваша программа — и только функции из словаря <span class="code-chip">FUNCTIONS</span>. Инструмента удаления там нет, значит, и удалить нечем. А на рискованные действия программа ставит замки: читать можно только папку <span class="code-chip">files</span>, а запись из правки 4 — только после вашего «да».</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Вопрос на К2. Свяжите с «Полезным знанием» и третьей карточкой ДЗ: дома ученики повторят опыт Ани на своём агенте.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Проверка · вопрос 2</div>
+      <h2>Изучите ситуацию и <span class="acc">ответьте</span></h2>
+    </div>
+    <div class="quiz-box" style="margin-top:10px">
+      <span class="q-num">Вопрос 2</span>
+      <p class="q-text">Аня сократила описание <span class="code-chip">calculate</span> до одного слова «считает». Теперь на «Сколько будет 17% от 2350?» агент отвечает без серой строки 🔧. Что произошло и как это исправить?</p>
+      <div class="quiz-answer">
+        <button class="quiz-btn" type="button">Показать ответ</button>
+        <div class="quiz-reveal">
+          <p>Модель выбирает инструмент по описанию — кода функции она не видит. «Считает» не говорит, когда звать калькулятор, и модель решила посчитать сама. Хорошее описание отвечает на вопросы: что делает, когда звать («для любых вычислений, даже простых»), в каком виде передавать данные — и даёт пример <span class="code-chip">2*(3+4)</span>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Научите отличать два вида ошибок. Ошибка API роняет программу с traceback: в последней строке Error code и число. Ошибка инструмента программу не роняет: run_tool возвращает её модели строкой, и в серой строке видно, какой вызов не удался. Текст после дефиса в Error code — сообщение сервера DeepSeek, его точный вид в документации не приводится.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Отладка</div>
+      <h2>Читаем <span class="acc">ошибки</span> агента</h2>
+    </div>
+    <p>Traceback читаем снизу вверх: последняя строка — что случилось. Ошибки API в openai SDK выглядят как <span class="code-chip">Error code: 400 - …</span>: число — код ответа сервера.</p>
+    <div class="kv">
+      <div class="kv-row"><div class="k">400</div><div class="v">Запрос составлен неверно: проверьте порядок <span class="code-chip">messages</span> (ответ модели с <span class="code-chip">tool_calls</span> → по <span class="code-chip">tool</span> на каждый вызов) и список <span class="code-chip">TOOLS</span>.</div></div>
+      <div class="kv-row"><div class="k">401 / 402</div><div class="v">401 — неверный ключ в <span class="code-chip">.env</span>; 402 — на счёте нет денег.</div></div>
+      <div class="kv-row"><div class="k">429</div><div class="v">Слишком много запросов сразу. Подождите и повторите.</div></div>
+      <div class="kv-row"><div class="k" style="text-transform:none"><span class="code-chip">Connection error.</span></div><div class="v">Нет связи с сервером: проверьте интернет.</div></div>
+      <div class="kv-row"><div class="k" style="text-transform:none">«<span class="code-chip">ошибка: …</span>»</div><div class="v">Это не падение: инструмент вернул ошибку модели строкой (деление на ноль, нет файла), и модель объясняет её словами.</div></div>
+    </div>
+    <div class="ek-note">Непонятная ошибка — копируйте traceback целиком в тот же чат DeepSeek и просите объяснить и починить.</div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пять привычек урока, дайте сфотографировать слайд. Особо подчеркните первую и четвёртую: модель только просит, а всё, что приходит от модели, проверяем, прежде чем выполнить. Третья продолжает привычку урока 12 про три роли.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Запомните</div>
+      <h2>Привычки работы с <span class="acc">инструментами</span></h2>
+    </div>
+    <div class="kv">
+      <div class="kv-row" style="padding:22px 4px;grid-template-columns:330px 1fr"><div class="k" style="font-size:17px">01 · Модель просит — программа решает</div><div class="v" style="font-size:20px">Модель присылает <span class="code-chip">tool_calls</span>, а функцию запускает ваш код — и только из <span class="code-chip">FUNCTIONS</span>.</div></div>
+      <div class="kv-row" style="padding:22px 4px;grid-template-columns:330px 1fr"><div class="k" style="font-size:17px">02 · Описание — инструкция на коробке</div><div class="v" style="font-size:20px">Что делает, когда звать, в каком виде данные, пример. Модель видит только описание.</div></div>
+      <div class="kv-row" style="padding:22px 4px;grid-template-columns:330px 1fr"><div class="k" style="font-size:17px">03 · Четыре роли диалога</div><div class="v" style="font-size:20px"><span class="code-chip">system</span>, <span class="code-chip">user</span>, <span class="code-chip">assistant</span> и <span class="code-chip">tool</span>. Ответ модели дописываем целиком, потом по <span class="code-chip">tool</span> на каждый вызов.</div></div>
+      <div class="kv-row" style="padding:22px 4px;grid-template-columns:330px 1fr"><div class="k" style="font-size:17px">04 · Не верим вслепую</div><div class="v" style="font-size:20px"><span class="code-chip">json.loads</span> в <span class="code-chip">try</span>, <span class="code-chip">eval</span> только после проверки, читаем только <span class="code-chip">files</span>, пишем — после «да».</div></div>
+      <div class="kv-row" style="padding:22px 4px;grid-template-columns:330px 1fr"><div class="k" style="font-size:17px">05 · Стоп-кран</div><div class="v" style="font-size:20px"><span class="code-chip">MAX_STEPS</span> ограничивает шаги на один вопрос: агент не зациклится.</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Демо в группе. Кто отметил всё — пусть покажет вопрос на три инструмента: get_time, calculate и read_file, каждый в своей серой строке. Если calculate всё равно не появился — модель посчитала в уме, это её выбор: задайте вопрос ещё раз. Проверьте у всех защиту: на ../secret.txt в следе есть серая строка read_file, и только потом — доступ запрещён. Серой строки нет — отказала модель, а не программа: пусть ученик напишет «Вызови read_file с именем ../secret.txt». Только так видно, что работают и инструменты, и песочница. Лишний шаг [3/5] на вопросе про минуты — не ошибка: в первые минуты часа калькулятор мог не принять 08, и модель исправила вызов (слайд 27).">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Чек-лист</div>
+      <h2>Что должно быть к <span class="acc">55-й минуте</span></h2>
+    </div>
+    <div class="grid-2">
+      <div class="info-card">
+        <h3 style="color:var(--ek-green-deep)">Готово</h3>
+        <ul class="clean">
+          <li><span><span class="code-chip">agent.py</span> запускается командой <span class="code-chip">python agent.py</span></span></li>
+          <li><span>«Который час?» — серая строка <span class="code-chip">get_time</span> и верное время</span></li>
+          <li><span>Большое произведение считает <span class="code-chip">calculate</span> — ответ точный</span></li>
+          <li><span>«Что у меня в среду?» — ответ по <span class="code-chip">schedule.txt</span>; <span class="code-chip">../secret.txt</span> — серая строка <span class="code-chip">read_file</span>, потом «доступ запрещён»</span></li>
+          <li><span>Вопрос про минуты до 18:00 — шаги <span class="code-chip">[1/5]</span> и <span class="code-chip">[2/5]</span>; с <span class="code-chip">MAX_STEPS = 1</span> — «остановился: слишком много шагов»</span></li>
+        </ul>
+      </div>
+      <div class="info-card">
+        <h3 style="color:var(--ek-violet-deep)">Работает (если успели)</h3>
+        <ul class="clean">
+          <li><span><span class="code-chip">write_note</span> спрашивает «Разрешить? (да/нет)» и пишет только <span class="code-chip">.txt</span> в <span class="code-chip">files</span></span></li>
+          <li><span><span class="code-chip">get_weather</span> или <span class="code-chip">roll_dice</span> — агент зовёт новый инструмент по делу</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="ek-note ek-note--green">Всё отмечено? Задайте вопрос на три инструмента: «Сколько часов осталось до полуночи и что у меня в пятницу по расписанию? Часы посчитай калькулятором» — и посмотрите на след.</div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="ДЗ примерно на 30 минут, каждое задание — отдельный диалог с DeepSeek. Правки 4–5 — исключение: их промпты опираются на код из чата урока, поэтому в новом чате без вставленного agent.py DeepSeek напишет отдельный кусок или нового агента. В журнале та же ловушка, что в дневнике урока 7: если дописывать json.dump в конец файла, получится несколько JSON подряд и файл не прочитается — поэтому список читаем и сохраняем целиком. Журнал вызовов и испытание описаний разберём на слайде 3 урока 14: аргументы в журнале — аккуратный JSON по схеме, а формулировка описания решает, что выберет модель. Отсюда переход к ответам по образцу и в формате JSON.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Домашнее задание · около 30 минут</div>
+      <h2>Прокачайте <span class="acc">агента</span></h2>
+    </div>
+    <p>Три задания — каждое в новом чате DeepSeek: вставьте свой <span class="code-chip">agent.py</span> и опишите задачу.</p>
+    <div class="grid-3">
+      <div class="info-card">
+        <h3>Свой инструмент</h3>
+        <p>Офлайн-инструмент на выбор: случайный выбор из списка, перевод единиц (например, сантиметры в дюймы) или свой. Описание пишете сами — проверьте, что агент зовёт инструмент по делу, а на другие вопросы не зовёт.</p>
+      </div>
+      <div class="info-card">
+        <h3>Журнал вызовов</h3>
+        <p>В <span class="code-chip">tools_log.json</span> — список записей: время, имя, аргументы, результат. На каждый вызов инструмента агент читает список (<span class="code-chip">json.load</span>), добавляет запись и сохраняет весь список (<span class="code-chip">json.dump</span> с <span class="code-chip">ensure_ascii=False</span> и <span class="code-chip">indent=2</span>), как в дневнике урока 7. Пришлите 3–5 записей.</p>
+      </div>
+      <div class="info-card">
+        <h3>Испытание описаний</h3>
+        <p>Сократите описание <span class="code-chip">calculate</span> до «считает», найдите вопрос, на котором агент перестал звать калькулятор или выбрал не тот инструмент, и верните хорошее описание. Пришлите «до» и «после».</p>
+      </div>
+    </div>
+    <div class="ek-note ek-note--red">Недоделанные правки 4–5 — тоже дома: в чате урока, а если его нет — в новом чате, вставив свой <span class="code-chip">agent.py</span> и под ним промпт правки. На скриншотах ключ скрывайте; в журнал и в папку <span class="code-chip">files</span> не кладите личное.</div>
+  </div>
+</section>
+
+<section class="slide slide--green"
+  data-notes="Закройте урок. Сегодня агент узнаёт время, точно считает и читает файлы, а программа защищает компьютер: песочница files, калькулятор без голого eval, лимит шагов и вопрос перед записью. Модель только просит — решает программа. На уроке 14 — ответы по примерам и в JSON: журнал вызовов из ДЗ покажет, что модель уже умеет присылать аккуратный JSON по схеме.">
+<div class="sl-orbit">
+    <i class="sl-ring"></i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:75px;top:20px;width:150px;height:150px;transform:rotate(-10deg)"><use href="#ek-i-trophy"/></svg>
+    <i class="sl-letter" style="left:466px;top:13px;width:78px;height:78px;--fs:36px">T</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1040px;top:15px;width:130px;height:130px;transform:rotate(12deg)"><use href="#ek-i-heart"/></svg>
+    <i class="sl-letter" style="left:68px;top:268px;width:100px;height:100px;--fs:46px">S</i>
+    <i class="sl-letter" style="left:1137px;top:327px;width:95px;height:95px;--fs:44px">O</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:102px;top:532px;width:125px;height:125px;transform:rotate(-15deg)"><use href="#ek-i-star"/></svg>
+    <i class="sl-letter" style="left:340px;top:600px;width:78px;height:78px;--fs:36px">L</i>
+    <i class="sl-letter" style="left:726px;top:613px;width:78px;height:78px;--fs:36px">O</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1045px;top:540px;width:110px;height:110px;transform:rotate(8deg)"><use href="#ek-i-gem"/></svg>
+  </div>
+  <div class="cover-center">
+    <div class="bubble">
+      <h1>До встречи<br>на уроке 14!</h1>
+      <p>Сегодня нейросеть научилась просить инструменты — часы, калькулятор, файлы, — а ваша программа решала, что разрешить. На уроке 14 научим модель отвечать по образцу и строго в формате JSON.</p>
+    </div>
+  </div>
+</section>
+</main>
+
+<div class="notes" id="notes">
+  <div class="notes__header">Заметки преподавателя &middot; N — скрыть</div>
+  <div class="notes__body" id="notesBody">—</div>
+</div>
+
+<div class="hint"><kbd>←</kbd><kbd>→</kbd> слайды &middot; <kbd>N</kbd> заметки &middot; <kbd>F</kbd> весь экран</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="ek-i-trophy" viewBox="0 0 100 100"><path fill="currentColor" d="M24 16h52v12h8c6 0 10 4 10 10 0 15-11 25-23 27-3 5-8 9-14 10v8h14c4 0 7 3 7 7v4H22v-4c0-4 3-7 7-7h14v-8c-6-1-11-5-14-10C17 63 6 53 6 38c0-6 4-10 10-10h8V16zM24 36h-7c-2 0-4 2-4 4 0 8 5 15 12 18-1-5-1-10-1-16v-6zM76 36v6c0 6 0 11-1 16 7-3 12-10 12-18 0-2-2-4-4-4h-7z"/></symbol>
+<symbol id="ek-i-heart" viewBox="0 0 100 100"><path fill="currentColor" d="M50 88C28 72 10 56 10 38 10 24 21 14 34 14c6 0 12 3 16 8 4-5 10-8 16-8 13 0 24 10 24 24 0 18-18 34-40 50z"/></symbol>
+<symbol id="ek-i-star" viewBox="0 0 100 100"><path fill="currentColor" d="M50 8l12 27 29 3-22 20 6 29-25-15-25 15 6-29L9 38l29-3z"/></symbol>
+<symbol id="ek-i-gem" viewBox="0 0 100 100"><path fill="currentColor" d="M30 12h40l18 24-38 52L12 36zM36 20l-12 16h20zM64 20l-8 16h20zM50 22l-9 14h18zM26 44l20 30-8-30zM62 44l-8 30 20-30zM46 44h8l-4 26z"/></symbol>
+</defs></svg>
+
+<script>
+/* ============ Автомасштаб сцены ============ */
+(function(){
+  'use strict';
+  var stage = document.getElementById('deck');
+  function fit(){
+    var w = window.innerWidth, h = window.innerHeight;
+    if (!w || !h) return;
+    var s = Math.min(w / 1320, h / 780);
+    if (document.fullscreenElement) s = Math.min(w / 1280, h / 720);
+    stage.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+    stage.style.borderRadius = document.fullscreenElement ? '0' : '18px';
+  }
+  window.addEventListener('resize', fit);
+  document.addEventListener('fullscreenchange', fit);
+  fit();
+})();
+
+/* ============ Навигация по слайдам ============ */
+(function(){
+  'use strict';
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var total = slides.length;
+  var idx = 0;
+  document.getElementById('total').textContent = total;
+
+  var progressEl = document.getElementById('progress');
+  var currentEl = document.getElementById('current');
+  var notesPanel = document.getElementById('notes');
+  var notesBody = document.getElementById('notesBody');
+
+  slides.forEach(function(s, i){
+    if (s.classList.contains('slide--content')) s.setAttribute('data-page', i + 1);
+  });
+
+  function render(){
+    slides.forEach(function(s, i){
+      s.classList.remove('active', 'prev');
+      if (i === idx) s.classList.add('active');
+      else if (i < idx) s.classList.add('prev');
+    });
+    progressEl.style.width = ((idx + 1) / total * 100).toFixed(2) + '%';
+    currentEl.textContent = idx + 1;
+    notesBody.textContent = slides[idx].getAttribute('data-notes') || '—';
+  }
+
+  function go(n){ idx = Math.max(0, Math.min(total - 1, n)); render(); }
+  function next(){ go(idx + 1); }
+  function prev(){ go(idx - 1); }
+
+  document.addEventListener('keydown', function(e){
+    var active = document.activeElement;
+    if (active && (active.isContentEditable || active.tagName === 'TEXTAREA' || active.tagName === 'INPUT')) return;
+    switch (e.key){
+      case 'ArrowRight': case 'PageDown': case ' ':
+        e.preventDefault(); next(); break;
+      case 'ArrowLeft': case 'PageUp':
+        e.preventDefault(); prev(); break;
+      case 'Home': e.preventDefault(); go(0); break;
+      case 'End': e.preventDefault(); go(total - 1); break;
+      case 'f': case 'F': case 'а': case 'А':
+        e.preventDefault();
+        if (!document.fullscreenElement){ if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen(); }
+        else if (document.exitFullscreen) document.exitFullscreen();
+        break;
+      case 'n': case 'N': case 'т': case 'Т':
+        e.preventDefault(); notesPanel.classList.toggle('active'); break;
+      case 'Escape':
+        if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
+        notesPanel.classList.remove('active'); break;
+    }
+  });
+
+  var tx = 0, ty = 0;
+  document.addEventListener('touchstart', function(e){ tx = e.changedTouches[0].screenX; ty = e.changedTouches[0].screenY; }, { passive: true });
+  document.addEventListener('touchend', function(e){
+    var dx = e.changedTouches[0].screenX - tx, dy = e.changedTouches[0].screenY - ty;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)){ if (dx < 0) next(); else prev(); }
+  }, { passive: true });
+
+  document.addEventListener('click', function(e){
+    if (e.target.closest('a,button,input,textarea,code,pre,[contenteditable],.code-win,.term,.prompt-card,.quiz-box,.notes')) return;
+    var x = e.clientX, w = window.innerWidth;
+    if (x < w * 0.25) prev();
+    else if (x > w * 0.75) next();
+  });
+
+  render();
+})();
+
+/* ============ Квизы: показать ответ ============ */
+(function(){
+  'use strict';
+  Array.prototype.slice.call(document.querySelectorAll('.quiz-btn')).forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var box = btn.closest('.quiz-box');
+      var reveal = box && box.querySelector('.quiz-reveal');
+      if (!reveal) return;
+      var shown = reveal.classList.toggle('show');
+      btn.textContent = shown ? 'Скрыть ответ' : 'Показать ответ';
+    });
+  });
+})();
+</script>
+</body>
+</html>

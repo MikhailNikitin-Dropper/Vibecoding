@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Урок 15 — Программа, которая помнит разговоры | Eduson Kids</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+/* ============ Дизайн-токены Eduson Kids ============ */
+:root{
+  --ek-violet:#8C7FF6; --ek-violet-soft:#A79EF9; --ek-violet-deep:#6F61E8; --ek-violet-bg:#F0EEFE;
+  --ek-green:#3DF79D; --ek-green-soft:#7BF9BD; --ek-green-mint:#C9F7E3; --ek-green-pale:#E7FDF2; --ek-green-deep:#0FBF6E;
+  --ek-ink:#17171C; --ek-gray:#8F8F98; --ek-gray-light:#EFEFF2; --ek-line:#E3E3EA;
+  --ek-red:#FF6B6B; --ek-red-soft:#FF8A8A; --ek-red-deep:#E04848; --ek-red-pale:#FFECEC;
+  --f-head:'Inter Tight','Inter','Segoe UI',system-ui,sans-serif;
+  --f-body:'Inter','Segoe UI',system-ui,sans-serif;
+  --f-mono:'JetBrains Mono','Cascadia Mono','Consolas',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--f-body);background:#E9E9F1;color:var(--ek-ink);-webkit-font-smoothing:antialiased}
+
+/* ============ Хром: прогресс, счётчик, подсказка ============ */
+.progress{position:fixed;top:0;left:0;right:0;height:4px;background:rgba(23,23,28,.08);z-index:100}
+.progress__fill{height:100%;width:0%;background:var(--ek-violet);transition:width 300ms ease}
+.counter{position:fixed;top:14px;right:18px;z-index:90;font:600 13px var(--f-body);color:var(--ek-gray);background:#fff;border:1px solid var(--ek-line);padding:6px 14px;border-radius:999px;font-variant-numeric:tabular-nums}
+.counter b{color:var(--ek-ink)}
+.hint{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:90;font:500 11px var(--f-body);color:var(--ek-gray);background:#fff;border:1px solid var(--ek-line);padding:6px 14px;border-radius:999px;letter-spacing:.03em}
+.hint kbd{font-family:var(--f-mono);background:var(--ek-gray-light);padding:1px 6px;border-radius:4px;font-size:10px;margin:0 2px;color:var(--ek-ink)}
+
+/* ============ Сцена 1280×720 ============ */
+.stage{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform:translate(-50%,-50%);border-radius:18px;overflow:hidden;box-shadow:0 30px 90px rgba(23,23,28,.18);background:#fff}
+.slide{position:absolute;inset:0;background:#fff;opacity:0;transform:translateY(26px);transition:opacity 280ms ease,transform 280ms ease;pointer-events:none;font-family:var(--f-head)}
+.slide.active{opacity:1;transform:none;pointer-events:auto}
+.slide.prev{transform:translateY(-26px)}
+.slide--violet{background:var(--ek-violet)}
+.slide--green{background:var(--ek-green)}
+
+/* Номер страницы на контентных слайдах */
+.slide--content::after{content:attr(data-page);position:absolute;right:54px;bottom:30px;font:800 30px/1 var(--f-head);color:var(--ek-ink);opacity:.5}
+
+/* ============ Декор «Орбита» ============ */
+.sl-orbit{position:absolute;inset:0;pointer-events:none}
+.slide--violet .sl-orbit{--decor:#A79EF9;--letter:#C4BEFA}
+.slide--green .sl-orbit{--decor:#7BF9BD;--letter:#C4FCE0}
+.sl-ring{position:absolute;left:50%;top:50%;width:1040px;height:660px;transform:translate(-50%,-50%);border:3px solid var(--decor);border-radius:50%;opacity:.9}
+.sl-ico{position:absolute;color:var(--decor)}
+.sl-letter{position:absolute;border-radius:50%;background:var(--decor);color:var(--letter);display:flex;align-items:center;justify-content:center;font:800 var(--fs,40px)/1 var(--f-head);font-style:normal}
+
+/* ============ Каверы: карточка-окно и спич-бабл ============ */
+.cover-center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2}
+.cover-card{position:relative;width:860px;background:#fff;border-radius:28px;box-shadow:0 30px 80px rgba(23,23,28,.18)}
+.card-top{display:flex;justify-content:space-between;align-items:center;padding:24px 30px 0}
+.win-dots{display:flex;gap:9px}
+.win-dots i{width:13px;height:13px;border-radius:50%;background:var(--ek-violet)}
+.win-close{position:relative;width:22px;height:22px}
+.win-close::before,.win-close::after{content:"";position:absolute;left:-1px;top:9px;width:24px;height:4px;border-radius:2px;background:var(--ek-violet)}
+.win-close::before{transform:rotate(45deg)}
+.win-close::after{transform:rotate(-45deg)}
+.cover-card .badge{position:absolute;left:50%;top:-30px;transform:translateX(-50%) rotate(-4deg)}
+.cover-card h1{padding:26px 64px 30px;text-align:center;font:800 50px/1.14 var(--f-head);letter-spacing:-.015em;color:var(--ek-ink)}
+.cover-card .cover-sub{padding:0 80px 34px;text-align:center;font:500 19px/1.5 var(--f-body);color:#3C3C45}
+.cover-card .cover-chips{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;padding:0 40px 40px}
+.bubble{position:relative;width:660px;background:#EFEFF1;border-radius:30px;padding:56px 70px;text-align:center}
+.bubble::after{content:"";position:absolute;right:56px;bottom:-24px;width:0;height:0;border-left:38px solid transparent;border-top:28px solid #EFEFF1}
+.bubble h1{font:800 42px/1.25 var(--f-head);letter-spacing:-.01em;color:var(--ek-ink)}
+.bubble p{margin-top:16px;font:500 18px/1.5 var(--f-body);color:#3C3C45}
+
+/* ============ Стикер-бейдж и чипы ============ */
+.badge{display:inline-block;background:var(--ek-green);color:var(--ek-ink);font:800 24px/1 var(--f-head);padding:13px 22px;border-radius:13px;transform:rotate(-3deg);box-shadow:0 10px 24px rgba(23,23,28,.10)}
+.badge--violet{background:var(--ek-violet);color:#fff}
+.badge--sm{font-size:16px;padding:9px 16px;border-radius:10px}
+.chip{display:inline-block;font:700 14px/1 var(--f-body);padding:8px 14px;border-radius:999px;background:var(--ek-violet-bg);color:var(--ek-violet-deep)}
+.chip--green{background:var(--ek-green-pale);color:var(--ek-green-deep)}
+.chip--gray{background:var(--ek-gray-light);color:#3C3C45}
+
+/* ============ Контентные слайды ============ */
+.sl-body{position:absolute;inset:0;padding:56px 80px 62px;display:flex;flex-direction:column;gap:16px;overflow:hidden}
+h2{font:800 38px/1.16 var(--f-head);letter-spacing:-.01em;color:var(--ek-ink)}
+.acc{color:var(--ek-violet-deep)}
+.sl-body>p, .col p{font:500 18px/1.5 var(--f-body);color:#3C3C45}
+.code-chip{font-family:var(--f-mono);font-weight:700;font-size:.88em;background:var(--ek-violet-bg);color:var(--ek-violet-deep);padding:2px 8px;border-radius:8px;white-space:nowrap}
+.hl{color:var(--ek-violet-deep);font-weight:700}
+.out-chip{font-family:var(--f-mono);font-weight:700;font-size:.88em;background:var(--ek-green-pale);color:#0B7A48;padding:2px 8px;border-radius:8px;white-space:nowrap}
+
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;align-items:stretch}
+
+.info-card{background:#F5F5F9;border-radius:18px;padding:18px 22px;font:500 16px/1.55 var(--f-body);color:#3C3C45}
+.info-card h3{font:800 19px/1.3 var(--f-head);color:var(--ek-ink);margin-bottom:8px}
+.ek-note{background:var(--ek-violet-bg);border-left:4px solid var(--ek-violet);border-radius:0 14px 14px 0;padding:14px 20px;font:600 17px/1.5 var(--f-body);color:#3C3560}
+.ek-note--green{background:var(--ek-green-pale);border-left-color:var(--ek-green-deep);color:#0B5B39}
+.ek-note--red{background:var(--ek-red-pale);border-left-color:var(--ek-red);color:#7A2E2E}
+
+ul.clean{list-style:none;display:flex;flex-direction:column;gap:10px}
+ul.clean li{display:flex;gap:14px;align-items:flex-start;font:500 17.5px/1.5 var(--f-body);color:#3C3C45}
+ul.clean li::before{content:'—';flex:0 0 auto;color:var(--ek-violet-deep);font-weight:800}
+
+ol.steps{list-style:none;counter-reset:step;display:flex;flex-direction:column;gap:12px}
+ol.steps li{counter-increment:step;display:flex;gap:16px;align-items:center;padding:14px 20px;background:#F5F5F9;border-radius:16px;font:500 17.5px/1.45 var(--f-body);color:#2E2E36}
+ol.steps li::before{content:counter(step);flex:0 0 40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:var(--ek-violet);font:800 18px var(--f-head);color:#fff}
+ol.steps li:last-child::before{background:var(--ek-green);color:var(--ek-ink)}
+ol.steps.steps--tight{gap:8px}
+ol.steps.steps--tight li{padding:9px 16px;font-size:15.5px;gap:12px}
+ol.steps.steps--tight li::before{flex-basis:32px;height:32px;font-size:14px}
+
+.q-label{font:700 13px/1 var(--f-head);letter-spacing:.08em;text-transform:uppercase;color:var(--ek-gray)}
+
+/* ============ План занятия (agenda) ============ */
+.agenda{display:flex;flex-direction:column;gap:8px}
+.agenda-row{display:flex;gap:16px;align-items:center;padding:10px 18px;background:#F5F5F9;border-radius:14px}
+.agenda-row .t{flex:0 0 84px;text-align:center;font:800 14px/1 var(--f-mono);color:var(--ek-ink);background:var(--ek-green);border-radius:999px;padding:8px 0}
+.agenda-row .tt{font:700 16.5px/1.3 var(--f-head);color:var(--ek-ink)}
+.agenda-row .dd{font:500 14px/1.4 var(--f-body);color:var(--ek-gray)}
+
+/* ============ Ключ-значение (привычки, шпаргалки) ============ */
+.kv{display:flex;flex-direction:column}
+.kv-row{display:grid;grid-template-columns:250px 1fr;gap:18px;align-items:start;padding:11px 4px;border-bottom:1.5px solid var(--ek-line)}
+.kv-row:last-child{border-bottom:none}
+.kv-row .k{font:800 14px/1.35 var(--f-head);letter-spacing:.05em;text-transform:uppercase;color:var(--ek-violet-deep);padding-top:2px}
+.kv-row .v{font:500 16.5px/1.5 var(--f-body);color:#3C3C45}
+
+/* ============ Окно кода (статичное) ============ */
+.code-win{background:#fff;border:2.5px solid var(--ek-ink);border-radius:16px;overflow:hidden;font-family:var(--f-mono);box-shadow:10px 10px 0 rgba(140,127,246,.14)}
+.code-head{display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:2px solid var(--ek-ink)}
+.code-head .win-dots i{width:11px;height:11px}
+.lang-badge{font:700 11px var(--f-mono);letter-spacing:.14em;color:var(--ek-gray)}
+.code-body{padding:14px 20px;font:500 14.5px/1.6 var(--f-mono);color:var(--ek-ink);white-space:pre;overflow:auto;max-height:400px;tab-size:4}
+.code-body .cm{color:var(--ek-gray)}
+.code-body .st{color:var(--ek-green-deep)}
+.code-body .kw{color:var(--ek-violet-deep);font-weight:700}
+
+/* ============ Терминал (тёмное окно) ============ */
+.term{background:var(--ek-ink);border-radius:16px;overflow:hidden;font-family:var(--f-mono);box-shadow:10px 10px 0 rgba(23,23,28,.12)}
+.term-head{display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,.14)}
+.term-head .win-dots i{width:11px;height:11px;background:var(--ek-green)}
+.term-head .lang-badge{color:rgba(255,255,255,.5)}
+.term-body{padding:14px 20px;font:500 14.5px/1.62 var(--f-mono);color:var(--ek-green);white-space:pre-wrap;word-break:break-word;overflow:auto;max-height:420px}
+.term-body .usr{color:#fff}
+.term-body .dim{color:rgba(255,255,255,.55)}
+
+/* ============ Промпт-карточка (диалог с DeepSeek) ============ */
+.prompt-card{position:relative;background:var(--ek-violet-bg);border:2.5px solid var(--ek-violet);border-radius:18px;padding:20px 26px 18px;box-shadow:10px 10px 0 rgba(140,127,246,.18)}
+.prompt-card .pc-tag{position:absolute;top:-16px;left:22px;background:var(--ek-violet);color:#fff;font:800 14px/1 var(--f-head);padding:9px 16px;border-radius:10px;transform:rotate(-2deg);box-shadow:0 8px 18px rgba(23,23,28,.12)}
+.prompt-card .pc-text{margin-top:6px;font:500 15px/1.62 var(--f-mono);color:#2E2A52;white-space:pre-wrap}
+.prompt-card .pc-text .hl{color:var(--ek-violet-deep)}
+.prompt-card--copy .pc-tag{background:var(--ek-green);color:var(--ek-ink)}
+
+/* ============ Сравнение (vs) ============ */
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:stretch}
+.vs-col{border-radius:18px;padding:20px 24px}
+.vs-col h4{font:800 15px/1 var(--f-head);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
+.vs-col p{font:500 16px/1.55 var(--f-body)}
+.vs-col .note{margin-top:12px;font:500 13.5px/1.4 var(--f-body);opacity:.75}
+.vs-col--plain{background:var(--ek-gray-light);color:#3C3C45}
+.vs-col--plain h4{color:var(--ek-gray)}
+.vs-col--win{background:var(--ek-green-pale);color:#124F35;border:2px solid var(--ek-green-soft)}
+.vs-col--win h4{color:var(--ek-green-deep)}
+
+/* ============ Квиз с раскрытием ответа ============ */
+.quiz-box{background:#F5F5F9;border:2.5px solid var(--ek-ink);border-radius:18px;padding:22px 26px;box-shadow:10px 10px 0 rgba(61,247,157,.25)}
+.quiz-box .q-num{display:inline-block;background:var(--ek-green);color:var(--ek-ink);font:800 13px/1 var(--f-head);letter-spacing:.08em;text-transform:uppercase;padding:8px 14px;border-radius:999px;margin-bottom:14px}
+.quiz-box .q-text{font:700 21px/1.42 var(--f-head);color:var(--ek-ink)}
+.quiz-answer{margin-top:16px}
+.quiz-btn{border:0;border-radius:12px;padding:12px 22px;font:800 15px/1 var(--f-head);cursor:pointer;background:var(--ek-violet);color:#fff;transition:background .15s}
+.quiz-btn:hover{background:var(--ek-violet-deep)}
+.quiz-reveal{display:none;margin-top:14px;background:var(--ek-green-pale);border-left:4px solid var(--ek-green-deep);border-radius:0 14px 14px 0;padding:14px 20px;font:500 16.5px/1.55 var(--f-body);color:#0B5B39}
+.quiz-reveal.show{display:block}
+.quiz-reveal p+p{margin-top:8px}
+
+/* Появление контента */
+.slide.active .info-card,.slide.active ul.clean li,.slide.active ol.steps li,.slide.active .grid-2>*,.slide.active .grid-3>*,.slide.active .agenda-row,.slide.active .kv-row{animation:reveal 450ms ease backwards}
+.slide.active .info-card:nth-child(2),.slide.active ul.clean li:nth-child(2),.slide.active ol.steps li:nth-child(2),.slide.active .grid-2>*:nth-child(2),.slide.active .grid-3>*:nth-child(2),.slide.active .agenda-row:nth-child(2),.slide.active .kv-row:nth-child(2){animation-delay:80ms}
+.slide.active ul.clean li:nth-child(3),.slide.active ol.steps li:nth-child(3),.slide.active .grid-3>*:nth-child(3),.slide.active .agenda-row:nth-child(3),.slide.active .kv-row:nth-child(3){animation-delay:160ms}
+.slide.active ol.steps li:nth-child(4),.slide.active .agenda-row:nth-child(4),.slide.active .kv-row:nth-child(4){animation-delay:240ms}
+.slide.active ol.steps li:nth-child(5),.slide.active .agenda-row:nth-child(5),.slide.active .kv-row:nth-child(5){animation-delay:320ms}
+.slide.active .agenda-row:nth-child(6),.slide.active ol.steps li:nth-child(6),.slide.active .kv-row:nth-child(6){animation-delay:400ms}
+.slide.active .agenda-row:nth-child(7),.slide.active ol.steps li:nth-child(7),.slide.active .kv-row:nth-child(7){animation-delay:480ms}
+@keyframes reveal{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@media (prefers-reduced-motion:reduce){.slide.active .info-card,.slide.active ul.clean li,.slide.active ol.steps li,.slide.active .grid-2>*,.slide.active .grid-3>*,.slide.active .agenda-row,.slide.active .kv-row{animation:none}}
+
+/* ============ Заметки преподавателя ============ */
+.notes{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--ek-line);box-shadow:0 -16px 40px rgba(23,23,28,.10);padding:20px 40px;z-index:95;max-height:40vh;overflow-y:auto;transform:translateY(100%);transition:transform 300ms ease}
+.notes.active{transform:translateY(0)}
+.notes__header{font:800 11px var(--f-head);letter-spacing:.2em;text-transform:uppercase;color:var(--ek-violet-deep);margin-bottom:8px}
+.notes__body{font:500 15px/1.55 var(--f-body);color:#3C3C45}
+
+:focus-visible{outline:3px solid var(--ek-violet-soft);outline-offset:2px;border-radius:6px}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(23,23,28,.15);border-radius:4px}
+</style>
+</head>
+<body>
+
+<div class="progress"><div class="progress__fill" id="progress"></div></div>
+<div class="counter"><b id="current">1</b> / <span id="total">38</span></div>
+
+<main class="stage" id="deck">
+<section class="slide slide--violet active"
+  data-notes="Поприветствуйте. Сегодня соберём AI-друга friend.py: Макс из урока 12 научится помнить разговор после закрытия программы. Три вида памяти урока: сам разговор, пересказ старой части и записная книжка фактов. Второй провайдер — Kimi: тот же openai SDK, другие адрес, модель и ключ. Ключ Kimi есть только у преподавателя, поэтому всё, что делает Kimi, группа видит на вашем экране, а у учеников тот же код работает на DeepSeek. Если ключа Kimi нет и у вас — весь урок идёт на DeepSeek, код не меняется. Обязательный минимум — каркас и правки 1, 3, 4: память между запусками, пересказ и записная книжка. Правку 2 вы показываете на своём экране, правка 5 — резерв.">
+<div class="sl-orbit">
+    <i class="sl-ring"></i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:75px;top:20px;width:150px;height:150px;transform:rotate(-10deg)"><use href="#ek-i-trophy"/></svg>
+    <i class="sl-letter" style="left:466px;top:13px;width:78px;height:78px;--fs:36px">T</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1040px;top:15px;width:130px;height:130px;transform:rotate(12deg)"><use href="#ek-i-heart"/></svg>
+    <i class="sl-letter" style="left:68px;top:268px;width:100px;height:100px;--fs:46px">O</i>
+    <i class="sl-letter" style="left:1137px;top:327px;width:95px;height:95px;--fs:44px">K</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:102px;top:532px;width:125px;height:125px;transform:rotate(-15deg)"><use href="#ek-i-star"/></svg>
+    <i class="sl-letter" style="left:726px;top:613px;width:78px;height:78px;--fs:36px">E</i>
+    <i class="sl-letter" style="left:380px;top:620px;width:70px;height:70px;--fs:32px">N</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1045px;top:540px;width:110px;height:110px;transform:rotate(8deg)"><use href="#ek-i-gem"/></svg>
+  </div>
+  <div class="cover-center">
+    <div class="cover-card">
+      <div class="badge">Урок №15</div>
+      <div class="card-top"><span class="win-dots"><i></i><i></i><i></i></span><span class="win-close"></span></div>
+      <h1>Программа, которая<br>помнит разговоры</h1>
+      <p class="cover-sub">Соберём AI-друга Макса: он помнит разговор между запусками, сжимает старое в короткий пересказ и записывает важное о собеседнике в записную книжку.</p>
+      <div class="cover-chips"><span class="chip chip--green">DeepSeek API</span><span class="chip">Kimi API</span><span class="chip chip--gray">Память</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Теории — минимум: с 10-й минуты каждый делает разминку. Контрольные точки: к 17-й минуте у всех запущен warmup.py и разобран слайд 11; к 28-й — каркас печатает серый счётчик, а после перезапуска Макс всё забыл; к 33-й — после правки 1 Макс помнит разговор после перезапуска; к 35-й — вы показали правку 2 на своём экране; к 43-й — у всех появилась строка 🗜 с пересказом; к 51-й — строка 📝 и команда /facts. Правку 2 ученики не делают: вы показываете её за 2 минуты, а они после правки 1 сразу дают промпт правки 3 — он написан так, что работает и без правки 2. Отстаёте больше чем на 3 минуты — разборы кода на слайдах 22, 27 и 29 сократите до одной главной мысли. Каждая правка — полная перегенерация friend.py. Перед уроком обязательно: 1) прогоните warmup.py со своим KIMI_KEY и засеките, сколько секунд Kimi отвечает: K3 размышляет всегда, а время ответа документация не называет. 2) Соберите демо — финальную версию friend.py с историей и фактами выдуманного героя — в отдельной папке, например vibe-coding/lesson-15-demo, и положите туда свой .env. Тогда каркас, который вы соберёте вместе с группой в lesson-15, и его history.json демо не затрут. В демо-папке поменяйте в history.json дату last_session на вчерашнюю — это демо для слайда 14 и финала. На слайде 14 вы ответите Максу, и программа запишет сегодняшнюю дату, поэтому перед финальным демо снова поставьте вчерашнюю. Расход: после правки 4 каждая реплика — два запроса, а каждые две реплики добавляют запрос пересказа. По нашей оценке, урок группы из 30 человек на DeepSeek — доли доллара. Цены Kimi в документации получить не удалось — посмотрите их в своей консоли Kimi.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">План занятия</div>
+    <h2>Как пройдут <span class="acc">60 минут</span></h2>
+  </div>
+  <div class="agenda" style="margin-top:10px">
+    <div class="agenda-row"><span class="t">0–5</span><div><div class="tt">Разбор ДЗ</div><div class="dd">Дневник moods.json и facts.py: что помнит программа, а что нет.</div></div></div>
+    <div class="agenda-row"><span class="t">5–10</span><div><div class="tt">Окно, токены и три вида памяти</div><div class="dd">Почему каждый запрос несёт всю историю.</div></div></div>
+    <div class="agenda-row"><span class="t">10–17</span><div><div class="tt">Разминка warmup.py</div><div class="dd">Один вопрос — DeepSeek и Kimi, счёт токенов туда и обратно.</div></div></div>
+    <div class="agenda-row"><span class="t">17–28</span><div><div class="tt">Каркас friend.py</div><div class="dd">Друг Макс со стримингом и счётчиком токенов.</div></div></div>
+    <div class="agenda-row"><span class="t">28–51</span><div><div class="tt">Правки через диалог</div><div class="dd">Обязательно: память между запусками → пересказ → записная книжка; окно — на экране преподавателя. Резерв: приветствие по памяти и /forget.</div></div></div>
+    <div class="agenda-row"><span class="t">51–55</span><div><div class="tt">Вопросы и отладка</div><div class="dd">Квизы и ошибки файлов памяти.</div></div></div>
+    <div class="agenda-row"><span class="t">55–60</span><div><div class="tt">Демо «день 1 / день 2»</div><div class="dd">Макс помнит вашего выдуманного героя после перезапуска.</div></div></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="На весь блок 5 минут. Откройте 2–3 работы — файлы и переписку с DeepSeek — и разбирайте диалог с нейросетью, а не только результат. moods.json открывайте перед группой только с согласия автора: там могут быть настоящие чувства. В дневнике главное: данные пережили закрытие программы, потому что лежат в файле. Если дневник не читается с ошибкой Extra data — в файле несколько JSON подряд, это ловушка из уроков 13–14. Пустой файл даёт Expecting value. В facts.py спросите, что пришло на фразу без фактов: пустой словарь, пустые поля или выдуманные значения? Сегодня в промпте фактов мы прямо напишем, что возвращать, если фактов нет. Сегодняшняя записная книжка — продолжение facts.py: поля name, age, likes и вместо fears — plans, планы собеседника. Задание «Свой классификатор» разберите коротко, если осталось время. Мостик: у нас есть файлы, которые помнят, и извлечение фактов в JSON. Не хватает друга, который этим пользуется.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор ДЗ урока 14</div>
+    <h2>Что <span class="acc">помнят</span> ваши программы</h2>
+  </div>
+  <p>Открываем 2–3 присланные работы: дневник <span class="code-chip">moods.json</span>, факты из <span class="code-chip">facts.py</span> и свой классификатор.</p>
+  <div class="grid-3" style="margin-top:20px">
+    <div class="info-card"><h3>Дневник настроения</h3>Закрыли программу, открыли завтра — записи на месте: файл помнит. Не читается с ошибкой <span class="code-chip">Extra data</span>? Записи дописывали в конец файла. Чиним: читаем список целиком, добавляем запись, сохраняем целиком.</div>
+    <div class="info-card"><h3>Достаньте факты</h3>JSON с <span class="code-chip">name</span>, <span class="code-chip">age</span>, <span class="code-chip">likes</span>, <span class="code-chip">fears</span>. Проверьте: <span class="code-chip">age</span> — число <span class="code-chip">13</span>, а не строка <span class="code-chip">"13"</span>. Что вернула модель на фразу, где фактов нет?</div>
+    <div class="info-card"><h3>Вывод</h3>Файлы помнят, модель — нет. Собеседник урока 12 после <span class="code-chip">/exit</span> забывает даже ваше имя. Сегодня соединим это в друга, который помнит разговор, а факты хранит в записной книжке.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Свяжите с уроком 12: там Макс помнил разговор благодаря роли assistant, но список messages жил только внутри работающей программы. Спросите группу: что должен помнить хороший друг? Обычно называют имя, увлечения, важные события. Это и есть план урока: разговор, пересказ старого и записная книжка. Аня здесь и дальше — выдуманная героиня. Ученики тоже будут говорить с Максом от лица выдуманного героя: это правило урока, о нём — на слайдах 15 и 17.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Идея урока</div>
+    <h2>Друг, который <span class="acc">помнит вчера</span></h2>
+  </div>
+  <p>Собеседник урока 12 помнил разговор, только пока программа открыта. Закрыли — и завтра он знакомится с вами заново. Настоящий друг так не делает.</p>
+  <div class="vs" style="margin-top:20px">
+    <div class="vs-col vs-col--plain">
+      <h4>Собеседник урока 12</h4>
+      <p>«Привет! Я Макс. Как тебя зовут?» — и так при каждом запуске. Всё, что вы рассказали вчера, исчезло вместе с программой.</p>
+      <p class="note">память живёт, пока работает программа</p>
+    </div>
+    <div class="vs-col vs-col--win">
+      <h4>Друг Макс сегодня</h4>
+      <p>«Привет, Аня! Вчера ты готовилась к контрольной по алгебре — как прошла?» Помнит разговор, пересказ старого и факты о собеседнике.</p>
+      <p class="note">сегодняшний проект — <span class="code-chip">friend.py</span></p>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Это ученики видели на уроке 12: собеседник помнил разговор, потому что каждый ответ мы дописывали в messages как assistant. Документация DeepSeek и документация Kimi одинаково называют свой API stateless — без состояния: сервер не записывает контекст между запросами, вся история приходит от программы. Главная мысль урока: раз память на нашей стороне, мы сами решаем, что в неё положить, что сжать и что сохранить в файл.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Как это работает</div>
+    <h2>Модель <span class="acc">ничего не помнит</span> сама</h2>
+  </div>
+  <p>Сервер нейросети не хранит ваш разговор: каждый запрос для него — с чистого листа. Помнит программа: в каждом запросе она заново отправляет весь список сообщений.</p>
+  <ol class="steps" style="margin-top:14px">
+    <li><div>Ход 1: <span class="code-chip">system</span> + ваша реплика</div></li>
+    <li><div>Ход 2: <span class="code-chip">system</span> + реплика 1 + ответ 1 + реплика 2</div></li>
+    <li><div>Ход 3: <span class="code-chip">system</span> + всё, что было, + реплика 3</div></li>
+    <li><div>Ход 50: <span class="code-chip">system</span> + 99 сообщений — снова целиком</div></li>
+  </ol>
+  <div class="ek-note" style="margin-top:14px">Как переписка с другом, который всё забывает: в каждое новое письмо вы вкладываете копии всех прошлых. С каждым разом письмо толще.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Не говорите «модель не вмещает наш разговор» — у современных моделей окно около миллиона токенов, школьный разговор в него помещается с запасом. Проблема в другом: каждый запрос несёт всю историю, а платим за каждый токен. Для наглядности: у DeepSeek вход в часы пик без кэша стоит 0,3 доллара за миллион токенов, значит, история размером с целое окно стоила бы около 0,3 доллара за одну реплику. Кэш DeepSeek удешевляет повторяющееся начало запроса, но работает по возможности, без гарантий. Цифры старых уроков вроде 64K или 128K токенов устарели — не повторяйте их. Если спросят, сколько токенов в русском слове: документация даёт соотношения только для английского и китайского, поэтому мы не пересчитываем, а берём число из ответа сервера. Встретите в интернете фразу «Kimi — до 200 000 слов» — речь была о китайских иероглифах в 2023 году, сегодня документация Kimi считает окно в токенах.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Как это работает</div>
+    <h2>Токены и <span class="acc">контекстное окно</span></h2>
+  </div>
+  <p><span class="hl">Токен</span> — кусочек слова. Нейросеть считает в токенах и вопрос, и ответ — и платят тоже за токены. <span class="hl">Контекстное окно</span> — предел: сколько токенов модель охватывает за один запрос. Чего нет в запросе, того для модели не существует.</p>
+  <div class="kv" style="margin-top:14px">
+    <div class="kv-row"><div class="k" style="text-transform:none"><span class="code-chip">deepseek-flash</span></div><div class="v">окно 1 млн токенов</div></div>
+    <div class="kv-row"><div class="k" style="text-transform:none">Kimi K3</div><div class="v">1 048 576 токенов — тоже около миллиона</div></div>
+    <div class="kv-row"><div class="k" style="text-transform:none">Русский текст</div><div class="v">Сколько токенов в русском слове, документация не говорит. Точное число присылает сервер в поле <span class="code-chip">usage</span></div></div>
+  </div>
+  <div class="ek-note" style="margin-top:14px">Окно огромное, но каждый ход отправляет всю историю — каждый следующий запрос длиннее и дороже. А документация Kimi предупреждает: рано или поздно история перерастёт окно. Поэтому память мы ограничим сами.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Три вида памяти — три правки урока. Разговор хранится дословно, но коротким окном. Пересказ — это сжатие: старые сообщения нейросеть пересказывает в несколько предложений, и пересказ встаёт в системный промпт. Этот приём описан в документации Kimi: отброшенные сообщения пересказать и добавить пересказ в список сообщений. Куда именно класть пересказ, документация не говорит — класть его в system решили мы. Записная книжка — отдельный JSON-файл с фактами: его не трогает ни окно, ни пересказ.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Как это работает</div>
+    <h2>Три вида <span class="acc">памяти</span></h2>
+  </div>
+  <p>Память друга Макса устроим так же, как память человека:</p>
+  <div class="grid-3" style="margin-top:20px">
+    <div class="info-card"><h3>Разговор · <span class="code-chip">history</span></h3>Последние реплики слово в слово. Как то, что вы помните из сегодняшнего разговора. Правки 1–2.</div>
+    <div class="info-card"><h3>Пересказ · <span class="code-chip">summary</span></h3>Старое, сжатое в 3–5 предложений. Как «в общих чертах помню, о чём говорили на прошлой неделе». Правка 3.</div>
+    <div class="info-card"><h3>Записная книжка · <span class="code-chip">facts.json</span></h3>Имя, возраст, увлечения, планы. Как день рождения друга, записанный в телефон: не забудется. Правка 4.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ученики копируют промпт целиком в новый чат DeepSeek. В промпте прямо названы chat.completions.create, имена моделей и адреса: нейросеть-помощник по привычке может предложить старые имена — deepseek-chat (отключено после 24 июля 2026) или moonshot-v1 и kimi-latest (у Kimi отключены; на moonshot-v1 приходит ошибка 404 model not found). Для Kimi нарочно нет temperature и extra_body: у моделей K3 температура фиксирована, а параметр thinking относится к старым моделям K2.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Промпт #1 · разминка</div>
+    <h2>warmup.py: <span class="acc">две нейросети</span> одним кодом</h2>
+  </div>
+  <p>Один вопрос уходит к DeepSeek и к Kimi через один и тот же openai SDK. Под каждым ответом — сколько токенов ушло и сколько пришло.</p>
+  <div class="prompt-card" style="margin-top:14px">
+    <span class="pc-tag">→ Новый чат DeepSeek</span>
+    <div class="pc-text">Ты — опытный Python-разработчик и наставник школьника. Напиши warmup.py — разминку «две нейросети одним кодом» на openai SDK.
+- ключи из .env через load_dotenv() из python-dotenv: DEEPSEEK_KEY и KIMI_KEY = os.getenv("KIMI_KEY") — ключа Kimi может не быть
+- QUESTION = «Придумай имя для кота-программиста и объясни его одним предложением.»; messages — список из одного сообщения user с QUESTION, общий для обеих нейросетей
+- show(name, response): напечатай f"=== {name} ===", потом response.choices[0].message.content, потом usage = response.usage и f"Токенов ушло: {usage.prompt_tokens}, пришло: {usage.completion_tokens}"
+- DeepSeek: deepseek = OpenAI(api_key=os.getenv("DEEPSEEK_KEY"), base_url="https://api.deepseek.com"); deepseek.chat.completions.create (не client.responses) с model="deepseek-flash" (не меняй имя модели), messages=messages, extra_body={"thinking": {"type": "disabled"}}; потом show("DeepSeek", response)
+- Kimi: если KIMI_KEY есть — kimi = OpenAI(api_key=KIMI_KEY, base_url="https://api.moonshot.ai/v1"); kimi.chat.completions.create с model="kimi-k3.1-pro" (не меняй имя), messages=messages, reasoning_effort="low", без temperature, max_tokens и extra_body; потом show("Kimi", response). Если ключа нет — напечатай «=== Kimi ===» и «В .env нет KIMI_KEY — Kimi пропускаю»
+Прокомментируй код для новичка. Ответь одним блоком кода.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Дождитесь, пока у всех появится ответ DeepSeek и строка с токенами; имена котов и числа у всех свои. Затем запустите warmup.py на своём экране с KIMI_KEY в .env: группа видит два ответа одним кодом. Kimi K3 размышляет всегда, поэтому может ответить позже DeepSeek — насколько, документация не говорит, вы засекли это перед уроком. Обратите внимание группы на «пришло»: ответы одинаково короткие, а у Kimi число больше. По документации Kimi, в completion_tokens входят и размышления, и ответ; сколько из них ушло на размышления, показывает поле usage.completion_tokens_details.reasoning_tokens. Насколько больше получится, документация не говорит — ваше число вы увидите на прогоне перед уроком. Почему ключа Kimi нет у учеников: Kimi платный — работать с API можно после пополнения минимум на 1 доллар, а частным лицам онлайн-оплата доступна через WeChat Pay и Alipay; по условиям Kimi пользоваться сервисом можно с 18 лет или с минимального возраста по законам страны, несовершеннолетним — только с согласия родителей; ключами и доступом к аккаунту делиться запрещено. Ещё одно условие Kimi касается прямо этого урока: Kimi нельзя присылать персональные данные детей младше 14 лет или младше возраста цифрового согласия в их стране. Оговорки про согласие родителей у этого запрета нет — она есть только у соседнего, о допуске несовершеннолетних к сервису. Поэтому Kimi работает только на вашем экране и только с выдуманным собеседником: реплики и данные учеников в программу с KIMI_KEY не вводите. Доступность Kimi из России на официальных страницах не указана. Файл .env должен лежать в lesson-15: load_dotenv ищет его рядом со скриптом и в папках выше, а в соседней lesson-14 не найдёт.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Запуск и разбор</div>
+    <h2>Ответы и <span class="acc">счёт токенов</span></h2>
+  </div>
+  <div class="grid-2" style="margin-top:12px">
+    <div>
+      <ol class="steps steps--tight">
+        <li><div>В <span class="code-chip">vibe-coding</span> создайте папку <span class="code-chip">lesson-15</span></div></li>
+        <li><div>Скопируйте в неё <span class="code-chip">.env</span> из <span class="code-chip">lesson-14</span> — там ваш <span class="code-chip">DEEPSEEK_KEY</span></div></li>
+        <li><div>Откройте <span class="code-chip">lesson-15</span> в VS Code: <span class="code-chip">File → Open Folder</span></div></li>
+        <li><div>Создайте <span class="code-chip">warmup.py</span>, вставьте код из ответа и сохраните</div></li>
+        <li><div>Выполните <span class="code-chip">python warmup.py</span></div></li>
+      </ol>
+    </div>
+    <div class="term">
+      <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">ТЕРМИНАЛ</span></div>
+      <div class="term-body"><span class="usr">$ python warmup.py</span>
+=== DeepSeek ===
+Байтик — он мурлычет нулями и единицами и ловит баги вместо мышей.
+Токенов ушло: 21, пришло: 24
+=== Kimi ===
+Котлин — кот, который сам себе написал язык программирования.
+Токенов ушло: 23, пришло: 140</div>
+    </div>
+  </div>
+  <div class="ek-note" style="margin-top:12px"><b>Ушло</b> — сколько токенов прочитала модель: ваш вопрос. <b>Пришло</b> — сколько она написала. У Kimi сюда входят и скрытые размышления, поэтому токенов больше, чем в тексте на экране. Без ключа Kimi вместо ответа — строка «В .env нет KIMI_KEY — Kimi пропускаю»: так и должно быть, Kimi смотрим на экране преподавателя.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Почините у всех: та же папка и тот же ключ нужны для каркаса. Если pip не ставит openai — нужен Python 3.10 или новее. Ошибки Kimi на вашем экране: 401 invalid_authentication_error — обычно ключ от другой региональной платформы Kimi (для пользователей вне материкового Китая — platform.kimi.ai); если 401 пришла от DeepSeek — проверьте, не перепутаны ли ключи DeepSeek и Kimi в .env; model_not_found — клиент создан без base_url Kimi или имя модели устарело; 429 у Kimi бывает трёх видов — перегрузка сервера, достигнут лимит или кончились деньги (у Kimi нехватка денег приходит как 429, а у DeepSeek — как 402); запросы, прерванные ошибкой 429, Kimi не тарифицирует. Connection error — проверьте прокси школьной сети. Непонятную ошибку целиком копируем в DeepSeek.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Типичные ситуации запуска</div>
+    <h2>Если warmup.py <span class="acc">не запустился</span></h2>
+  </div>
+  <div class="kv" style="margin-top:16px">
+    <div class="kv-row"><div class="k" style="text-transform:none"><span class="code-chip">Missing credentials</span></div><div class="v">Ключ не найден: <span class="code-chip">.env</span> не в папке <span class="code-chip">lesson-15</span> или переменная называется не <span class="code-chip">DEEPSEEK_KEY</span>.</div></div>
+    <div class="kv-row"><div class="k" style="text-transform:none"><span class="code-chip">Error code: 401 / 402</span></div><div class="v">401 — ключ неверный: скопируйте его заново, без пробелов. 402 — на счёте закончились деньги: скажите преподавателю.</div></div>
+    <div class="kv-row"><div class="k" style="text-transform:none">«Kimi пропускаю»</div><div class="v">Это не ошибка: ключ Kimi есть только у преподавателя. Ответ Kimi — на экране преподавателя.</div></div>
+    <div class="kv-row"><div class="k" style="text-transform:none"><span class="code-chip">ModuleNotFoundError</span></div><div class="v">Выполните <span class="code-chip">pip install openai python-dotenv</span>; не сработало — <span class="code-chip">py -m pip install openai python-dotenv</span>.</div></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Проговорите три отличия Kimi: адрес, имя модели и ключ. Затем честная поправка к уроку 11: вызов chat.completions.create одинаковый, но параметры управления размышлениями разные — у DeepSeek extra_body с thinking, у Kimi K3 reasoning_effort со значениями low, high или max (по умолчанию max). reasoning_effort — обычный именованный аргумент chat.completions.create в openai SDK, и Kimi принимает его на верхнем уровне вызова, без extra_body. По документации Kimi, low снижает задержку ответа. Поэтому в общий код нельзя бездумно подставить одинаковые параметры для обоих провайдеров. В примерах Kimi ключ лежит в переменной MOONSHOT_API_KEY — имя KIMI_KEY придумали мы, как DEEPSEEK_KEY.">
+<div class="sl-body" style="padding:36px 80px 44px;gap:10px">
+  <div>
+    <div class="q-label">Как это работает</div>
+    <h2>Один код — <span class="acc">два провайдера</span></h2>
+  </div>
+  <p style="font-size:15px;line-height:1.4">Меняются адрес <span class="code-chip">base_url</span>, имя модели и ключ. На уроке 11 мы говорили «меняются только адрес и ключ» — уточним: настройки размышлений у каждой нейросети свои.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="font-size:14px;line-height:1.5;padding:10px 18px">deepseek = OpenAI(api_key=os.getenv("DEEPSEEK_KEY"), base_url="https://api.deepseek.com")
+response = deepseek.chat.completions.create(
+    model="deepseek-flash",
+    messages=messages,
+    extra_body={"thinking": {"type": "disabled"}},  <span class="cm"># размышления выключаем</span>
+)
+show("DeepSeek", response)
+
+<span class="kw">if</span> KIMI_KEY:  <span class="cm"># ключ Kimi есть только у преподавателя</span>
+    kimi = OpenAI(api_key=KIMI_KEY, base_url="https://api.moonshot.ai/v1")
+    response = kimi.chat.completions.create(
+        model="kimi-k3.1-pro",
+        messages=messages,
+        reasoning_effort="low",  <span class="cm"># K3 размышляет всегда; low — чтобы быстрее</span>
+    )
+    show("Kimi", response)</div>
+  </div>
+  <div class="ek-note" style="font-size:14px;line-height:1.4;padding:9px 16px">У DeepSeek режим размышлений включён по умолчанию — выключаем, как на уроках 13–14. Kimi K3 размышляет всегда, выключить нельзя, а <span class="code-chip">temperature</span> у неё фиксирована. Можно только выбрать глубину размышлений: <span class="code-chip">reasoning_effort="low"</span> — самый низкий уровень, с ним ответ приходит быстрее.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Это кусок каркаса, который ученики получат через несколько минут. Цикл стрима знаком с урока 12, новое — две проверки. По документации DeepSeek, с include_usage поле usage есть в каждом кусочке, но заполнено только в последнем, а в остальных равно None. Без stream_options DeepSeek тоже присылает счёт: в документации прямо сказано, что с опцией или без неё последний кусочек перед концом стрима несёт счёт токенов. Опцию ставим ради Kimi — в примере стрима из документации Kimi счёт просят именно так. Если любопытный ученик уберёт stream_options, токены на DeepSeek всё равно посчитаются: это не ошибка, а поведение DeepSeek. В последнем кусочке DeepSeek список choices не пустой: в нём ровно один элемент без нового текста — в примере документации content там пустая строка, но схема ответа допускает и null (в Python — None). У Kimi список choices в этом кусочке пустой. Поэтому проверяем оба поля и подставляем пустую строку, если текста нет, — код работает у обоих провайдеров. Режим размышлений выключаем, чтобы ответ начинал печататься сразу, как обещал урок 12: иначе перед ответом будет пауза на размышление. Если usage не пришёл совсем, каркас посчитает символы — это запасной счётчик.">
+<div class="sl-body" style="padding:36px 80px 44px;gap:10px">
+  <div>
+    <div class="q-label">Как это работает</div>
+    <h2>Счёт токенов <span class="acc">в стриме</span></h2>
+  </div>
+  <p style="font-size:15px;line-height:1.4">Сколько токенов ушло в запрос, сервер пишет в поле <span class="code-chip">usage</span>. В стриме ответ приходит кусочками, а счёт — в последнем из них. DeepSeek присылает его сам, а в документации Kimi счёт в стриме просят через <span class="code-chip">stream_options</span>. Просим и мы — так код подходит обоим.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="font-size:14px;line-height:1.5;padding:10px 18px">    stream = client.chat.completions.create(
+        model="deepseek-flash",
+        messages=request,
+        stream=True,
+        stream_options={"include_usage": True},  <span class="cm"># счёт токенов — в последнем кусочке</span>
+        extra_body={"thinking": {"type": "disabled"}},  <span class="cm"># без режима размышлений</span>
+    )
+    answer, usage = "", None
+    print("Макс: ", end="", flush=True)
+    <span class="kw">for</span> chunk <span class="kw">in</span> stream:
+        <span class="kw">if</span> chunk.usage:  <span class="cm"># кусочек со счётом токенов</span>
+            usage = chunk.usage
+        <span class="kw">if</span> chunk.choices:  <span class="cm"># кусочек с текстом ответа</span>
+            piece = chunk.choices[0].delta.content <span class="kw">or</span> ""
+            print(piece, end="", flush=True)
+            answer += piece</div>
+  </div>
+  <div class="ek-note" style="font-size:14px;line-height:1.4;padding:9px 16px"><span class="code-chip">stream_options</span> работает только вместе с <span class="code-chip">stream=True</span>, иначе сервер ответит ошибкой 400. В кусочке со счётом текста может не быть, а у Kimi в нём пустой даже список <span class="code-chip">choices</span>. Поэтому две защиты: проверка <span class="code-chip">chunk.choices</span> и <span class="code-chip">or ""</span>.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Прочитайте цель вслух. Обязательный минимум — каркас и правки 1, 3, 4: это уже друг из карточки, который помнит историю общения. Окно из правки 2 группа увидит на вашем экране. Приветствие по памяти и /forget — для успевающих. Слева теория, справа практика.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Цель · что будет в конце</div>
+    <h2><span class="acc">Цель</span> урока</h2>
+  </div>
+  <div class="ek-note">К 55-й минуте у каждого — <span class="code-chip">friend.py</span>: друг Макс отвечает по кусочкам и показывает счёт токенов, помнит разговор после перезапуска, сжимает старые сообщения в пересказ и ведёт записную книжку фактов о вашем герое. Успеете — Макс сам поздоровается по имени и вспомнит, о чём вы говорили вчера, а <span class="code-chip">/forget</span> сотрёт память.</div>
+  <div class="grid-2">
+    <div class="info-card">
+      <h3>Узнаете</h3>
+      <ul class="clean">
+        <li>Почему нейросеть ничего не помнит сама</li>
+        <li>Что такое токены и контекстное окно</li>
+        <li>Как сжать разговор пересказом</li>
+        <li>Как хранить факты о собеседнике</li>
+      </ul>
+    </div>
+    <div class="info-card">
+      <h3>Сделаете</h3>
+      <ul class="clean">
+        <li>Разминку: один код — DeepSeek и Kimi</li>
+        <li>Друга Макса со счётчиком токенов</li>
+        <li>Память между запусками и пересказ старого</li>
+        <li>Записную книжку <span class="code-chip">facts.json</span>; успеете — приветствие по памяти</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Покажите финальную версию из демо-папки lesson-15-demo: перед уроком вы поменяли там в history.json дату last_session на вчерашнюю, поэтому Макс говорит «вчера». Ваш ответ Максу программа сохранит уже с сегодняшней датой — перед финальным демо снова поставьте вчерашнюю. Приветствие и /forget — резервная правка 5; обязательная часть даёт память после перезапуска, пересказ и /facts. Слова Макса и числа у вас будут свои.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Демо результата</div>
+    <h2>Что <span class="acc">соберём</span> сегодня</h2>
+  </div>
+  <div class="term">
+    <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">ТЕРМИНАЛ</span></div>
+    <div class="term-body"><span class="usr">$ python friend.py</span>
+Макс на связи! /facts — что я о тебе знаю, /forget — забыть всё, /exit — выход
+💾 загружено сообщений: 2
+Макс: Привет, Аня! Вчера ты готовилась к контрольной по алгебре — как прошла?
+<span class="usr">Вы: Написала на пятёрку!</span>
+Макс: Ура, я в тебя верил! Как отметишь — порисуешь?
+<span class="dim">📊 сообщений в истории: 4 · токенов в запросе: 233</span>
+<span class="usr">Вы: /facts</span>
+Что я о тебе знаю:
+  name: Аня
+  age: 13
+  likes: коты, рисование
+  plans: контрольная по алгебре в четверг
+<span class="usr">Вы: /exit</span></div>
+  </div>
+  <p>Это второй день знакомства: Макс сам начинает разговор и помнит вчерашнее. Серая строка 📊 — сколько сообщений в памяти и сколько токенов ушло в запрос.</p>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes=".gitignore понадобится, когда проект попадёт в git: файлы из этого списка git не будет добавлять. Заводим его сейчас, до первого git add: файлы, которые git уже отслеживает, .gitignore не защищает. Если ключ или личные данные всё же попали в публичный репозиторий — ключ нужно перевыпустить. Файлы памяти программа создаст сама после правок 1 и 4. Правило приватности проговорите сразу: всё, что ученик расскажет Максу, хранится в файлах на диске и отправляется провайдеру в каждом запросе. Поэтому выдуманный герой — правило урока, а не разрешение: имя, возраст и увлечения ученики придумывают, Аня из примеров тоже выдуманная. По условиям DeepSeek сервис предназначен в первую очередь для взрослых, а политика конфиденциальности DeepSeek добавляет: сервисы не рассчитаны на детей, и персональные данные детей компания сознательно не обрабатывает. Проект от правила не страдает: Максу всё равно, настоящий собеседник или выдуманный.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Подготовка</div>
+    <h2>Папка <span class="acc">lesson-15</span> и <span class="code-chip">.gitignore</span></h2>
+  </div>
+  <div class="grid-2">
+    <div class="col">
+      <ol class="steps steps--tight">
+        <li><div>В <span class="code-chip">lesson-15</span> уже лежат <span class="code-chip">.env</span> и <span class="code-chip">warmup.py</span>; создайте файл <span class="code-chip">friend.py</span></div></li>
+        <li><div>Создайте файл <span class="code-chip">.gitignore</span> — с точкой в начале имени — и впишите в него пять строк</div></li>
+        <li><div>Ставить ничего не нужно: <span class="code-chip">openai</span> и <span class="code-chip">python-dotenv</span> стоят с урока 11</div></li>
+      </ol>
+    </div>
+    <div class="col">
+      <div class="code-win">
+        <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">.GITIGNORE</span></div>
+        <div class="code-body">.env
+history.json
+facts.json
+__pycache__/
+.venv/</div>
+      </div>
+    </div>
+  </div>
+  <div class="ek-note ek-note--red"><span class="code-chip">history.json</span> и <span class="code-chip">facts.json</span> — дневник разговора открытым текстом, и с каждым запросом он уходит на сервер нейросети. Поэтому с Максом говорим от лица выдуманного героя, а адрес, телефон и пароли не рассказываем вообще.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Скопировать промпт целиком в новый чат DeepSeek — все правки дальше пойдут в этот же чат. Каркас — собеседник урока 12 с личностью друга из меню четырёх личностей: стрим, роль assistant как память. Два отличия от урока 12. Первое — серый счётчик после каждого ответа. Второе — system не лежит в истории, а ставится первым в каждый запрос: дальше мы будем дописывать в него пересказ и факты. Ответы Макса короткие нарочно: так быстрее и дешевле, а счётчик растёт заметнее.">
+<div class="sl-body" style="padding:40px 80px 48px;gap:10px">
+  <div>
+    <div class="q-label">Промпт #2 · стартовый</div>
+    <h2><span class="acc">Каркас</span> друга Макса</h2>
+  </div>
+  <div class="prompt-card" style="margin-top:10px;padding:16px 22px 12px">
+    <span class="pc-tag">→ Новый чат DeepSeek</span>
+    <div class="pc-text" style="font-size:14.5px;line-height:1.55">Ты — опытный Python-разработчик и наставник школьника. Напиши friend.py — AI-друга в терминале на openai SDK со стримингом.
+- клиент: OpenAI(api_key=os.getenv("DEEPSEEK_KEY"), base_url="https://api.deepseek.com"), ключ из .env через load_dotenv() из python-dotenv
+- GRAY = "\033[90m", RESET = "\033[0m". PERSONA: «Ты — Макс, весёлый друг школьника. Болтаешь просто, всегда поддерживаешь и задаёшь встречные вопросы. Отвечай коротко: 1–3 предложения.»
+- stream_answer(request): client.chat.completions.create (не client.responses) с model="deepseek-flash" (не меняй имя), messages=request, stream=True, stream_options={"include_usage": True}, extra_body={"thinking": {"type": "disabled"}}. answer, usage = "", None; напечатай «Макс: » без переноса строки. Цикл for chunk in stream: if chunk.usage — usage = chunk.usage; if chunk.choices — piece = chunk.choices[0].delta.content or "", print(piece, end="", flush=True), answer += piece. После цикла print() и return answer, usage
+- show_counter(history, request, usage): если usage есть — size = f"токенов в запросе: {usage.prompt_tokens}", иначе size = «символов в запросе: » и сумма len(m["content"]) по всем сообщениям request. Напечатай серым f"📊 сообщений в истории: {len(history)} · {size}"
+- history = [] — только реплики user и assistant, system в history не храни
+- при запуске напечатай «Макс на связи! Пиши что угодно. /exit — выход». Цикл: text = input("Вы: ").strip(); /exit — выход; пустую строку пропусти; иначе добавь в history user с text; request = [{"role": "system", "content": PERSONA}] + history; answer, usage = stream_answer(request); добавь в history assistant с answer; show_counter(history, request, usage)
+Прокомментируй код для новичка. Ответь одним блоком кода.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Дождитесь, пока у всех после ответа появится серая строка. Следите, чтобы ученики не писали Максу настоящих данных о себе: герой выдуманный — это правило урока, причина в заметке слайда 15. Полные фразы пригодятся в правке 4: факты будут доставаться из реплики ученика, и короткое «Аня» без контекста нейросеть может не распознать как имя. Если программа упала сразу после первой реплики — слайд 20.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Запуск каркаса</div>
+    <h2>Запускаем и <span class="acc">знакомимся</span></h2>
+  </div>
+  <ol class="steps steps--tight">
+    <li><div>Скопируйте код из ответа DeepSeek в <span class="code-chip">friend.py</span> и сохраните (<span class="code-chip">Ctrl+S</span>)</div></li>
+    <li><div>Выполните <span class="code-chip">python friend.py</span></div></li>
+    <li><div>Расскажите Максу о себе от лица своего героя в 3–4 репликах — ответ печатается по кусочкам</div></li>
+    <li><div>После каждого ответа смотрите на серую строку 📊</div></li>
+    <li><div>Выход — <span class="code-chip">/exit</span></div></li>
+  </ol>
+  <div class="ek-note">Говорите от лица выдуманного героя: имя, возраст и увлечения придумайте. И полными фразами: «Меня зовут Аня, мне 13, обожаю котов» — дальше Макс будет это запоминать.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ключевой момент К1: счётчик показывает размер запроса, который ушёл на сервер, — system, вся история и новая реплика. Пусть ученики сравнят числа у себя: растут на каждой реплике. Если вместо токенов написано «символов в запросе» — программа не поймала счёт токенов, разбор на слайде 20. Это запасной счётчик, смысл тот же. Сколько токенов в русском слове, документация не называет, поэтому делить символы на токены не будем — точное число даёт сервер.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Первый результат</div>
+    <h2>Каждый ход — запрос <span class="acc">тяжелее</span></h2>
+  </div>
+  <div class="term">
+    <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">ТЕРМИНАЛ</span></div>
+    <div class="term-body"><span class="usr">$ python friend.py</span>
+Макс на связи! Пиши что угодно. /exit — выход
+<span class="usr">Вы: Привет! Меня зовут Аня, мне 13</span>
+Макс: Привет, Аня! Рад знакомству. Чем любишь заниматься?
+<span class="dim">📊 сообщений в истории: 2 · токенов в запросе: 61</span>
+<span class="usr">Вы: Обожаю котов и рисовать</span>
+Макс: Коты и рисование — отличная пара! Рисуешь своих котов?
+<span class="dim">📊 сообщений в истории: 4 · токенов в запросе: 98</span>
+<span class="usr">Вы: Да! Но в четверг контрольная по алгебре, не до рисования</span>
+Макс: Понимаю. Хочешь, повторим вместе пару тем?
+<span class="dim">📊 сообщений в истории: 6 · токенов в запросе: 143</span></div>
+  </div>
+  <p>Числа у вас свои, но картина та же: с каждым ходом в запросе больше токенов. Модель каждый раз читает весь разговор с начала — и за всё платим заново.</p>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пусть все проверят сами — это мотивация для правок. На тот же вопрос до /exit Макс ответил бы правильно: имя было в истории. Пройдитесь по плану правок: каждая закрывает одно слабое место. Правка 5 — резерв: приветствие по памяти и /forget.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Момент урока</div>
+    <h2>Перезапуск: Макс <span class="acc">всё забыл</span></h2>
+  </div>
+  <p>Наберите <span class="code-chip">/exit</span>, запустите <span class="code-chip">python friend.py</span> снова и спросите: «Как меня зовут?»</p>
+  <div class="ek-note ek-note--red">Макс не знает. История живёт в списке <span class="code-chip">history</span>, а список — только пока работает программа. Закрыли — разговор исчез.</div>
+  <ul class="clean">
+    <li>Правка 1 · файл history.json — память переживёт перезапуск</li>
+    <li>Правка 2 · окно — в запрос уходят только последние сообщения (на экране преподавателя)</li>
+    <li>Правка 3 · пересказ — старое не выбрасываем, а сжимаем</li>
+    <li>Правка 4 · записная книжка — важные факты о собеседнике отдельно</li>
+  </ul>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пробегитесь по пяти ситуациям и помогите лично тем, у кого не работает. Ошибка 400 значит, что сервер не принял запрос; по документации DeepSeek, stream_options без stream=True — как раз такой случай. TypeError и AttributeError возникают, если нейросеть-помощник выбросила одну из защит: подстановку пустой строки в цикле или проверку if usage в счётчике. В примере документации DeepSeek кусочки без текста несут пустую строку, а не null, но схема ответа допускает и null — поэтому подстановку оставляем. Проверку if chunk.choices тоже оставляем: у DeepSeek в последнем кусочке ровно один элемент choices, а у Kimi список choices в нём пустой, и без проверки код упал бы с IndexError. «Символов в запросе» на DeepSeek значит, что цикл не поймал usage. DeepSeek присылает счёт в последнем кусочке, и список choices в этом кусочке не пустой. Если нейросеть-помощник написала цикл так: if chunk.choices: …, а ниже elif chunk.usage: …, — до ветки со счётом дело не доходит. Чиним, как в промпте: две отдельные проверки. Опция stream_options тут ни при чём: без неё DeepSeek тоже присылает счёт. Программа при этом работает — запасной счётчик так и задуман. Непонятную ошибку целиком копируем в тот же чат DeepSeek.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Если каркас не запустился</div>
+    <h2>Типичные ситуации <span class="acc">каркаса</span></h2>
+  </div>
+  <div class="kv">
+    <div class="kv-row"><div class="k">Error code: 400</div><div class="v">Сверьте <span class="code-chip">create(...)</span> с промптом: <span class="code-chip">stream_options</span> работает только вместе с <span class="code-chip">stream=True</span>.</div></div>
+    <div class="kv-row"><div class="k">TypeError</div><div class="v">Потерялось <span class="code-chip">or ""</span>: если в кусочке вместо текста пришло <span class="code-chip">None</span>, к строке его не прибавить.</div></div>
+    <div class="kv-row"><div class="k">AttributeError: … 'prompt_tokens'</div><div class="v">Счётчик берёт <span class="code-chip">usage</span>, которого нет. Нужна проверка <span class="code-chip">if usage</span>, как в промпте.</div></div>
+    <div class="kv-row"><div class="k">«символов в запросе»</div><div class="v">Счёт токенов не пойман: проверка <span class="code-chip">if chunk.usage</span> должна стоять отдельно, а не в <span class="code-chip">elif</span> после <span class="code-chip">if chunk.choices</span>. Программа работает — это запасной счётчик.</div></div>
+    <div class="kv-row"><div class="k">Слова столбиком или всё разом</div><div class="v">В <span class="code-chip">print</span> нет <span class="code-chip">end=""</span> или <span class="code-chip">flush=True</span> — как на уроке 12.</div></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Правка в тот же чат, где собран каркас. На всю правку 1 вместе с разбором — около 5 минут. Пока ученики её делают, сделайте её и у себя и сразу дайте в свой чат промпт правки 2 со слайда 23: к 33-й минуте окно у вас будет готово к показу. Перезапуск обязателен: уже запущенная программа работает со старым кодом. Файл хранит словарь с ключом messages, а не голый список: в правке 3 рядом с историей ляжет пересказ, в правке 5 — дата. HERE — папка, где лежит friend.py: память найдётся, даже если программу запустили из другой папки. Без HERE файл создался бы в той папке, откуда запустили скрипт, и Макс «забыл» бы всё при запуске из другого места.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 1 · память между запусками</div>
+    <h2>Память <span class="acc">между запусками</span></h2>
+  </div>
+  <p>Разговор переедет в файл <span class="code-chip">history.json</span>: при запуске программа его читает, после каждого ответа — сохраняет.</p>
+  <div class="prompt-card prompt-card--copy" style="margin-top:8px">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text">Сделай так, чтобы Макс помнил разговор между запусками.
+- import json, from pathlib import Path. HERE = Path(__file__).resolve().parent, HISTORY = HERE / "history.json"
+- load_json(path): в try открой path с encoding="utf-8", data = json.load(f); при FileNotFoundError верни {}; при json.JSONDecodeError напечатай серым f"⚠ {path.name} повреждён — начинаю с чистого листа" и верни {}; если data не словарь — верни {}; иначе верни data
+- save_json(path, data): open(path, "w", encoding="utf-8"), json.dump с ensure_ascii=False и indent=2
+- при запуске до цикла: memory = load_json(HISTORY), history = memory.get("messages", []); после строки «Макс на связи!…» напечатай серым f"💾 загружено сообщений: {len(history)}"
+- в конце каждого хода, после show_counter, — save_json(HISTORY, {"messages": history})
+Остальной код не меняй. Верни весь файл.</div>
+  </div>
+  <div class="ek-note" style="margin-top:8px">После каждой правки замените всё содержимое <span class="code-chip">friend.py</span> кодом из ответа DeepSeek, сохраните и перезапустите программу. Проверка: расскажите Максу что-нибудь, <span class="code-chip">/exit</span>, запустите снова — строка 💾 покажет, сколько сообщений загрузилось. Спросите: «Что ты обо мне помнишь?»</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Откройте history.json в VS Code: это обычный JSON, разговор по ролям user и assistant, русские буквы читаются благодаря ensure_ascii=False. Два вида ошибок при чтении: FileNotFoundError — файла ещё нет, это нормальная первая встреча; JSONDecodeError — файл есть, но в нём не JSON, например обрезанная запись. Что файл в режиме w после прерывания останется обрезанным — вывод из того, как работает этот режим: при открытии он очищает файл. Для продвинутых: можно писать во временный файл и подменять им основной через os.replace — на Windows именно replace, потому что os.rename падает, если файл уже существует. В уроке это не обязательно. Проверка isinstance нужна на случай, если в файле окажется список или число: memory.get тогда упал бы.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2>Две функции для <span class="acc">файлов памяти</span></h2>
+  </div>
+  <div style="display:grid;grid-template-columns:1.75fr 1fr;gap:24px;align-items:start">
+    <div class="code-win">
+      <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+      <div class="code-body" style="font-size:13.5px;line-height:1.5;max-height:none"><span class="kw">def</span> load_json(path):
+    <span class="kw">try</span>:
+        <span class="kw">with</span> open(path, encoding=<span class="st">"utf-8"</span>) <span class="kw">as</span> f:
+            data = json.load(f)
+    <span class="kw">except</span> FileNotFoundError:
+        <span class="kw">return</span> {}  <span class="cm"># файла ещё нет — первая встреча</span>
+    <span class="kw">except</span> json.JSONDecodeError:
+        print(f<span class="st">"{GRAY}⚠ {path.name} повреждён — начинаю с чистого листа{RESET}"</span>)
+        <span class="kw">return</span> {}
+    <span class="kw">if not</span> isinstance(data, dict):
+        <span class="kw">return</span> {}  <span class="cm"># в файле не словарь — не наш формат</span>
+    <span class="kw">return</span> data
+
+
+<span class="kw">def</span> save_json(path, data):
+    <span class="kw">with</span> open(path, <span class="st">"w"</span>, encoding=<span class="st">"utf-8"</span>) <span class="kw">as</span> f:  <span class="cm"># "w" — перезаписать целиком</span>
+        json.dump(data, f, ensure_ascii=<span class="kw">False</span>, indent=2)</div>
+  </div>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <p style="font:500 17px/1.5 var(--f-body);color:#3C3C45"><span class="code-chip">load_json</span> всегда возвращает словарь: файла нет — пустой, файл сломан — пустой и предупреждение ⚠. <span class="code-chip">save_json</span> после каждого ответа перезаписывает файл целиком. Эта пара пригодится и для записной книжки в правке 4.</p>
+      <div class="ek-note" style="margin-top:0">Режим <span class="code-chip">"w"</span> сначала очищает файл, а потом пишет. Прервёте программу через <span class="code-chip">Ctrl+C</span> прямо во время записи — файл может остаться недописанным. Поэтому загрузка стоит в <span class="code-chip">try</span>: битый файл не роняет программу.</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Эту правку показываете вы, около 2 минут: промпт вы уже дали в свой чат урока во время правки 1 (заметка слайда 21). Перезапустите friend.py и разыграйте разговор со слайда 24. Ученики правку 2 не делают. Окно в 6 сообщений — учебное: так забывание видно уже через три реплики. В примерах документации Kimi в запрос уходит не больше последних 20 сообщений, а system включается всегда — так историю ограничивают и сами разработчики. history[-WINDOW:] — срез: последние 6 элементов списка; если сообщений меньше, срез вернёт все.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 2 · окно контекста</div>
+    <h2>Окно: в запрос — <span class="acc">только последние</span></h2>
+  </div>
+  <p>Пусть модель видит только последние 6 сообщений, а файл по-прежнему хранит всё. Это наше окно — нарочно маленькое, чтобы увидеть забывание. У самой модели окно — миллион токенов.</p>
+  <div class="prompt-card prompt-card--copy" style="margin-top:12px">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text">Добавь окно контекста: в запрос уходят только последние сообщения.
+- константа WINDOW = 6 рядом с PERSONA
+- request = [{"role": "system", "content": PERSONA}] + history[-WINDOW:]
+- в history.json по-прежнему сохраняй всю history
+Остальной код не меняй. Верни весь файл.</div>
+  </div>
+  <div class="ek-note" style="margin-top:12px">Эту правку смотрим на экране преподавателя: Макс узнает про кошку, потом три реплики о другом — и вопрос, как её зовут. У себя после правки 1 сразу переходите к правке 3: она работает и без правки 2.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Главный момент К1: наше окно в 6 сообщений и окно модели в миллион токенов работают одинаково — модель видит только то, что пришло в запросе. Разница в размере: предел модели огромный, а своё окно мы нарочно сделали маленьким, чтобы забывание было видно. Не дайте группе унести с урока «контекстное окно — это 6 сообщений». Файл помнит всё, модель — только окно. В вашем history.json уже лежит разговор с правки 1, поэтому число сообщений в истории будет больше, чем на слайде, — запрос всё равно держится на system и 6 последних сообщениях. Если Макс всё-таки назвал Пончика — посмотрите, не упоминал ли он кошку в своих ответах после первой реплики: тогда имя осталось в окне. Сделайте ещё пару реплик на другую тему и спросите снова. Обрезать историю дёшево, но так друг забывает. Как не забывать и не платить за всё — следующая правка.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Что получилось</div>
+    <h2>Пончик <span class="acc">выпал из окна</span></h2>
+  </div>
+  <div class="term">
+    <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">ТЕРМИНАЛ</span></div>
+    <div class="term-body">Вы: Мою кошку зовут Пончик, ей три года
+Макс: Пончик — отличное имя! Она рыжая?
+<span class="dim">📊 сообщений в истории: 2 · токенов в запросе: 64</span>
+Вы: Я люблю рисовать
+Макс: Круто! А что рисуешь чаще всего?
+<span class="dim">📊 сообщений в истории: 4 · токенов в запросе: 95</span>
+… ещё две реплики о другом: контрольная и мультфильмы …
+<span class="dim">📊 сообщений в истории: 8 · токенов в запросе: 131</span>
+Вы: Как зовут мою кошку?
+Макс: Хм, ты мне ещё не говорила! Как её зовут?
+<span class="dim">📊 сообщений в истории: 10 · токенов в запросе: 134</span></div>
+  </div>
+  <p style="margin-top:12px">История растёт — 2, 4, 8, 10, а запрос перестал толстеть: в нём только <span class="code-chip">system</span> и 6 последних сообщений. Реплика про Пончика выпала из окна — для модели её больше нет. Хотя в <span class="code-chip">history.json</span> она лежит.</p>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Правка в тот же чат. Это самая длинная правка — дайте на неё около 8 минут. Промпт работает и без правки 2: константу WINDOW он добавит сам, а запрос не трогает. Приём из документации Kimi: отброшенные сообщения пересказать и добавить пересказ в разговор. Последний обмен репликами остаётся дословно, чтобы Макс не потерял нить. Если пересказ пришёл пустым, история не сокращается — ничего не теряем. На своём экране запустите версию с KIMI_KEY: в строке 🗜 будет Kimi. Если Kimi ответит ошибкой, программа напишет об этом серым и перескажет через DeepSeek. Kimi пересказывает только разговор вашего выдуманного героя: пока в .env есть KIMI_KEY, не предлагайте ученикам рассказывать Максу о себе — причина в заметке слайда 9.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 3 · сжатие</div>
+    <h2>Не выбрасываем, а <span class="acc">пересказываем</span></h2>
+  </div>
+  <p style="font-size:16px;line-height:1.4">Когда история дорастает до окна, старые сообщения нейросеть пересказывает в 3–5 предложениях, а пересказ встаёт в <span class="code-chip">system</span>. Есть ключ Kimi — пересказывает Kimi, нет — DeepSeek.</p>
+  <div class="prompt-card prompt-card--copy" style="margin-top:8px;padding:16px 22px 12px">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text" style="font-size:14px;line-height:1.45">Добавь сжатие старых сообщений пересказом. Пересказывает Kimi, если в .env есть KIMI_KEY, иначе DeepSeek.
+- import openai. KIMI_KEY = os.getenv("KIMI_KEY"); kimi = None; если KIMI_KEY есть — kimi = OpenAI(api_key=KIMI_KEY, base_url="https://api.moonshot.ai/v1"). Константа WINDOW = 6, если её ещё нет
+- SUMMARY_PROMPT: «Ты сжимаешь переписку школьника с его другом Максом. Перескажи её в 3–5 коротких предложениях. Сохрани имена (собеседника, друзей, питомцев), что он рассказал о себе и о чём договорились. Если есть прошлый пересказ, объедини его с новыми сообщениями в один. Пиши только пересказ.»
+- summarize(summary, old): lines = [f'{m["role"]}: {m["content"]}' for m in old]; ask — system с SUMMARY_PROMPT и user: "Прошлый пересказ: " + (summary or "нет") + "\nНовые сообщения:\n" + "\n".join(lines). Если kimi не None — в try: kimi.chat.completions.create(model="kimi-k3.1-pro", messages=ask, reasoning_effort="low") без temperature и max_tokens, верни (content or "").strip() и "Kimi"; except (openai.APIStatusError, openai.APIConnectionError) as error — напечатай серым f"Kimi не ответил: {error}" и иди дальше. Потом client.chat.completions.create(model="deepseek-flash", messages=ask, max_tokens=500, extra_body={"thinking": {"type": "disabled"}}), верни (content or "").strip() и "DeepSeek"
+- build_system(summary): PERSONA, а если summary не пустой — плюс "\nПересказ ваших прошлых разговоров: " + summary. В request вместо PERSONA — build_system(summary), остальное в request не меняй
+- при запуске summary = memory.get("summary", ""); сохраняй save_json(HISTORY, {"summary": summary, "messages": history})
+- после show_counter, до сохранения: если len(history) >= WINDOW — old = history[:-2]; new_summary, who = summarize(summary, old); если new_summary не пустой — summary = new_summary, history = history[-2:], напечатай серым f"🗜 {who} сжал сообщений: {len(old)}. Пересказ:\n{summary}"
+Остальной код не меняй. Верни весь файл.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ключевой момент К2. Проговорите цикл: история 6 сообщений → старые 4 ушли на пересказ → осталось 2 → снова дорастает до 6 → снова пересказ, и новый пересказ объединяет прошлый с новыми сообщениями. На слайде второй круг — последняя строка 🗜. На коротких репликах пересказ может оказаться не короче самих сообщений — выигрыш виден на длинном разговоре: без сжатия запрос растёт с каждой репликой, а со сжатием держится примерно на одном уровне. Если в history.json уже были сообщения, первое сжатие случится раньше и захватит их все. Пересказ у учеников будет своими словами — проверьте, не потерял ли он деталь (здесь потерялось, что Пончику три года), это тема следующего слайда.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Что получилось</div>
+    <h2>Сжал, но <span class="acc">помнит</span></h2>
+  </div>
+  <div class="term">
+    <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">ТЕРМИНАЛ</span></div>
+    <div class="term-body">Вы: Мою кошку зовут Пончик, ей три года
+… ответ Макса и ещё две реплики: рисование и контрольная …
+<span class="dim">📊 сообщений в истории: 6 · токенов в запросе: 128</span>
+<span class="dim">🗜 DeepSeek сжал сообщений: 4. Пересказ:</span>
+<span class="dim">У собеседника кошка Пончик. Он любит рисовать. Макс спросил, что он рисует.</span>
+Вы: Какой у тебя любимый мультфильм?
+Макс: Про космос, конечно! А у тебя?
+<span class="dim">📊 сообщений в истории: 4 · токенов в запросе: 119</span>
+Вы: Как зовут мою кошку?
+Макс: Пончик! Как она поживает?
+<span class="dim">📊 сообщений в истории: 6 · токенов в запросе: 142</span>
+<span class="dim">🗜 DeepSeek сжал сообщений: 4. Пересказ:</span>
+<span class="dim">У собеседника кошка Пончик. Он любит рисовать. В четверг у него контрольная.</span></div>
+  </div>
+  <p style="margin-top:12px">Сообщения про Пончика удалены из истории, но имя кошки Макс помнит — из пересказа в <span class="code-chip">system</span>. История снова доросла до 6 — и второй пересказ объединил прошлый с новыми сообщениями. Запрос больше не растёт бесконечно.</p>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пересказ без стрима: короткий текст, ждать по кусочкам незачем. Обратите внимание, как честно устроен второй провайдер: вызов тот же, а параметры размышлений свои — у Kimi reasoning_effort, у DeepSeek extra_body с thinking. Блок try и except: openai.APIStatusError — сервер ответил ошибкой с кодом (401, 429 и другие), openai.APIConnectionError — до сервера не достучались; в обоих случаях программа не падает, а пересказывает через DeepSeek. Это важно и для детских тем: Kimi может отклонить запрос фильтром содержимого. У DeepSeek есть кэш: повторяющееся начало запроса дешевле. Пересказ, вставленный в system, меняет начало запроса, поэтому кэш срабатывает хуже — это плата за короткую историю.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2>Пересказ делает <span class="acc">Kimi или DeepSeek</span></h2>
+  </div>
+  <div style="display:grid;grid-template-columns:2.3fr 1fr;gap:24px;align-items:start">
+    <div class="code-win">
+      <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+      <div class="code-body" style="font-size:13px;line-height:1.5;max-height:none">    <span class="kw">if</span> kimi:  <span class="cm"># есть ключ Kimi — пересказывает Kimi</span>
+        <span class="kw">try</span>:
+            response = kimi.chat.completions.create(
+                model=<span class="st">"kimi-k3.1-pro"</span>,
+                messages=ask,
+                reasoning_effort=<span class="st">"low"</span>,  <span class="cm"># K3 размышляет всегда; low — чтобы быстрее</span>
+            )
+            <span class="kw">return</span> (response.choices[0].message.content <span class="kw">or</span> <span class="st">""</span>).strip(), <span class="st">"Kimi"</span>
+        <span class="kw">except</span> (openai.APIStatusError, openai.APIConnectionError) <span class="kw">as</span> error:
+            print(f<span class="st">"{GRAY}Kimi не ответил: {error}{RESET}"</span>)
+    response = client.chat.completions.create(  <span class="cm"># запасной путь — DeepSeek</span>
+        model=<span class="st">"deepseek-flash"</span>,
+        messages=ask,
+        max_tokens=500,
+        extra_body={<span class="st">"thinking"</span>: {<span class="st">"type"</span>: <span class="st">"disabled"</span>}},
+    )
+    <span class="kw">return</span> (response.choices[0].message.content <span class="kw">or</span> <span class="st">""</span>).strip(), <span class="st">"DeepSeek"</span></div>
+  </div>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <p style="font:500 17px/1.5 var(--f-body);color:#3C3C45">Пересказ — отдельный запрос со своей инструкцией <span class="code-chip">SUMMARY_PROMPT</span>. Есть ключ Kimi — пересказывает Kimi. Ключа нет или Kimi ответил ошибкой — DeepSeek.</p>
+      <div class="ek-note ek-note--red" style="margin-top:0">Пересказ — это пересказ, а не копия. Модель сама решает, что важно, и может упустить или исказить деталь: в примере на прошлом слайде пропало, что Пончику три года. Поэтому самое важное о собеседнике сохраним отдельно — в записной книжке.</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Правка в тот же чат. Это навык урока 14 в деле: JSON mode, слово json и пример формата в промпте, temperature 0, выключенные размышления и разумный max_tokens. Пустой ответ в JSON mode изредка бывает — тогда в этот ход факты пропускаются, а разговор не падает. Факты достаются только из реплики ученика, не из ответа Макса: так модель не запишет то, что Макс сам придумал. После правки каждая реплика — два запроса к API. Проверка: «Меня зовут Аня, мне 13, обожаю котов» → серая строка 📝; потом /facts; потом /exit, новый запуск и снова /facts — книжка на месте.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 4 · записная книжка</div>
+    <h2><span class="acc">Записная книжка</span> фактов</h2>
+  </div>
+  <p style="font-size:15px;line-height:1.35">После каждой вашей реплики отдельный запрос в JSON mode выписывает новые факты в <span class="code-chip">facts.json</span>. Книжка встаёт в <span class="code-chip">system</span>, а команда <span class="code-chip">/facts</span> показывает, что Макс знает о вашем герое.</p>
+  <div class="prompt-card prompt-card--copy" style="margin-top:4px;padding:14px 20px 10px">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text" style="font-size:13.5px;line-height:1.4">Добавь записную книжку фактов о собеседнике в facts.json.
+- FACTS = HERE / "facts.json"; при запуске facts = load_json(FACTS)
+- FACTS_PROMPT: «Ты достаёшь факты о собеседнике из его реплики. Верни json: {"new_facts": {"name": "имя", "age": 13, "likes": ["что любит"], "plans": ["что собирается сделать"]}}. Записывай только то, что собеседник прямо сказал о себе в этой реплике. Если фактов нет, верни {"new_facts": {}}. Никогда не записывай адрес, телефон и пароли.»
+- extract_facts(text): client.chat.completions.create с model="deepseek-flash", messages из system с FACTS_PROMPT и user с text, response_format={"type": "json_object"} (не json_schema), temperature=0, max_tokens=300, extra_body={"thinking": {"type": "disabled"}}. В try: data = json.loads(content or ""), при json.JSONDecodeError верни {}. Верни data["new_facts"], только если data и data.get("new_facts") — словари, иначе {}
+- merge_facts(facts, new) возвращает added = {}: для key, value из new.items() пустое (not value) пропусти; если value — список: old = facts.get(key, []), если old не список — old = [old]; fresh = [v for v in value if v not in old]; если fresh не пуст — facts[key] = old + fresh, added[key] = fresh. Иначе, если facts.get(key) != value, — facts[key] = value, added[key] = value
+- после show_counter, до сжатия: added = merge_facts(facts, extract_facts(text)); если added не пуст — save_json(FACTS, facts) и напечатай серым "📝 запомнил: " + json.dumps(added, ensure_ascii=False)
+- build_system(summary, facts): если facts не пуст — плюс "\nЧто ты знаешь о собеседнике (json): " + json.dumps(facts, ensure_ascii=False). В request — build_system(summary, facts)
+- команда /facts через continue: show_facts(facts) печатает «Что я о тебе знаю:» и строки f"  {key}: {value}", списки через ", "; если facts пуст — «Я пока ничего о тебе не знаю.» Строка при запуске: «Макс на связи! /facts — что я о тебе знаю, /exit — выход»
+Остальной код не меняй. Верни весь файл.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Правила слияния — решение курса, а не требование API. Проговорите на примере: сказали «обожаю котов» — likes стал списком из котов; потом «и рисовать» — дописалось рисование, коты остались; сказали «мне уже 14» — возраст заменился. Строчка с [v for v in value if v not in old] — список только из новых элементов. Проверка isinstance(old, list) страхует случай, когда раньше модель прислала строку, а теперь список. Состав полей JSON mode не гарантирует: модель может прислать и своё поле, например pets, — программа примет его по тем же правилам. Если 📝 не появляется — спросите, полной ли фразой ученик написал о себе.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2>Как факты <span class="acc">попадают в книжку</span></h2>
+  </div>
+  <div style="display:grid;grid-template-columns:1.75fr 1fr;gap:24px;align-items:start">
+    <div class="code-win">
+      <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+      <div class="code-body" style="font-size:13.5px;line-height:1.5;max-height:none"><span class="kw">def</span> merge_facts(facts, new):
+    added = {}  <span class="cm"># что узнали нового в этот ход</span>
+    <span class="kw">for</span> key, value <span class="kw">in</span> new.items():
+        <span class="kw">if not</span> value:
+            <span class="kw">continue</span>  <span class="cm"># пустое значение не записываем</span>
+        <span class="kw">if</span> isinstance(value, list):  <span class="cm"># список: дописываем без повторов</span>
+            old = facts.get(key, [])
+            <span class="kw">if not</span> isinstance(old, list):
+                old = [old]
+            fresh = [v <span class="kw">for</span> v <span class="kw">in</span> value <span class="kw">if</span> v <span class="kw">not in</span> old]
+            <span class="kw">if</span> fresh:
+                facts[key] = old + fresh
+                added[key] = fresh
+        <span class="kw">elif</span> facts.get(key) != value:  <span class="cm"># имя, возраст: новое вместо старого</span>
+            facts[key] = value
+            added[key] = value
+    <span class="kw">return</span> added</div>
+  </div>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <p style="font:500 17px/1.5 var(--f-body);color:#3C3C45">Модель только подсказывает, что нового. Решает программа, по нашим правилам: имя и возраст — новое значение вместо старого, списки — дописываем без повторов, пустое — пропускаем.</p>
+      <div class="ek-note ek-note--green" style="margin-top:0">Факты лежат отдельным файлом и каждый раз целиком встают в <span class="code-chip">system</span>. Пересказ их не трогает — поэтому имя переживёт и сжатие, и перезапуск.</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Резервная правка — только если группа успевает. Обязательный минимум к 55-й минуте — каркас и правки 1, 3, 4; не успеваете — перенесите правку в ДЗ и переходите к квизам. Приветствие — отдельный запрос: в нём системный промпт с пересказом и фактами, последние сообщения и служебная просьба поздороваться. Само приветствие в историю не кладём, чтобы история по-прежнему начиналась с реплики пользователя, а не Макса. /forget спрашивает подтверждение, как агент урока 13 перед записью файла: стирать память — решение человека.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Правка 5 · резерв</div>
+      <h2>Макс <span class="acc">здоровается первым</span></h2>
+    </div>
+    <p>При запуске Макс сам начнёт разговор: поздоровается по имени и спросит о прошлом. А <span class="code-chip">/forget</span> сотрёт память — по вашему решению.</p>
+    <div class="prompt-card prompt-card--copy" style="margin-top:10px;padding:18px 24px 14px">
+      <span class="pc-tag">→ В тот же чат</span>
+      <div class="pc-text" style="font-size:13.5px;line-height:1.5">Добавь приветствие по памяти и команду /forget.
+- from datetime import date. history.json теперь сохраняй как {"last_session": date.today().isoformat(), "summary": summary, "messages": history}
+- when_text(last): в try days = (date.today() - date.fromisoformat(last)).days, при TypeError или ValueError верни «давно»; 0 — «сегодня», 1 — «вчера», иначе f"{days} дн. назад"
+- greet(history, summary, facts, last): если history, summary и facts пустые — напечатай «Макс: Привет! Я Макс. Расскажи о себе: как тебя зовут и что ты любишь?» и закончи функцию через return. Иначе request = system с build_system(summary, facts) + history[-WINDOW:] + user с текстом f"(Служебное сообщение: собеседник снова открыл чат. Последний раз вы говорили: {when_text(last)}. Поздоровайся первым по имени и спроси о чём-то из прошлого разговора. 1–2 предложения.)" и вызови stream_answer(request). Приветствие в history не добавляй
+- при запуске, после строки 💾, вызови greet(history, summary, facts, memory.get("last_session", ""))
+- команда /forget через continue: sure = input("Точно забыть всё, что я о тебе знаю? (да/нет) ").strip().lower(); если «да» — history, summary, facts = [], "", {}, сохрани history.json с пустыми summary и messages, facts.json как {}, напечатай «Макс: Готово, всё стёр у себя. Давай знакомиться заново! Расскажи о себе.»; иначе «Хорошо, ничего не стираю.»
+- строка при запуске: «Макс на связи! /facts — что я о тебе знаю, /forget — забыть всё, /exit — выход»
+Остальной код не меняй. Верни весь файл.</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Дата хранится строкой вида год-месяц-день, потому что JSON не умеет хранить объект date. date.fromisoformat превращает строку обратно в дату, разность двух дат — промежуток, а .days — число дней в нём. Пустую или испорченную строку функция не примет — тогда Макс скажет «давно». Про /forget скажите честно: команда очищает наши файлы, но всё, что ученик рассказывал, уже отправлялось провайдеру в запросах. Поэтому правило приватности со слайда 15 не меняется: с Максом говорим от лица выдуманного героя, а адрес, телефон и пароли не рассказываем вообще.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Разбор кода</div>
+      <h2>Сегодня, вчера <span class="acc">или давно</span></h2>
+    </div>
+    <p>При каждом сохранении в <span class="code-chip">history.json</span> пишется дата: <span class="code-chip">"last_session": "2026-10-30"</span>. При запуске программа вычитает её из сегодняшней и подсказывает Максу, когда вы виделись.</p>
+    <div class="code-win" style="margin-top:10px">
+      <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+      <div class="code-body"><span class="kw">def</span> when_text(last):
+    <span class="kw">try</span>:
+        days = (date.today() - date.fromisoformat(last)).days  <span class="cm"># сколько дней прошло</span>
+    <span class="kw">except</span> (TypeError, ValueError):
+        <span class="kw">return</span> <span class="st">"давно"</span>  <span class="cm"># даты нет или она записана с ошибкой</span>
+    <span class="kw">if</span> days == 0:
+        <span class="kw">return</span> <span class="st">"сегодня"</span>
+    <span class="kw">if</span> days == 1:
+        <span class="kw">return</span> <span class="st">"вчера"</span>
+    <span class="kw">return</span> f<span class="st">"{days} дн. назад"</span></div>
+    </div>
+    <div class="ek-note">Проверим «день 2», не дожидаясь завтра: откройте <span class="code-chip">history.json</span>, замените дату в <span class="code-chip">last_session</span> на вчерашнюю, сохраните и запустите <span class="code-chip">friend.py</span>. А <span class="code-chip">/forget</span> стирает память на вашем диске — то, что уже ушло на сервер нейросети, эта команда не сотрёт.</div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Вопрос на К1. Дайте 10–15 секунд, потом раскройте ответ. Свяжите со счётчиком: в каркасе токены росли с каждой репликой, после правок 2–3 рост остановился.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Проверка · вопрос 1</div>
+      <h2>Изучите ситуацию и <span class="acc">ответьте</span></h2>
+    </div>
+    <div class="quiz-box" style="margin-top:10px">
+      <span class="q-num">Вопрос 1</span>
+      <p class="q-text">Петя заметил, что у <span class="code-chip">deepseek-flash</span> окно — миллион токенов, и решил: окно из 6 сообщений и пересказ не нужны, пусть программа шлёт всю историю. Прав ли он?</p>
+      <div class="quiz-answer">
+        <button class="quiz-btn" type="button">Показать ответ</button>
+        <div class="quiz-reveal">
+          <p>Не прав. Модель ничего не помнит между запросами, поэтому программа каждый ход отправляет всю историю заново. Чем длиннее разговор, тем больше токенов в каждом запросе — а платим за каждый. Друг, с которым общаются месяцами, тащил бы в каждый запрос тысячи сообщений. И даже огромное окно рано или поздно закончится — об этом прямо пишет документация Kimi. Поэтому историю ограничиваем сами, а старое пересказываем.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Вопрос на К2 и К3. Хороший дополнительный вопрос группе: а что, если модель сама неправильно выписала факт? Тогда ошибка тоже сохранится надолго — поэтому /facts полезно иногда открывать и проверять.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Проверка · вопрос 2</div>
+      <h2>Изучите ситуацию и <span class="acc">ответьте</span></h2>
+    </div>
+    <div class="quiz-box" style="margin-top:10px">
+      <span class="q-num">Вопрос 2</span>
+      <p class="q-text">В начале разговора Аня назвала Максу своё имя. Прошло 30 сообщений, история несколько раз сжималась. Где Макс теперь найдёт имя Ани — и почему записной книжке тут можно доверять больше, чем пересказу?</p>
+      <div class="quiz-answer">
+        <button class="quiz-btn" type="button">Показать ответ</button>
+        <div class="quiz-reveal">
+          <p>Сообщение с именем давно удалено из истории — имя осталось в пересказе и в <span class="code-chip">facts.json</span>. Пересказ пишет модель, и при каждом сжатии она пересказывает пересказ: деталь может потеряться или исказиться. А в записной книжке имя лежит отдельным полем: программа подставляет его в <span class="code-chip">system</span> в каждом запросе, и сжатие его не трогает. Поэтому важное о человеке храним в книжке.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Самая частая жалоба на уроке — «Макс меня забыл». Пройдитесь сверху вниз: предупреждение ⚠, путь через HERE, перезапуск после правки, команда /forget. Ручная правка history.json — хороший опыт для демо, но ошибиться в JSON легко: последняя строка JSONDecodeError называет строку и столбец, где сломалось. Ошибка 400 от DeepSeek значит, что сервер не принял формат запроса.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Отладка</div>
+      <h2>Почему Макс <span class="acc">меня забыл</span></h2>
+    </div>
+    <div class="kv">
+      <div class="kv-row"><div class="k">⚠ <span class="code-chip">history.json</span> повреждён</div><div class="v">Файл недописан: программу прервали во время записи — или вы правили его руками и сломали скобку или кавычку. Макс начал с чистого листа.</div></div>
+      <div class="kv-row"><div class="k">Забыл, а ⚠ не было</div><div class="v">Проверьте, что <span class="code-chip">friend.py</span> сохранён после правки 1 и путь к файлу собран через <span class="code-chip">HERE</span>. Иначе запуск из другой папки создаст новую память.</div></div>
+      <div class="kv-row"><div class="k">🗜 не появляется</div><div class="v">В истории ещё меньше 6 сообщений — поговорите дольше. Или пересказ пришёл пустым — тогда история не сжимается, это защита.</div></div>
+      <div class="kv-row"><div class="k">📝 не появляется</div><div class="v">Пишите от лица героя полными фразами. Если ответ модели — не JSON, факты в этот ход пропускаются, разговор не падает.</div></div>
+      <div class="kv-row"><div class="k"><span class="code-chip">Error code: 400</span> после ручной правки файла</div><div class="v">В <span class="code-chip">history.json</span> роль не из набора <span class="code-chip">user</span> / <span class="code-chip">assistant</span> или сломана структура. Верните файл как было.</div></div>
+    </div>
+    <div class="ek-note">Непонятная ошибка — копируйте traceback целиком в тот же чат DeepSeek и просите объяснить и починить.</div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пять привычек урока, дайте сфотографировать слайд. Особо подчеркните пятую: файлы памяти лежат на диске открытым текстом, а содержимое уходит провайдеру с каждым запросом. .gitignore не даст git добавить эти файлы в репозиторий, а значит, они не уйдут и туда, куда репозиторий потом выложат.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Запомните</div>
+      <h2>Привычки работы с <span class="acc">памятью AI</span></h2>
+    </div>
+    <div class="kv">
+      <div class="kv-row"><div class="k">01 · Память на нашей стороне</div><div class="v">Сервер не хранит разговор: что не отправили в запросе, того модель не видит.</div></div>
+      <div class="kv-row"><div class="k">02 · Считайте токены</div><div class="v"><span class="code-chip">usage</span> показывает размер запроса. Длинная история — дорогой каждый ход.</div></div>
+      <div class="kv-row"><div class="k">03 · Сжимайте, а не обрезайте</div><div class="v">Старое пересказываем. Но пересказ теряет детали — помним об этом.</div></div>
+      <div class="kv-row"><div class="k">04 · Важное записываем отдельно</div><div class="v">Факты храним в своём JSON-файле: им не страшны ни окно, ни сжатие.</div></div>
+      <div class="kv-row"><div class="k">05 · Память хранит личное</div><div class="v">Говорим от лица выдуманного героя, без адреса, телефона и паролей; <span class="code-chip">history.json</span> и <span class="code-chip">facts.json</span> — в <span class="code-chip">.gitignore</span>.</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Демо в группе. Двое-трое показывают перезапуск: Макс помнит имя и увлечения героя и что было в прошлый раз. У кого сделана правка 5 — пусть поменяют дату last_session на вчерашнюю и покажут приветствие. Своё демо из lesson-15-demo запускайте, только снова поставив в history.json вчерашнюю дату: на слайде 14 программа записала туда сегодняшнюю. Проверьте у всех .gitignore: он пригодится, когда проект попадёт в git. Если у кого-то пересказ исказил деталь — покажите группе: это честный пример, почему важное храним в книжке.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Чек-лист</div>
+      <h2>Что должно быть к <span class="acc">55-й минуте</span></h2>
+    </div>
+    <div class="grid-2">
+      <div class="info-card">
+        <h3 style="color:var(--ek-green-deep)">Готово</h3>
+        <ul class="clean">
+          <li><span><span class="code-chip">python friend.py</span> — ответ печатается по кусочкам, после него серая строка 📊</span></li>
+          <li><span>После <span class="code-chip">/exit</span> и нового запуска Макс помнит разговор — строка 💾</span></li>
+          <li><span>Когда в истории 6 сообщений — строка 🗜 с пересказом, а имя вашего героя (или питомца, если рассказывали о нём) Макс помнит</span></li>
+          <li><span>Строка 📝 и <span class="code-chip">/facts</span> показывают имя и увлечения вашего героя</span></li>
+          <li><span>В папке есть <span class="code-chip">.gitignore</span> с <span class="code-chip">.env</span>, <span class="code-chip">history.json</span>, <span class="code-chip">facts.json</span></span></li>
+        </ul>
+      </div>
+      <div class="info-card">
+        <h3 style="color:var(--ek-violet-deep)">Работает (если успели)</h3>
+        <ul class="clean">
+          <li><span>При запуске Макс сам здоровается по имени; после ручной правки даты — «вчера»</span></li>
+          <li><span><span class="code-chip">/forget</span> стирает память, и Макс знакомится заново</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="ek-note ek-note--green">Демо «день 2»: закройте Макса, запустите снова и спросите «Что ты обо мне помнишь?» Ответ соберётся из пересказа и записной книжки.</div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="ДЗ примерно на 30 минут. Новый диалог с DeepSeek нужен учебному профилю, а чату урока 10 — только если после правки app.py по карточке он не работает. «Три дня с другом» — разговоры с готовым Максом, а приветствие появится после правки 5. Её промпт опирается на код урока — build_system, stream_answer, константу WINDOW, — поэтому недоделанную правку делают в чате урока, где этот код уже есть. Нет чата урока — новый чат: свой friend.py, а под ним промпт правки 5 со слайда 30; ключа в friend.py нет, он лежит в .env. Подготовка к уроку 16 — это обязательный минимум урока 10: чат запускается командой streamlit run app.py и отвечает в браузере. Сам по себе app.py урока 10 сегодня не заработает, поэтому на карточке два точных действия. Первое — имя модели. В app.py стоит старое имя deepseek-chat, а DeepSeek отключил его после 24 июля 2026 года — без замены чат на вопрос не ответит. Меняем на deepseek-flash, как в программах с урока 13. В самом запросе больше ничего менять не нужно: адрес https://api.deepseek.com прежний, а текст ответа по-прежнему лежит в choices[0].message.content. Второе — ключ. У всех, кто публиковал чат на уроке 10 или в его ДЗ, app.py читает ключ через st.secrets: так велел промпт правки 5 урока 10. На Streamlit Cloud ключ лежал в разделе Secrets, а на компьютере файла секретов .streamlit/secrets.toml у учеников нет. Streamlit ищет этот файл в трёх местах: в папке .streamlit рядом со скриптом, в папке .streamlit там, откуда запущена команда, и в папке пользователя (на Windows — %userprofile%/.streamlit). Если файла нет нигде, обращение к st.secrets заканчивается ошибкой, а не пустым значением. Вариант st.secrets.get(…) or os.getenv(…) со слайда 31 урока 10 тоже не спасает. По исходникам Streamlit 1.66.1 get выручает, только когда файл есть, а нужного ключа в нём нет. Без файла get падает так же, как st.secrets[…], и до os.getenv дело не доходит. Ошибка называется StreamlitSecretNotFoundError — это разновидность FileNotFoundError, а её текст начинается со слов «No secrets found», дальше идёт список путей, где Streamlit искал файл. Поэтому карточка не просит разбираться, что стоит в файле: ключ у всех читается одинаково — из .env, как в программах уроков 11–15, а load_dotenv находит .env рядом со скриптом. У кого ключ и так читался из .env, ничего не сломается: повторные строки import и load_dotenv() не мешают. Путь через secrets.toml не берём: ключ оказался бы ещё в одном файле, который пришлось бы отдельно прятать от git. Если помощник DeepSeek предложит завести secrets.toml — не нужно, ключ уже в .env. .gitignore из lesson-15 копируем ради строки .env: у тех, кто публиковал, папка lesson-10 могла попасть на GitHub, и при следующей выгрузке через git .gitignore не даст добавить туда .env. Если .env или ключ уже попали на GitHub раньше, .gitignore их не уберёт — ключ нужно перевыпустить. В запасном пути на карточке сказано «без ключа»: если ключ где-то записан прямо в app.py, перед вставкой в чат его нужно стереть — делиться ключом запрещают условия DeepSeek. Предупредите, что ответ придёт не сразу: deepseek-flash по умолчанию размышляет, а запрос урока 10 размышления не выключает. Пока ответ готовится, на странице крутится «Думаю…» из урока 10 — это не зависание. Если ученик просит помощи у DeepSeek, пусть сам назовёт модель deepseek-flash и напишет, что ключ читается из .env, как на карточке: помощник по привычке может вернуть deepseek-chat, об этом — на слайде 8. Регистрацию на GitHub и в Streamlit Cloud и публикацию в ДЗ не даём. По условиям Streamlit (редакция ноября 2025 года, сервис там называется Community Cloud) аккаунт в Streamlit Cloud можно завести только с 18 лет; ни согласия родителей, ни учебных целей как исключения в условиях нет. По условиям GitHub аккаунт — с 13 лет: пользователей младше 13 GitHub не допускает и, если узнает о таком, сразу закрывает аккаунт. Для жителей других стран, кроме США, условия GitHub добавляют: местный минимальный возраст может быть выше, и соблюдать его должен сам пользователь. Оговорки про согласие родителей у GitHub тоже нет. Учебный профиль заполняется от лица того же героя: любимый предмет и трудные темы тоже его. В учебном профиле study — словарь внутри словаря: по нашим правилам слияния он заменяется целиком, и новая тема может стереть любимый предмет. Поэтому на карточке подсказка: попросить DeepSeek, чтобы программа дописывала темы без повторов, как списки. Разберём на слайде 3 урока 16: Макс уже помнит, где герой ошибается, — это почти репетитор. Не хватает заданий, проверки ответов и сайта, и всё это будет на уроке 16. Скриншоты с приветствием открывайте на разборе только с согласия автора. Про ключ Kimi скажите прямо: дома его в .env не добавляем, даже если он есть у родителей. По условиям Kimi владелец аккаунта не может давать другим свой ключ и доступ к аккаунту, а персональные данные детей младше 14 лет (или младше возраста цифрового согласия в их стране) присылать Kimi нельзя — оговорки про согласие родителей у этого запрета нет.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Домашнее задание · около 30 минут</div>
+      <h2>Прокачайте <span class="acc">память друга</span></h2>
+    </div>
+    <p style="font-size:16px">Три задания. Учебный профиль делайте в новом чате DeepSeek: вставьте туда свой <span class="code-chip">friend.py</span> и опишите задачу.</p>
+    <div class="grid-2" style="grid-template-columns:1fr 1fr;gap:18px">
+      <div style="display:flex;flex-direction:column;gap:14px">
+<div class="info-card">
+        <h3>Три дня с другом</h3>
+        <p>Поговорите с Максом в разные дни. Пришлите скриншот приветствия на второй или третий день и содержимое <span class="code-chip">facts.json</span>.</p>
+      </div>
+<div class="info-card">
+        <h3>Учебный профиль</h3>
+        <p>В <span class="code-chip">facts.json</span> появляется раздел <span class="code-chip">study</span>: любимый и трудный предмет вашего героя, темы, где он ошибается («путаю -тся и -ться»). Попросите DeepSeek, чтобы программа дописывала новые темы к старым без повторов. Макс сам предлагает помочь с трудной темой.</p>
+      </div>
+      </div>
+<div class="info-card">
+        <h3>Подготовка к уроку 16</h3>
+        <p style="font-size:16px;line-height:1.5">Скопируйте с заменой <span class="code-chip">.env</span> и <span class="code-chip">.gitignore</span> из <span class="code-chip">lesson-15</span> в <span class="code-chip">lesson-10</span>. В <span class="code-chip">app.py</span> урока 10 замените <span class="code-chip">deepseek-chat</span> на <span class="code-chip">deepseek-flash</span>. Ключ берём из <span class="code-chip">.env</span>: в начало <span class="code-chip">app.py</span> добавьте три строки — <span class="code-chip">import os</span>, <span class="code-chip">from dotenv import load_dotenv</span>, <span class="code-chip">load_dotenv()</span>, а в строке <span class="code-chip">API_KEY = …</span> всё после <span class="code-chip">=</span> замените на <span class="code-chip">os.getenv("DEEPSEEK_KEY")</span>. Сохраните, в папке <span class="code-chip">lesson-10</span> выполните <span class="code-chip">streamlit run app.py</span> и задайте вопрос — чат должен ответить. Не работает — вставьте в новый чат DeepSeek свой <span class="code-chip">app.py</span> без ключа и ошибку целиком, а в просьбе укажите: модель — <span class="code-chip">deepseek-flash</span>, ключ — из <span class="code-chip">.env</span>.</p>
+      </div>
+    </div>
+    <div class="ek-note ek-note--red" style="font-size:15px;padding:10px 18px">Дома говорите с Максом от лица того же выдуманного героя, а адрес, телефон и пароли не рассказывайте вообще: всё сказанное лежит в файлах и уходит на сервер нейросети. <span class="code-chip">KIMI_KEY</span> в <span class="code-chip">.env</span> не добавляйте, даже если ключ Kimi есть дома. На скриншотах личное замажьте. Недоделанная правка 5 — тоже дома, в чате урока. Нет чата урока — вставьте в новый чат свой <span class="code-chip">friend.py</span> и под ним промпт правки 5 со слайда 30.</div>
+  </div>
+</section>
+
+<section class="slide slide--green"
+  data-notes="Закройте урок. Сегодня у друга три вида памяти: разговор в окне, пересказ старого и записная книжка. Нейросеть по-прежнему ничего не помнит сама — память живёт в нашей программе и в наших файлах. На уроке 16 записная книжка превратится в прогресс ученика по темам, а репетитор будет предлагать повторить слабые темы.">
+<div class="sl-orbit">
+    <i class="sl-ring"></i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:75px;top:20px;width:150px;height:150px;transform:rotate(-10deg)"><use href="#ek-i-trophy"/></svg>
+    <i class="sl-letter" style="left:466px;top:13px;width:78px;height:78px;--fs:36px">T</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1040px;top:15px;width:130px;height:130px;transform:rotate(12deg)"><use href="#ek-i-heart"/></svg>
+    <i class="sl-letter" style="left:68px;top:268px;width:100px;height:100px;--fs:46px">O</i>
+    <i class="sl-letter" style="left:1137px;top:327px;width:95px;height:95px;--fs:44px">K</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:102px;top:532px;width:125px;height:125px;transform:rotate(-15deg)"><use href="#ek-i-star"/></svg>
+    <i class="sl-letter" style="left:726px;top:613px;width:78px;height:78px;--fs:36px">E</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1045px;top:540px;width:110px;height:110px;transform:rotate(8deg)"><use href="#ek-i-gem"/></svg>
+  </div>
+  <div class="cover-center">
+    <div class="bubble">
+      <h1>До встречи<br>на уроке 16!</h1>
+      <p>Сегодня Макс научился помнить разговор между запусками, сжимать старое в пересказ и вести записную книжку фактов. На уроке 16 соберём всё в AI-репетитора по школьному предмету.</p>
+    </div>
+  </div>
+</section>
+</main>
+
+<div class="notes" id="notes">
+  <div class="notes__header">Заметки преподавателя &middot; N — скрыть</div>
+  <div class="notes__body" id="notesBody">—</div>
+</div>
+
+<div class="hint"><kbd>←</kbd><kbd>→</kbd> слайды &middot; <kbd>N</kbd> заметки &middot; <kbd>F</kbd> весь экран</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="ek-i-trophy" viewBox="0 0 100 100"><path fill="currentColor" d="M24 16h52v12h8c6 0 10 4 10 10 0 15-11 25-23 27-3 5-8 9-14 10v8h14c4 0 7 3 7 7v4H22v-4c0-4 3-7 7-7h14v-8c-6-1-11-5-14-10C17 63 6 53 6 38c0-6 4-10 10-10h8V16zM24 36h-7c-2 0-4 2-4 4 0 8 5 15 12 18-1-5-1-10-1-16v-6zM76 36v6c0 6 0 11-1 16 7-3 12-10 12-18 0-2-2-4-4-4h-7z"/></symbol>
+<symbol id="ek-i-heart" viewBox="0 0 100 100"><path fill="currentColor" d="M50 88C28 72 10 56 10 38 10 24 21 14 34 14c6 0 12 3 16 8 4-5 10-8 16-8 13 0 24 10 24 24 0 18-18 34-40 50z"/></symbol>
+<symbol id="ek-i-star" viewBox="0 0 100 100"><path fill="currentColor" d="M50 8l12 27 29 3-22 20 6 29-25-15-25 15 6-29L9 38l29-3z"/></symbol>
+<symbol id="ek-i-gem" viewBox="0 0 100 100"><path fill="currentColor" d="M30 12h40l18 24-38 52L12 36zM36 20l-12 16h20zM64 20l-8 16h20zM50 22l-9 14h18zM26 44l20 30-8-30zM62 44l-8 30 20-30zM46 44h8l-4 26z"/></symbol>
+</defs></svg>
+
+<script>
+/* ============ Автомасштаб сцены ============ */
+(function(){
+  'use strict';
+  var stage = document.getElementById('deck');
+  function fit(){
+    var w = window.innerWidth, h = window.innerHeight;
+    if (!w || !h) return;
+    var s = Math.min(w / 1320, h / 780);
+    if (document.fullscreenElement) s = Math.min(w / 1280, h / 720);
+    stage.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+    stage.style.borderRadius = document.fullscreenElement ? '0' : '18px';
+  }
+  window.addEventListener('resize', fit);
+  document.addEventListener('fullscreenchange', fit);
+  fit();
+})();
+
+/* ============ Навигация по слайдам ============ */
+(function(){
+  'use strict';
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var total = slides.length;
+  var idx = 0;
+  document.getElementById('total').textContent = total;
+
+  var progressEl = document.getElementById('progress');
+  var currentEl = document.getElementById('current');
+  var notesPanel = document.getElementById('notes');
+  var notesBody = document.getElementById('notesBody');
+
+  slides.forEach(function(s, i){
+    if (s.classList.contains('slide--content')) s.setAttribute('data-page', i + 1);
+  });
+
+  function render(){
+    slides.forEach(function(s, i){
+      s.classList.remove('active', 'prev');
+      if (i === idx) s.classList.add('active');
+      else if (i < idx) s.classList.add('prev');
+    });
+    progressEl.style.width = ((idx + 1) / total * 100).toFixed(2) + '%';
+    currentEl.textContent = idx + 1;
+    notesBody.textContent = slides[idx].getAttribute('data-notes') || '—';
+  }
+
+  function go(n){ idx = Math.max(0, Math.min(total - 1, n)); render(); }
+  function next(){ go(idx + 1); }
+  function prev(){ go(idx - 1); }
+
+  document.addEventListener('keydown', function(e){
+    var active = document.activeElement;
+    if (active && (active.isContentEditable || active.tagName === 'TEXTAREA' || active.tagName === 'INPUT')) return;
+    switch (e.key){
+      case 'ArrowRight': case 'PageDown': case ' ':
+        e.preventDefault(); next(); break;
+      case 'ArrowLeft': case 'PageUp':
+        e.preventDefault(); prev(); break;
+      case 'Home': e.preventDefault(); go(0); break;
+      case 'End': e.preventDefault(); go(total - 1); break;
+      case 'f': case 'F': case 'а': case 'А':
+        e.preventDefault();
+        if (!document.fullscreenElement){ if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen(); }
+        else if (document.exitFullscreen) document.exitFullscreen();
+        break;
+      case 'n': case 'N': case 'т': case 'Т':
+        e.preventDefault(); notesPanel.classList.toggle('active'); break;
+      case 'Escape':
+        if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
+        notesPanel.classList.remove('active'); break;
+    }
+  });
+
+  var tx = 0, ty = 0;
+  document.addEventListener('touchstart', function(e){ tx = e.changedTouches[0].screenX; ty = e.changedTouches[0].screenY; }, { passive: true });
+  document.addEventListener('touchend', function(e){
+    var dx = e.changedTouches[0].screenX - tx, dy = e.changedTouches[0].screenY - ty;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)){ if (dx < 0) next(); else prev(); }
+  }, { passive: true });
+
+  document.addEventListener('click', function(e){
+    if (e.target.closest('a,button,input,textarea,code,pre,[contenteditable],.code-win,.term,.prompt-card,.quiz-box,.notes')) return;
+    var x = e.clientX, w = window.innerWidth;
+    if (x < w * 0.25) prev();
+    else if (x > w * 0.75) next();
+  });
+
+  render();
+})();
+
+/* ============ Квизы: показать ответ ============ */
+(function(){
+  'use strict';
+  Array.prototype.slice.call(document.querySelectorAll('.quiz-btn')).forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var box = btn.closest('.quiz-box');
+      var reveal = box && box.querySelector('.quiz-reveal');
+      if (!reveal) return;
+      var shown = reveal.classList.toggle('show');
+      btn.textContent = shown ? 'Скрыть ответ' : 'Показать ответ';
+    });
+  });
+})();
+</script>
+</body>
+</html>

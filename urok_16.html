@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Урок 16 — Итоговый проект: AI-репетитор | Eduson Kids</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+/* ============ Дизайн-токены Eduson Kids ============ */
+:root{
+  --ek-violet:#8C7FF6; --ek-violet-soft:#A79EF9; --ek-violet-deep:#6F61E8; --ek-violet-bg:#F0EEFE;
+  --ek-green:#3DF79D; --ek-green-soft:#7BF9BD; --ek-green-mint:#C9F7E3; --ek-green-pale:#E7FDF2; --ek-green-deep:#0FBF6E;
+  --ek-ink:#17171C; --ek-gray:#8F8F98; --ek-gray-light:#EFEFF2; --ek-line:#E3E3EA;
+  --ek-red:#FF6B6B; --ek-red-soft:#FF8A8A; --ek-red-deep:#E04848; --ek-red-pale:#FFECEC;
+  --f-head:'Inter Tight','Inter','Segoe UI',system-ui,sans-serif;
+  --f-body:'Inter','Segoe UI',system-ui,sans-serif;
+  --f-mono:'JetBrains Mono','Cascadia Mono','Consolas',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--f-body);background:#E9E9F1;color:var(--ek-ink);-webkit-font-smoothing:antialiased}
+
+/* ============ Хром: прогресс, счётчик, подсказка ============ */
+.progress{position:fixed;top:0;left:0;right:0;height:4px;background:rgba(23,23,28,.08);z-index:100}
+.progress__fill{height:100%;width:0%;background:var(--ek-violet);transition:width 300ms ease}
+.counter{position:fixed;top:14px;right:18px;z-index:90;font:600 13px var(--f-body);color:var(--ek-gray);background:#fff;border:1px solid var(--ek-line);padding:6px 14px;border-radius:999px;font-variant-numeric:tabular-nums}
+.counter b{color:var(--ek-ink)}
+.hint{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:90;font:500 11px var(--f-body);color:var(--ek-gray);background:#fff;border:1px solid var(--ek-line);padding:6px 14px;border-radius:999px;letter-spacing:.03em}
+.hint kbd{font-family:var(--f-mono);background:var(--ek-gray-light);padding:1px 6px;border-radius:4px;font-size:10px;margin:0 2px;color:var(--ek-ink)}
+
+/* ============ Сцена 1280×720 ============ */
+.stage{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform:translate(-50%,-50%);border-radius:18px;overflow:hidden;box-shadow:0 30px 90px rgba(23,23,28,.18);background:#fff}
+.slide{position:absolute;inset:0;background:#fff;opacity:0;transform:translateY(26px);transition:opacity 280ms ease,transform 280ms ease;pointer-events:none;font-family:var(--f-head)}
+.slide.active{opacity:1;transform:none;pointer-events:auto}
+.slide.prev{transform:translateY(-26px)}
+.slide--violet{background:var(--ek-violet)}
+.slide--green{background:var(--ek-green)}
+
+/* Номер страницы на контентных слайдах */
+.slide--content::after{content:attr(data-page);position:absolute;right:54px;bottom:30px;font:800 30px/1 var(--f-head);color:var(--ek-ink);opacity:.5}
+
+/* ============ Декор «Орбита» ============ */
+.sl-orbit{position:absolute;inset:0;pointer-events:none}
+.slide--violet .sl-orbit{--decor:#A79EF9;--letter:#C4BEFA}
+.slide--green .sl-orbit{--decor:#7BF9BD;--letter:#C4FCE0}
+.sl-ring{position:absolute;left:50%;top:50%;width:1040px;height:660px;transform:translate(-50%,-50%);border:3px solid var(--decor);border-radius:50%;opacity:.9}
+.sl-ico{position:absolute;color:var(--decor)}
+.sl-letter{position:absolute;border-radius:50%;background:var(--decor);color:var(--letter);display:flex;align-items:center;justify-content:center;font:800 var(--fs,40px)/1 var(--f-head);font-style:normal}
+
+/* ============ Каверы: карточка-окно и спич-бабл ============ */
+.cover-center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2}
+.cover-card{position:relative;width:860px;background:#fff;border-radius:28px;box-shadow:0 30px 80px rgba(23,23,28,.18)}
+.card-top{display:flex;justify-content:space-between;align-items:center;padding:24px 30px 0}
+.win-dots{display:flex;gap:9px}
+.win-dots i{width:13px;height:13px;border-radius:50%;background:var(--ek-violet)}
+.win-close{position:relative;width:22px;height:22px}
+.win-close::before,.win-close::after{content:"";position:absolute;left:-1px;top:9px;width:24px;height:4px;border-radius:2px;background:var(--ek-violet)}
+.win-close::before{transform:rotate(45deg)}
+.win-close::after{transform:rotate(-45deg)}
+.cover-card .badge{position:absolute;left:50%;top:-30px;transform:translateX(-50%) rotate(-4deg)}
+.cover-card h1{padding:26px 64px 30px;text-align:center;font:800 50px/1.14 var(--f-head);letter-spacing:-.015em;color:var(--ek-ink)}
+.cover-card .cover-sub{padding:0 80px 34px;text-align:center;font:500 19px/1.5 var(--f-body);color:#3C3C45}
+.cover-card .cover-chips{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;padding:0 40px 40px}
+.bubble{position:relative;width:660px;background:#EFEFF1;border-radius:30px;padding:56px 70px;text-align:center}
+.bubble::after{content:"";position:absolute;right:56px;bottom:-24px;width:0;height:0;border-left:38px solid transparent;border-top:28px solid #EFEFF1}
+.bubble h1{font:800 42px/1.25 var(--f-head);letter-spacing:-.01em;color:var(--ek-ink)}
+.bubble p{margin-top:16px;font:500 18px/1.5 var(--f-body);color:#3C3C45}
+
+/* ============ Стикер-бейдж и чипы ============ */
+.badge{display:inline-block;background:var(--ek-green);color:var(--ek-ink);font:800 24px/1 var(--f-head);padding:13px 22px;border-radius:13px;transform:rotate(-3deg);box-shadow:0 10px 24px rgba(23,23,28,.10)}
+.badge--violet{background:var(--ek-violet);color:#fff}
+.badge--sm{font-size:16px;padding:9px 16px;border-radius:10px}
+.chip{display:inline-block;font:700 14px/1 var(--f-body);padding:8px 14px;border-radius:999px;background:var(--ek-violet-bg);color:var(--ek-violet-deep)}
+.chip--green{background:var(--ek-green-pale);color:var(--ek-green-deep)}
+.chip--gray{background:var(--ek-gray-light);color:#3C3C45}
+
+/* ============ Контентные слайды ============ */
+.sl-body{position:absolute;inset:0;padding:56px 80px 62px;display:flex;flex-direction:column;gap:16px;overflow:hidden}
+h2{font:800 38px/1.16 var(--f-head);letter-spacing:-.01em;color:var(--ek-ink)}
+.acc{color:var(--ek-violet-deep)}
+.sl-body>p, .col p{font:500 18px/1.5 var(--f-body);color:#3C3C45}
+.code-chip{font-family:var(--f-mono);font-weight:700;font-size:.88em;background:var(--ek-violet-bg);color:var(--ek-violet-deep);padding:2px 8px;border-radius:8px;white-space:nowrap}
+.hl{color:var(--ek-violet-deep);font-weight:700}
+.out-chip{font-family:var(--f-mono);font-weight:700;font-size:.88em;background:var(--ek-green-pale);color:#0B7A48;padding:2px 8px;border-radius:8px;white-space:nowrap}
+
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;align-items:stretch}
+
+.info-card{background:#F5F5F9;border-radius:18px;padding:18px 22px;font:500 16px/1.55 var(--f-body);color:#3C3C45}
+.info-card h3{font:800 19px/1.3 var(--f-head);color:var(--ek-ink);margin-bottom:8px}
+.ek-note{background:var(--ek-violet-bg);border-left:4px solid var(--ek-violet);border-radius:0 14px 14px 0;padding:14px 20px;font:600 17px/1.5 var(--f-body);color:#3C3560}
+.ek-note--green{background:var(--ek-green-pale);border-left-color:var(--ek-green-deep);color:#0B5B39}
+.ek-note--red{background:var(--ek-red-pale);border-left-color:var(--ek-red);color:#7A2E2E}
+
+ul.clean{list-style:none;display:flex;flex-direction:column;gap:10px}
+ul.clean li{display:flex;gap:14px;align-items:flex-start;font:500 17.5px/1.5 var(--f-body);color:#3C3C45}
+ul.clean li::before{content:'—';flex:0 0 auto;color:var(--ek-violet-deep);font-weight:800}
+
+ol.steps{list-style:none;counter-reset:step;display:flex;flex-direction:column;gap:12px}
+ol.steps li{counter-increment:step;display:flex;gap:16px;align-items:center;padding:14px 20px;background:#F5F5F9;border-radius:16px;font:500 17.5px/1.45 var(--f-body);color:#2E2E36}
+ol.steps li::before{content:counter(step);flex:0 0 40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:var(--ek-violet);font:800 18px var(--f-head);color:#fff}
+ol.steps li:last-child::before{background:var(--ek-green);color:var(--ek-ink)}
+ol.steps.steps--tight{gap:8px}
+ol.steps.steps--tight li{padding:9px 16px;font-size:15.5px;gap:12px}
+ol.steps.steps--tight li::before{flex-basis:32px;height:32px;font-size:14px}
+
+.q-label{font:700 13px/1 var(--f-head);letter-spacing:.08em;text-transform:uppercase;color:var(--ek-gray)}
+
+/* ============ План занятия (agenda) ============ */
+.agenda{display:flex;flex-direction:column;gap:8px}
+.agenda-row{display:flex;gap:16px;align-items:center;padding:10px 18px;background:#F5F5F9;border-radius:14px}
+.agenda-row .t{flex:0 0 84px;text-align:center;font:800 14px/1 var(--f-mono);color:var(--ek-ink);background:var(--ek-green);border-radius:999px;padding:8px 0}
+.agenda-row .tt{font:700 16.5px/1.3 var(--f-head);color:var(--ek-ink)}
+.agenda-row .dd{font:500 14px/1.4 var(--f-body);color:var(--ek-gray)}
+
+/* ============ Ключ-значение (привычки, шпаргалки) ============ */
+.kv{display:flex;flex-direction:column}
+.kv-row{display:grid;grid-template-columns:250px 1fr;gap:18px;align-items:start;padding:11px 4px;border-bottom:1.5px solid var(--ek-line)}
+.kv-row:last-child{border-bottom:none}
+.kv-row .k{font:800 14px/1.35 var(--f-head);letter-spacing:.05em;text-transform:uppercase;color:var(--ek-violet-deep);padding-top:2px}
+.kv-row .v{font:500 16.5px/1.5 var(--f-body);color:#3C3C45}
+
+/* ============ Окно кода (статичное) ============ */
+.code-win{background:#fff;border:2.5px solid var(--ek-ink);border-radius:16px;overflow:hidden;font-family:var(--f-mono);box-shadow:10px 10px 0 rgba(140,127,246,.14)}
+.code-head{display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:2px solid var(--ek-ink)}
+.code-head .win-dots i{width:11px;height:11px}
+.lang-badge{font:700 11px var(--f-mono);letter-spacing:.14em;color:var(--ek-gray)}
+.code-body{padding:14px 20px;font:500 14.5px/1.6 var(--f-mono);color:var(--ek-ink);white-space:pre;overflow:auto;max-height:400px;tab-size:4}
+.code-body .cm{color:var(--ek-gray)}
+.code-body .st{color:var(--ek-green-deep)}
+.code-body .kw{color:var(--ek-violet-deep);font-weight:700}
+
+/* ============ Терминал (тёмное окно) ============ */
+.term{background:var(--ek-ink);border-radius:16px;overflow:hidden;font-family:var(--f-mono);box-shadow:10px 10px 0 rgba(23,23,28,.12)}
+.term-head{display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,.14)}
+.term-head .win-dots i{width:11px;height:11px;background:var(--ek-green)}
+.term-head .lang-badge{color:rgba(255,255,255,.5)}
+.term-body{padding:14px 20px;font:500 14.5px/1.62 var(--f-mono);color:var(--ek-green);white-space:pre-wrap;word-break:break-word;overflow:auto;max-height:420px}
+.term-body .usr{color:#fff}
+.term-body .dim{color:rgba(255,255,255,.55)}
+
+/* ============ Промпт-карточка (диалог с DeepSeek) ============ */
+.prompt-card{position:relative;background:var(--ek-violet-bg);border:2.5px solid var(--ek-violet);border-radius:18px;padding:20px 26px 18px;box-shadow:10px 10px 0 rgba(140,127,246,.18)}
+.prompt-card .pc-tag{position:absolute;top:-16px;left:22px;background:var(--ek-violet);color:#fff;font:800 14px/1 var(--f-head);padding:9px 16px;border-radius:10px;transform:rotate(-2deg);box-shadow:0 8px 18px rgba(23,23,28,.12)}
+.prompt-card .pc-text{margin-top:6px;font:500 15px/1.62 var(--f-mono);color:#2E2A52;white-space:pre-wrap}
+.prompt-card .pc-text .hl{color:var(--ek-violet-deep)}
+.prompt-card--copy .pc-tag{background:var(--ek-green);color:var(--ek-ink)}
+
+/* ============ Сравнение (vs) ============ */
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:stretch}
+.vs-col{border-radius:18px;padding:20px 24px}
+.vs-col h4{font:800 15px/1 var(--f-head);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
+.vs-col p{font:500 16px/1.55 var(--f-body)}
+.vs-col .note{margin-top:12px;font:500 13.5px/1.4 var(--f-body);opacity:.75}
+.vs-col--plain{background:var(--ek-gray-light);color:#3C3C45}
+.vs-col--plain h4{color:var(--ek-gray)}
+.vs-col--win{background:var(--ek-green-pale);color:#124F35;border:2px solid var(--ek-green-soft)}
+.vs-col--win h4{color:var(--ek-green-deep)}
+
+/* ============ Квиз с раскрытием ответа ============ */
+.quiz-box{background:#F5F5F9;border:2.5px solid var(--ek-ink);border-radius:18px;padding:22px 26px;box-shadow:10px 10px 0 rgba(61,247,157,.25)}
+.quiz-box .q-num{display:inline-block;background:var(--ek-green);color:var(--ek-ink);font:800 13px/1 var(--f-head);letter-spacing:.08em;text-transform:uppercase;padding:8px 14px;border-radius:999px;margin-bottom:14px}
+.quiz-box .q-text{font:700 21px/1.42 var(--f-head);color:var(--ek-ink)}
+.quiz-answer{margin-top:16px}
+.quiz-btn{border:0;border-radius:12px;padding:12px 22px;font:800 15px/1 var(--f-head);cursor:pointer;background:var(--ek-violet);color:#fff;transition:background .15s}
+.quiz-btn:hover{background:var(--ek-violet-deep)}
+.quiz-reveal{display:none;margin-top:14px;background:var(--ek-green-pale);border-left:4px solid var(--ek-green-deep);border-radius:0 14px 14px 0;padding:14px 20px;font:500 16.5px/1.55 var(--f-body);color:#0B5B39}
+.quiz-reveal.show{display:block}
+.quiz-reveal p+p{margin-top:8px}
+
+/* Появление контента */
+.slide.active .info-card,.slide.active ul.clean li,.slide.active ol.steps li,.slide.active .grid-2>*,.slide.active .grid-3>*,.slide.active .agenda-row,.slide.active .kv-row{animation:reveal 450ms ease backwards}
+.slide.active .info-card:nth-child(2),.slide.active ul.clean li:nth-child(2),.slide.active ol.steps li:nth-child(2),.slide.active .grid-2>*:nth-child(2),.slide.active .grid-3>*:nth-child(2),.slide.active .agenda-row:nth-child(2),.slide.active .kv-row:nth-child(2){animation-delay:80ms}
+.slide.active ul.clean li:nth-child(3),.slide.active ol.steps li:nth-child(3),.slide.active .grid-3>*:nth-child(3),.slide.active .agenda-row:nth-child(3),.slide.active .kv-row:nth-child(3){animation-delay:160ms}
+.slide.active ol.steps li:nth-child(4),.slide.active .agenda-row:nth-child(4),.slide.active .kv-row:nth-child(4){animation-delay:240ms}
+.slide.active ol.steps li:nth-child(5),.slide.active .agenda-row:nth-child(5),.slide.active .kv-row:nth-child(5){animation-delay:320ms}
+.slide.active .agenda-row:nth-child(6),.slide.active ol.steps li:nth-child(6),.slide.active .kv-row:nth-child(6){animation-delay:400ms}
+.slide.active .agenda-row:nth-child(7),.slide.active ol.steps li:nth-child(7),.slide.active .kv-row:nth-child(7){animation-delay:480ms}
+@keyframes reveal{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@media (prefers-reduced-motion:reduce){.slide.active .info-card,.slide.active ul.clean li,.slide.active ol.steps li,.slide.active .grid-2>*,.slide.active .grid-3>*,.slide.active .agenda-row,.slide.active .kv-row{animation:none}}
+
+/* ============ Заметки преподавателя ============ */
+.notes{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--ek-line);box-shadow:0 -16px 40px rgba(23,23,28,.10);padding:20px 40px;z-index:95;max-height:40vh;overflow-y:auto;transform:translateY(100%);transition:transform 300ms ease}
+.notes.active{transform:translateY(0)}
+.notes__header{font:800 11px var(--f-head);letter-spacing:.2em;text-transform:uppercase;color:var(--ek-violet-deep);margin-bottom:8px}
+.notes__body{font:500 15px/1.55 var(--f-body);color:#3C3C45}
+
+:focus-visible{outline:3px solid var(--ek-violet-soft);outline-offset:2px;border-radius:6px}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(23,23,28,.15);border-radius:4px}
+</style>
+</head>
+<body>
+
+<div class="progress"><div class="progress__fill" id="progress"></div></div>
+<div class="counter"><b id="current">1</b> / <span id="total">38</span></div>
+
+<main class="stage" id="deck">
+<section class="slide slide--violet active"
+  data-notes="Поприветствуйте. Это итоговый урок модуля: соберём AI-репетитора tutor/app.py из деталей уроков 10–15. Страница на Streamlit — урок 10, openai SDK и temperature — урок 11, учитель и ответ по кусочкам — урок 12, калькулятор и цикл инструментов — урок 13, JSON и примеры — урок 14, память в файле — урок 15. Репетитор работает на компьютере каждого через streamlit run — это полноценное веб-приложение в браузере. Публичную ссылку на уроке не делаем: по условиям Streamlit аккаунт в Streamlit Cloud можно завести только с 18 лет, а GitHub — с 13. Поэтому дома публикует взрослый со своего аккаунта, а ключ DeepSeek берёт тот же, что выдала школа, — шаги на слайде 31. Обязательный минимум — каркас и правки 1–3: задание, автопроверка, прогресс. Правки 4–5 — резерв.">
+<div class="sl-orbit">
+    <i class="sl-ring"></i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:75px;top:20px;width:150px;height:150px;transform:rotate(-10deg)"><use href="#ek-i-trophy"/></svg>
+    <i class="sl-letter" style="left:466px;top:13px;width:78px;height:78px;--fs:36px">T</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1040px;top:15px;width:130px;height:130px;transform:rotate(12deg)"><use href="#ek-i-heart"/></svg>
+    <i class="sl-letter" style="left:68px;top:268px;width:100px;height:100px;--fs:46px">U</i>
+    <i class="sl-letter" style="left:1137px;top:327px;width:95px;height:95px;--fs:44px">T</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:102px;top:532px;width:125px;height:125px;transform:rotate(-15deg)"><use href="#ek-i-star"/></svg>
+    <i class="sl-letter" style="left:726px;top:613px;width:78px;height:78px;--fs:36px">O</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1045px;top:540px;width:110px;height:110px;transform:rotate(8deg)"><use href="#ek-i-gem"/></svg>
+    <i class="sl-letter" style="left:290px;top:30px;width:70px;height:70px;--fs:32px">R</i>
+  </div>
+  <div class="cover-center">
+    <div class="cover-card">
+      <div class="badge">Урок №16</div>
+      <div class="card-top"><span class="win-dots"><i></i><i></i><i></i></span><span class="win-close"></span></div>
+      <h1>Итоговый проект:<br>AI-репетитор</h1>
+      <p class="cover-sub">Соберём из деталей модуля веб-репетитора: он придумывает задания, проверяет ответы калькулятором и помнит, какие темы даются вам труднее.</p>
+      <div class="cover-chips"><span class="chip chip--green">DeepSeek API</span><span class="chip">Streamlit</span><span class="chip chip--gray">Function calling</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Теории — минимум: с 10-й минуты все работают руками. Контрольные точки: к 15-й минуте у всех task_gen.py напечатал три задания; к 24-й — страница репетитора открыта и учитель отвечает по кусочкам; к 30-й — по кнопке приходит задание и есть форма ответа; к 38-й — проверка выдаёт ✅ или ❌ с объяснением; к 45-й — прогресс в сайдбаре, и после обновления страницы он на месте. Блок 15–24 открывают разбор разминки, ключ, цель и демо (слайды 11–14): уложите их в 4 минуты, демо — два действия. На сборку и запуск каркаса остаётся около 5 минут. Чат DeepSeek один на весь урок: разминка, каркас и все пять правок. Каждая правка — полная перегенерация app.py, а файл к концу урока большой, поэтому DeepSeek отвечает дольше, чем на прошлых уроках. Отстаёте больше чем на 3 минуты — разборы на слайдах 22 и 25 сократите до одной главной мысли, правки 4–5 перенесите в ДЗ. Ученику, у которого правка не заработала, дайте файл этого этапа из эталона: заранее положите файлы всех этапов в общую папку класса. Перед уроком: 1) проверьте версии на компьютерах — заметка слайда 15; 2) соберите демо: финальный app.py в папке vibe-coding/lesson-16-demo/tutor, свой .env — в lesson-16-demo, а рядом с app.py — progress.json, где по математике у процентов 2 верных из 2, а у дробей 0 из 2 (готовый файл — в эталоне, этап правка-5); 3) запустите демо из lesson-16-demo командой streamlit run tutor/app.py и проверьте, что дроби подсвечены как слабая тема. Расход: новое задание — один запрос, вопрос учителю — один, проверка — обычно один-два запроса, с повторами не больше пяти.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">План занятия</div>
+    <h2>Как пройдут <span class="acc">60 минут</span></h2>
+  </div>
+  <div class="agenda" style="margin-top:8px;gap:6px">
+    <div class="agenda-row" style="padding:8px 18px"><span class="t">0–5</span><div><div class="tt">Разбор ДЗ</div><div class="dd">Учебный профиль Макса и чат урока 10 на компьютере.</div></div></div>
+    <div class="agenda-row" style="padding:8px 18px"><span class="t">5–10</span><div><div class="tt">Карта сборки</div><div class="dd">Из каких деталей модуля собран репетитор и как он проверяет ответы.</div></div></div>
+    <div class="agenda-row" style="padding:8px 18px"><span class="t">10–15</span><div><div class="tt">Разминка task_gen.py</div><div class="dd">Задания по трём предметам в JSON по примерам.</div></div></div>
+    <div class="agenda-row" style="padding:8px 18px"><span class="t">15–24</span><div><div class="tt">Каркас tutor/app.py</div><div class="dd">Веб-страница с учителем, который отвечает по кусочкам.</div></div></div>
+    <div class="agenda-row" style="padding:8px 18px"><span class="t">24–45</span><div><div class="tt">Правки через диалог</div><div class="dd">Обязательно: задание и форма → автопроверка калькулятором → прогресс в progress.json.</div></div></div>
+    <div class="agenda-row" style="padding:8px 18px"><span class="t">45–52</span><div><div class="tt">Резерв</div><div class="dd">Прогресс с собой и предохранитель для публичной ссылки.</div></div></div>
+    <div class="agenda-row" style="padding:8px 18px"><span class="t">52–56</span><div><div class="tt">Публикация, квизы, отладка</div><div class="dd">Как репетитор попадёт в интернет — дома, вместе с родителем.</div></div></div>
+    <div class="agenda-row" style="padding:8px 18px"><span class="t">56–60</span><div><div class="tt">Демо и ДЗ</div><div class="dd">Сосед по парте решает задание в вашем репетиторе.</div></div></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="На весь блок 5 минут. Откройте 2–3 работы и разбирайте диалог с DeepSeek, а не только результат. Скриншоты с приветствием Макса показывайте только с согласия автора. В учебном профиле спросите, дописываются ли новые темы к старым без повторов и что Макс предложил по трудной теме. Всё в профиле — от лица выдуманного героя: это правило урока 15, и сегодня оно продолжает действовать. Чат урока 10 у каждого не проверяйте: попросите поднять руку тех, у кого он отвечает на компьютере, а остальным помогите лично после урока. Сегодняшний репетитор собирается с нуля и от чата урока 10 не зависит. Старое имя deepseek-chat отключено после 24 июля 2026 года — с ним чат не отвечает. Заодно спросите, у кого чат урока 10 опубликован в Streamlit Cloud. В Secrets такого приложения лежит ключ DeepSeek — обычно тот, что выдала школа. Публичную ссылку может открыть любой, и каждый запрос с неё тратит баланс школы. Такое приложение не чиним и заново не выкладываем: дома вместе со взрослым его удаляют. Дело не в ключе: в чате урока 10 нет предохранителя из правки 5 — ни лимита обращений, ни потолка длины текста, — а ссылку на него могли переслать кому угодно. К тому же такой чат обычно опубликован с аккаунта самого ученика, а аккаунт Streamlit Cloud можно завести только с 18 лет. Удаление: на share.streamlit.io три точки рядом с приложением, затем Delete; в окне ввести строку подтверждения, которую попросит Streamlit, и снова нажать Delete. Второй путь — из самого приложения: Manage app, три точки, Delete app. Удалить может только тот, у кого на GitHub есть admin-доступ к репозиторию этого приложения. Что после удаления становится с Secrets и со старой ссылкой, документация не говорит, так что не обещайте, что ключ исчезнет вместе с приложением. Имена учеников с такими публикациями передайте школе: по ссылке без предохранителя её баланс мог тратить кто угодно, и школа сама решит, менять ли ключ. Если семья хочет публичную ссылку, взрослый публикует сегодняшнего репетитора с правкой 5 — со своего аккаунта и с тем же школьным ключом, по шагам слайда 31. Мостик: у нас есть друг, который помнит трудные темы, и веб-страница с чатом. Не хватает заданий, проверки и учёта прогресса — это и соберём.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор ДЗ урока 15</div>
+    <h2>Макс почти <span class="acc">стал репетитором</span></h2>
+  </div>
+  <p>Открываем 2–3 работы: скриншот «дня 2» с Максом, раздел <span class="code-chip">study</span> в <span class="code-chip">facts.json</span> и чат урока 10 на компьютере.</p>
+  <div class="grid-3" style="margin-top:20px">
+    <div class="info-card"><h3>Учебный профиль</h3>В <span class="code-chip">facts.json</span> появился раздел <span class="code-chip">study</span>: трудные темы героя, например «путаю -тся и -ться». Макс сам предлагает помочь — это почти репетитор.</div>
+    <div class="info-card"><h3>Чат урока 10</h3>Отвечает на компьютере? Проверьте: модель — <span class="code-chip">deepseek-flash</span>, ключ — из <span class="code-chip">.env</span>, в <span class="code-chip">lesson-10</span> лежит <span class="code-chip">.gitignore</span> со строкой <span class="code-chip">.env</span>.</div>
+    <div class="info-card"><h3>Вывод</h3>Макс помнит, где герой ошибается, а чат урока 10 — уже веб-страница. Не хватает заданий, проверки ответов и учёта прогресса. Соберём сегодня.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Эта карта закрывает К1. Пройдитесь по строкам и спросите, кто что помнит: обычно лучше всего запоминаются калькулятор урока 13 и Макс урока 15. Подчеркните: сегодня мы не пишем детали заново, а соединяем их — так собирают настоящие проекты. Новое — форма ответа st.form и вердикт через вызов функции record_result. Высокая temperature нужна, чтобы задания были разными, а нулевая — чтобы проверка была строгой.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Идея урока</div>
+    <h2>Репетитор из <span class="acc">ваших деталей</span></h2>
+  </div>
+  <p>Сегодня почти ничего не придумываем с нуля: каждую деталь репетитора вы уже делали сами.</p>
+  <div class="kv" style="margin-top:8px">
+    <div class="kv-row"><div class="k">Урок 10</div><div class="v">Страница на Streamlit: чат, сайдбар, <span class="code-chip">st.session_state</span></div></div>
+    <div class="kv-row"><div class="k">Урок 11</div><div class="v">openai SDK и <span class="code-chip">temperature</span>: 0.9 для заданий, 0 для проверки</div></div>
+    <div class="kv-row"><div class="k">Урок 12</div><div class="v">Личность «учитель» и ответ по кусочкам</div></div>
+    <div class="kv-row"><div class="k">Урок 13</div><div class="v">Калькулятор <span class="code-chip">calculate</span> и цикл инструментов с лимитом шагов</div></div>
+    <div class="kv-row"><div class="k">Урок 14</div><div class="v">JSON mode и примеры few-shot: задание приходит данными</div></div>
+    <div class="kv-row"><div class="k">Урок 15</div><div class="v">Память в JSON-файле и <span class="code-chip">.gitignore</span></div></div>
+  </div>
+  <div class="ek-note ek-note--green" style="margin-top:12px">Главное новое — собрать детали так, чтобы они работали вместе. И две новые детали: форма ответа и вердикт через вызов функции.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Это схема всего урока: правка 1 — шаги 1 и 2, правка 2 — шаг 3, правка 3 — шаг 4. Задание и проверка — два разных запроса к нейросети. Задание просим в JSON mode без инструментов, а проверку — с инструментами без JSON mode: можно ли совмещать их в одном запросе, документация DeepSeek не описывает, поэтому мы их не смешиваем. Чат с учителем — третий вид запроса, обычный стриминг урока 12.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Как это работает</div>
+    <h2>Круг репетитора: <span class="acc">задание → ответ → вердикт</span></h2>
+  </div>
+  <p>Репетитор крутит один и тот же круг, а рядом всегда открыт чат с учителем.</p>
+  <ol class="steps" style="margin-top:18px">
+    <li><div>«Новое задание» — нейросеть придумывает задание в JSON по примерам</div></li>
+    <li><div>Вы отвечаете в форме и нажимаете «Проверить»</div></li>
+    <li><div>Нейросеть пересчитывает задание калькулятором и выносит вердикт ✅ или ❌</div></li>
+    <li><div>Программа записывает результат в <span class="code-chip">progress.json</span> — слабые темы попадут в следующее задание и в подсказки учителя</div></li>
+  </ol>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Связь с уроком 14: там JSON mode превратил настроение в данные с полями reasoning, mood и confidence. Здесь те же правила: response_format с типом json_object, слово json и пример формата в промпте, разумный max_tokens. JSON mode гарантирует, что придёт JSON, но не гарантирует, что в нём есть все четыре поля, — поэтому после json.loads программа проверяет каждое. Задание хранится в st.session_state: оно переживает перезапуски скрипта после каждого клика, но не обновление страницы — это увидим на слайде 19.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Как это работает</div>
+    <h2>Задание со <span class="acc">скрытым ответом</span></h2>
+  </div>
+  <p>Нейросеть возвращает задание не текстом, а данными — четырьмя полями JSON.</p>
+  <div class="code-win" style="margin-top:16px">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">JSON</span></div>
+    <div class="code-body">{
+  <span class="st">"topic"</span>: <span class="st">"проценты"</span>,
+  <span class="st">"question"</span>: <span class="st">"Сколько будет 15% от 2400?"</span>,
+  <span class="st">"answer"</span>: <span class="st">"360"</span>,
+  <span class="st">"hint"</span>: <span class="st">"1% — это 2400 : 100."</span>
+}</div>
+  </div>
+  <div class="ek-note" style="margin-top:16px">Программа показывает <span class="code-chip">question</span>, прячет <span class="code-chip">answer</span>, держит <span class="code-chip">hint</span> на случай ошибки и по <span class="code-chip">topic</span> считает прогресс. Ответ лежит в <span class="code-chip">st.session_state</span> и на страницу не выводится.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ключевая идея К2. Спросите группу: можно ли доверять ответу, который нейросеть записала сама? Слепо — нельзя: она могла ошибиться в счёте ещё при сочинении задачи. Поэтому проверка — отдельный запрос, где модель пересчитывает задание калькулятором из урока 13. Напомните урок 13: модель сама ничего не запускает, она просит программу вызвать функцию. record_result — особый инструмент: программа ничего не вычисляет, а только читает его аргументы. Это вердикт в виде данных. Первым в аргументах идёт короткое рассуждение, потом вердикт — как поле reasoning перед mood в уроке 14. Аргументы приходят строкой JSON, и документация предупреждает: модель не всегда присылает правильный JSON и может выдумать лишние параметры. Обещания, что модель вызовет record_result, в документации тоже нет. Поэтому программа всё проверяет сама — это слайд 25. Для русского и английского калькулятор не нужен: модель сравнивает ответ по смыслу.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Как это работает</div>
+    <h2>Зачем <span class="acc">калькулятор</span>, если ответ уже есть</h2>
+  </div>
+  <div class="vs" style="margin-top:22px">
+    <div class="vs-col vs-col--plain">
+      <h4>Проверка по записанному</h4>
+      <p>Нейросеть сама сочинила задачу и сама записала ответ. Ошиблась в счёте — и проверка примет ошибку за правильный ответ.</p>
+      <p class="note">сравниваем со своей же догадкой</p>
+    </div>
+    <div class="vs-col vs-col--win">
+      <h4>Двойная проверка</h4>
+      <p>Проверяющий запрос пересчитывает задание калькулятором <span class="code-chip">calculate</span> из урока 13, а вердикт отдаёт вызовом <span class="code-chip">record_result</span>: рассуждение, верно или нет, объяснение для ученика.</p>
+      <p class="note">модель просит — программа считает и записывает</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Самое рискованное звено проверяем до Streamlit: умеет ли нейросеть придумывать задания по образцу. Ученики копируют промпт целиком в новый чат DeepSeek и не закрывают этот чат до конца урока: каркас и все правки пойдут в него же, а правка 1 перенесёт make_task из разминки в репетитора. В промпте прямо названы chat.completions.create, deepseek-flash, json_object и выключенные размышления: нейросеть-помощник по привычке может предложить deepseek-chat (отключено после 24 июля 2026 года), client.responses или json_schema, которого у DeepSeek нет. По два примера на предмет — это few-shot урока 14: модель видит два готовых задания и пишет третье по образцу. Примеры в промпте записаны строками через вертикальную черту — так короче, а словари из них DeepSeek соберёт сам. temperature 0.9 — творческая настройка урока 11, чтобы задания каждый раз были разными. Действует она только при выключенных размышлениях.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Промпт #1 · разминка</div>
+    <h2>task_gen.py: <span class="acc">задания в JSON</span></h2>
+  </div>
+  <p>Чат DeepSeek не закрывайте до конца урока: в нём же соберём репетитора.</p>
+  <div class="prompt-card" style="margin-top:8px;padding:12px 18px">
+    <span class="pc-tag">→ Новый чат DeepSeek</span>
+    <div class="pc-text" style="font-size:13px;line-height:1.38">Ты — опытный Python-разработчик и наставник школьника. Напиши task_gen.py на openai SDK — генератор заданий для школьника в JSON.
+- клиент: OpenAI(api_key=os.getenv("DEEPSEEK_KEY"), base_url="https://api.deepseek.com"), ключ из .env через load_dotenv() из python-dotenv
+- TASK_PROMPT: «Ты придумываешь задания для школьника 12–15 лет. Каждый раз — новое короткое задание с одним точным ответом, без вариантов ответа. Подсказка помогает, но не раскрывает ответ. topic — тема в 1–3 словах, строчными буквами. Верни json: {"topic": "тема", "question": "задание", "answer": "ответ", "hint": "подсказка"}»
+- EXAMPLES — словарь «предмет → список из двух словарей» с полями topic | question | answer | hint, ровно такие:
+  Математика: проценты | Сколько будет 15% от 2400? | 360 | 1% — это 2400 : 100.
+  Математика: дроби | Сколько будет 3/4 + 1/8? | 7/8 | Приведите дроби к знаменателю 8.
+  Русский язык: -тся и -ться | Вставьте пропущенное: «Завтра мы будем учи…ся». | учиться | Задайте к глаголу вопрос: что делать?
+  Русский язык: безударные гласные | Вставьте букву: з…мля. | земля | Подберите проверочное слово.
+  Английский язык: present simple | She ___ (play) tennis every Sunday. | plays | He, she, it — окончание -s.
+  Английский язык: неправильные глаголы | Вторая форма глагола go? | went | Окончание -ed тут не подходит.
+- make_task(subject): ask = f"Предмет: {subject}. Новое задание."; messages — system с TASK_PROMPT, потом для каждого примера предмета user с ask и assistant с json.dumps(пример, ensure_ascii=False), в конце user с ask. client.chat.completions.create (не client.responses): model="deepseek-flash" (не меняй имя), response_format={"type": "json_object"} (не json_schema), temperature=0.9, max_tokens=400, extra_body={"thinking": {"type": "disabled"}}. Пустой ответ, битый JSON, не словарь или любое из полей topic, question, answer, hint не строка или пустое — верни None. Иначе словарь из этих четырёх полей, topic — через .strip().lower()
+- для каждого предмета из EXAMPLES: task = make_task(subject); None — напечатай f"=== {subject} ===" и «Не получилось — запустите ещё раз»; иначе f"=== {subject} · {task['topic']} ===", "Задание: " + вопрос и "Ответ: " + ответ + " · Подсказка: " + подсказка
+Прокомментируй код для новичка. Ответь одним блоком кода.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Дождитесь, пока у всех появятся три блока; задания у всех свои. Обратите внимание группы: все три задания пришли в одном формате, хотя словами мы его почти не объясняли, — модель повторила формат примеров. Пусть каждый проверит ответы глазами. Если нейросеть где-то ошиблась в ответе — отличный повод вернуться к слайду 7. Строка «Не получилось — запустите ещё раз» значит, что JSON mode вернул пустой ответ или JSON без нужного поля: программа это поймала, так и задумано. Запустите ещё раз. Чат DeepSeek не закрывайте.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Запуск и разбор</div>
+    <h2>Три предмета — <span class="acc">три задания</span></h2>
+  </div>
+  <div class="grid-2" style="margin-top:14px">
+    <div>
+      <ol class="steps steps--tight">
+        <li><div>В <span class="code-chip">vibe-coding</span> создайте папку <span class="code-chip">lesson-16</span> и скопируйте в неё <span class="code-chip">.env</span> из <span class="code-chip">lesson-15</span></div></li>
+        <li><div>Откройте <span class="code-chip">lesson-16</span> в VS Code: <span class="code-chip">File → Open Folder</span></div></li>
+        <li><div>Создайте <span class="code-chip">task_gen.py</span>, вставьте код из ответа и сохраните</div></li>
+        <li><div>Выполните <span class="code-chip">python task_gen.py</span></div></li>
+      </ol>
+      <div class="ek-note" style="margin-top:14px">Ответ сейчас видим мы — так проверяют генератор. В репетиторе он будет спрятан. Запустите ещё раз — задания будут другими.</div>
+    </div>
+    <div class="term">
+      <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">ТЕРМИНАЛ</span></div>
+      <div class="term-body"><span class="usr">$ python task_gen.py</span>
+=== Математика · уравнения ===
+Задание: Решите уравнение: 3x + 7 = 22.
+Ответ: 5 · Подсказка: Сначала перенесите 7 в правую часть.
+=== Русский язык · н и нн ===
+Задание: Вставьте Н или НН: «серебря…ый».
+Ответ: серебряный · Подсказка: Суффикс -ян- пишется с одной Н.
+=== Английский язык · past simple ===
+Задание: I ___ (see) a cat yesterday.
+Ответ: saw · Подсказка: See — неправильный глагол.</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Почините у всех: тот же ключ и та же папка нужны репетитору. Пустой ответ в JSON mode документация DeepSeek называет возможным — поэтому make_task в таком случае возвращает None, а не падает. Слово json и пример формата в промпте обязательны: без них модель может печатать пробелы, пока не упрётся в max_tokens, поэтому ограничение 400 стоит не зря. Если pip не ставит openai — нужен Python 3.10 или новее. Непонятную ошибку целиком копируем в тот же чат DeepSeek.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Типичные ситуации запуска</div>
+    <h2>Если task_gen.py <span class="acc">не запустился</span></h2>
+  </div>
+  <div class="kv" style="margin-top:14px">
+    <div class="kv-row"><div class="k" style="text-transform:none">Missing credentials</div><div class="v">Ключ не найден: <span class="code-chip">.env</span> не в папке <span class="code-chip">lesson-16</span> или переменная называется не <span class="code-chip">DEEPSEEK_KEY</span>. Скопируйте <span class="code-chip">.env</span> из <span class="code-chip">lesson-15</span>.</div></div>
+    <div class="kv-row"><div class="k" style="text-transform:none">«Не получилось — запустите ещё раз»</div><div class="v">Модель вернула пустой ответ или JSON без нужного поля. Программа это поймала — так и задумано. Запустите снова.</div></div>
+    <div class="kv-row"><div class="k" style="text-transform:none">Error code: 401 / 402</div><div class="v">401 — ключ неверный: скопируйте его заново, без пробелов. 402 — на счёте закончились деньги: скажите преподавателю.</div></div>
+    <div class="kv-row"><div class="k" style="text-transform:none">ModuleNotFoundError</div><div class="v">Выполните <span class="code-chip">pip install openai python-dotenv</span>; не сработало — <span class="code-chip">py -m pip install openai python-dotenv</span>.</div></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пройдитесь по функции сверху вниз. ask — одна и та же просьба для примеров и для нового задания. Два примера встают в messages как прошлый разговор: просьба пользователя и ответ ассистента, который написали мы сами. Сервер DeepSeek не хранит разговоров и принимает такую историю как есть. Модель видит образец и отвечает тем же форматом и той же сложностью — это few-shot урока 14. json.dumps с ensure_ascii=False — чтобы русские буквы в примерах не превратились в коды с обратной косой чертой. temperature работает только при выключенных размышлениях. После ответа программа проверяет поля: JSON mode гарантирует, что пришёл JSON, но не то, что в нём есть все четыре поля.">
+<div class="sl-body" style="gap:10px;padding-bottom:40px">
+  <div>
+    <div class="q-label">Как это работает</div>
+    <h2>Три урока в <span class="acc">одной функции</span></h2>
+  </div>
+  <p style="font-size:16px;line-height:1.4">Примеры встают в разговор парами <span class="code-chip">user</span> / <span class="code-chip">assistant</span>, как на уроке 14, — модель отвечает по образцу. JSON mode — тоже урок 14, а <span class="code-chip">temperature=0.9</span> — творческая настройка урока 11.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="font-size:13.5px;line-height:1.5;padding:10px 18px"><span class="kw">def</span> make_task(subject):
+    ask = f<span class="st">"Предмет: {subject}. Новое задание."</span>
+    messages = [{<span class="st">"role"</span>: <span class="st">"system"</span>, <span class="st">"content"</span>: TASK_PROMPT}]
+    <span class="kw">for</span> example <span class="kw">in</span> EXAMPLES[subject]:  <span class="cm"># примеры — как будто прошлый разговор</span>
+        messages.append({<span class="st">"role"</span>: <span class="st">"user"</span>, <span class="st">"content"</span>: ask})
+        messages.append({<span class="st">"role"</span>: <span class="st">"assistant"</span>, <span class="st">"content"</span>: json.dumps(example, ensure_ascii=False)})
+    messages.append({<span class="st">"role"</span>: <span class="st">"user"</span>, <span class="st">"content"</span>: ask})
+    response = client.chat.completions.create(
+        model=<span class="st">"deepseek-flash"</span>,
+        messages=messages,
+        response_format={<span class="st">"type"</span>: <span class="st">"json_object"</span>},  <span class="cm"># ответ — только JSON</span>
+        temperature=0.9,  <span class="cm"># творчески: задания каждый раз разные</span>
+        max_tokens=400,  <span class="cm"># JSON не оборвётся на середине</span>
+        extra_body={<span class="st">"thinking"</span>: {<span class="st">"type"</span>: <span class="st">"disabled"</span>}},  <span class="cm"># без размышлений</span>
+    )</div>
+  </div>
+  <div class="ek-note" style="padding:12px 18px;font-size:15px;margin-top:12px">Ответы ассистента в примерах написали мы сами. Сервер не помнит разговоров, поэтому мы подставляем «прошлый разговор» с готовыми заданиями — и модель продолжает в том же духе.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Связь с ДЗ урока 15: там ключ в app.py урока 10 читался одной строкой os.getenv — это работает дома, но не обязательно в облаке. Сегодня ключ читается кодом, который работает в обоих местах. Ключ в .env выдала школа. Взрослый, который публикует репетитора, кладёт в Secrets этот же ключ — слайд 31. В app.py ключа нет: код на GitHub виден всем, а по условиям DeepSeek ключ нельзя выкладывать в открытый доступ. Почему не st.secrets.get(…): без файла секретов он падает так же, как st.secrets[…], — это выяснили на уроке 15. Конструкция try с except Exception ловит оба случая: файла секретов нет совсем, и файл есть, но ключа в нём нет. Порядок важен: сначала Secrets, потом .env — так в облаке побеждает ключ из Secrets. В облаке файла .env нет, и load_dotenv молча ничего не делает. Одного os.getenv в облаке мало: секреты попадают в переменные окружения только после того, как Streamlit их прочитает, а случится ли это раньше os.getenv, не подтверждено. st.stop нужен, чтобы без ключа программа не дошла до OpenAI: там она упала бы с ошибкой Missing credentials. То, что try вокруг st.secrets оставляет страницу чистой, проверено запуском при подготовке урока 15.">
+<div class="sl-body" style="gap:10px;padding-bottom:40px">
+  <div>
+    <div class="q-label">Как это работает</div>
+    <h2>Ключ дома и в облаке — <span class="acc">не в коде</span></h2>
+  </div>
+  <p style="font-size:16px;line-height:1.4">Дома ключ, который выдала школа, лежит в <span class="code-chip">.env</span>, а в облаке тот же ключ — в разделе Secrets. В код и на GitHub — никогда. <span class="code-chip">get_key</span> сначала ищет ключ в Secrets, а если не нашёл — берёт из <span class="code-chip">.env</span>.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="font-size:14px;line-height:1.5;padding:10px 18px">load_dotenv()  <span class="cm"># дома ключ лежит в .env — в папке lesson-16</span>
+
+
+<span class="kw">def</span> get_key(name):
+    <span class="kw">try</span>:
+        <span class="kw">return</span> st.secrets[name]  <span class="cm"># в облаке ключ лежит в Secrets</span>
+    <span class="kw">except</span> Exception:  <span class="cm"># Secrets нет или в них нет ключа — берём из .env</span>
+        <span class="kw">return</span> os.getenv(name)
+
+
+API_KEY = get_key(<span class="st">"DEEPSEEK_KEY"</span>)
+<span class="kw">if not</span> API_KEY:
+    st.error(<span class="st">"Нет ключа DEEPSEEK_KEY: добавьте его в .env или в Secrets"</span>)
+    st.stop()  <span class="cm"># без ключа дальше не идём</span>
+client = OpenAI(api_key=API_KEY, base_url=<span class="st">"https://api.deepseek.com"</span>)</div>
+  </div>
+  <div class="ek-note" style="padding:12px 18px;font-size:15px;margin-top:12px">Зачем <span class="code-chip">try</span>: дома файла секретов нет, и обращение к <span class="code-chip">st.secrets</span> заканчивается ошибкой. <span class="code-chip">try</span> её ловит и идёт за ключом в <span class="code-chip">.env</span>. Ключа нет нигде — страница честно скажет об этом и остановится.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Прочитайте цель вслух. Обязательный минимум к 45-й минуте — каркас и правки 1–3: это уже репетитор из карточки — задания, автопроверка и память прогресса. Правки 4–5 — для успевающих, остальным в ДЗ. Публичную ссылку на уроке не делаем: дома её сделает взрослый, шаги — на слайде 31. Слева теория, справа практика.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Цель · что будет в конце</div>
+    <h2><span class="acc">Цель</span> урока</h2>
+  </div>
+  <div class="ek-note">К 45-й минуте у каждого — <span class="code-chip">tutor/app.py</span>, веб-репетитор в браузере. Учитель отвечает в чате, по кнопке приходит задание, ответ проверяется калькулятором с вердиктом ✅ или ❌, а прогресс по темам хранится в <span class="code-chip">progress.json</span> и переживает обновление страницы. Успеете — прогресс можно скачать и загрузить, а предохранитель бережёт баланс школы от лишних трат по публичной ссылке.</div>
+  <div class="grid-2">
+    <div class="info-card">
+      <h3>Узнаете</h3>
+      <ul class="clean">
+        <li>Как собрать большой проект из деталей прошлых уроков</li>
+        <li>Как спрятать ответ и проверить его калькулятором</li>
+        <li>Как репетитор помнит прогресс по темам</li>
+        <li>Как приложение попадает в интернет и где лежит ключ дома и в облаке</li>
+      </ul>
+    </div>
+    <div class="info-card">
+      <h3>Сделаете</h3>
+      <ul class="clean">
+        <li>Генератор заданий <span class="code-chip">task_gen.py</span></li>
+        <li>Веб-репетитора с учителем в чате</li>
+        <li>Задания по кнопке и автопроверку ✅ / ❌</li>
+        <li><div>Прогресс в <span class="code-chip">progress.json</span>; успеете — прогресс с собой и предохранитель</div></li>
+      </ul>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Покажите финальную версию из демо-папки lesson-16-demo — подготовка в заметке слайда 2. Окно на слайде — это страница в браузере, а не терминал. Демо — два действия, около минуты. Нажмите «Новое задание»: задание придёт по слабой теме — дробям. Ответьте верно: появятся ✅ и строка «Как проверял», а в сайдбаре дроби станут 1 из 3 и останутся слабой темой. Неверный ответ с подсказкой и вопрос учителю ученики увидят у себя на слайдах 24 и 27. Если перед уроком вы уже решали задания в демо, верните progress.json из эталона и перезапустите демо: тогда числа на экране совпадут со слайдом. Слова и задания у вас будут свои. Публичной ссылки в адресной строке нет: репетитор работает на вашем компьютере, ссылку делают дома.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Демо результата</div>
+    <h2>Что <span class="acc">соберём</span> сегодня</h2>
+  </div>
+  <div class="term">
+    <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">ТЕРМИНАЛ</span></div>
+    <div class="term-body">🎓 AI-репетитор
+Не пишите сюда настоящие имя, адрес, телефон и пароли: всё, что вы вводите, уходит нейросети.
+
+[ сайдбар ]  Предмет: Математика · Прогресс: проценты 2 из 2, дроби 1 из 3
+             ⚠ Повторить: дроби · [ Скачать прогресс ] · Обращений к AI: 2 из 100
+
+[ Новое задание ]
+Задание · дроби
+Сколько будет 3/8 + 1/4?
+Ваш ответ: 5/8                                  [ Проверить ]
+✅ Верно! 1/4 — это 2/8, а 3/8 + 2/8 = 5/8.
+Как проверял: calculate(3/8+1/4) = 0.625, а 5/8 = 0.625 — совпадает.</div>
+  </div>
+  <p>Это страница в браузере: сайдбар с предметом и прогрессом, задание с формой ответа, а ниже — чат с учителем. Дроби — слабая тема, поэтому задание пришло по ним.</p>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="requirements.txt — список библиотек для облака: по нему Streamlit Cloud поставит их сам. Файл может лежать рядом с app.py или в корне репозитория. Встроенные модули вроде json и os в него не пишут. Важно написать openai, а не requests, как на уроке 10: без openai облачный репетитор упадёт с ModuleNotFoundError. Пакет называется python-dotenv, хотя в коде он импортируется как dotenv. .gitignore — привычка урока 15: строка progress.json сработает и для файла в папке tutor, потому что такой шаблон совпадает с именем в любой подпапке. Но при загрузке файлов на GitHub через браузер .gitignore не поможет — поэтому дома загружаем только два файла, app.py и requirements.txt. Проверьте компьютеры до урока: py --version и py -m streamlit --version. На st.write_stream держится ответ по кусочкам. Сама функция появилась в Streamlit 1.31.0 (февраль 2024), а с какой версии она разбирает поток openai SDK, документация не уточняет. Поэтому старую версию Streamlit с урока 10 обновите заранее: py -m pip install --upgrade streamlit. Текущая версия 1.66.1 требует Python 3.11 или новее — с версии 1.66.0 Python 3.10 не поддерживается. Для Python 3.10 на PyPI последняя подходящая версия — 1.65.0, и все функции урока в ней есть. Какую версию pip поставит на компьютере с Python 3.10, проверьте заранее той же командой py -m streamlit --version. Форма с clear_on_submit и st.cache_resource есть в Streamlit с версий 0.83.0 и 1.18.0, то есть в любой свежей.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Подготовка</div>
+    <h2>Папка <span class="acc">tutor</span> и два служебных файла</h2>
+  </div>
+  <div class="grid-2">
+    <div class="col">
+      <ol class="steps steps--tight">
+        <li><div>В <span class="code-chip">lesson-16</span> создайте папку <span class="code-chip">tutor</span>, а в ней пустой файл <span class="code-chip">app.py</span></div></li>
+        <li><div>В <span class="code-chip">lesson-16</span> создайте <span class="code-chip">.gitignore</span> и впишите четыре строки: <span class="code-chip">.env</span>, <span class="code-chip">progress.json</span>, <span class="code-chip">__pycache__/</span>, <span class="code-chip">.venv/</span></div></li>
+        <li><div>В <span class="code-chip">tutor</span> создайте <span class="code-chip">requirements.txt</span> с тремя строками: <span class="code-chip">streamlit</span>, <span class="code-chip">openai</span>, <span class="code-chip">python-dotenv</span></div></li>
+        <li><div>Устанавливать ничего не нужно: <span class="code-chip">streamlit</span> установлен на уроке 10, <span class="code-chip">openai</span> и <span class="code-chip">python-dotenv</span> — на уроке 11</div></li>
+      </ol>
+    </div>
+    <div class="col">
+      <div class="code-win">
+        <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">ТЕКСТ</span></div>
+        <div class="code-body" style="font-size:13.5px">lesson-16/
+├── .env                  <span class="cm">ключ — только здесь</span>
+├── .gitignore
+├── task_gen.py           <span class="cm">разминка</span>
+└── tutor/                <span class="cm">папка репетитора</span>
+    ├── app.py
+    └── requirements.txt  <span class="cm">список библиотек для облака</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="В тот же чат, где разминка. Это чат урока 10, собранный заново на openai SDK. Свой app.py урока 10 в промпт не вставляем: у кого-то в нём осталось старое имя deepseek-chat или чтение ключа через st.secrets, которое дома без файла секретов падает. Поэтому промпт описывает всё сам и прямо называет deepseek-flash. TEACHER — учитель из меню четырёх личностей урока 12. system не хранится в истории, а ставится первым в каждый запрос, как на уроке 15: в правке 3 мы допишем в него слабые темы. st.write_stream сам разбирает поток openai SDK и пропускает пустые кусочки, поэтому цикл for chunk из урока 12 писать не нужно.">
+<div class="sl-body" style="gap:10px;padding-bottom:36px">
+  <div>
+    <div class="q-label">Промпт #2 · стартовый</div>
+    <h2>Каркас: <span class="acc">учитель в браузере</span></h2>
+  </div>
+  <div class="prompt-card prompt-card--copy">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text" style="font-size:14px;line-height:1.5">Теперь собери веб-репетитора — новый файл tutor/app.py на Streamlit и openai SDK. task_gen.py не трогай.
+- импорты: os, streamlit as st, load_dotenv из python-dotenv, OpenAI из openai. Сразу load_dotenv()
+- get_key(name): в try верни st.secrets[name], в except Exception верни os.getenv(name). API_KEY = get_key("DEEPSEEK_KEY"); если ключа нет — st.error(«Нет ключа DEEPSEEK_KEY: добавьте его в .env или в Secrets») и st.stop(). client = OpenAI(api_key=API_KEY, base_url="https://api.deepseek.com")
+- SUBJECTS = ["Математика", "Русский язык", "Английский язык"]. TEACHER: «Ты — строгий, но добрый учитель. Предмет: {subject}. Ученику 12–15 лет. Терпеливо объясняешь и приводишь примеры. Отвечай коротко: 2–4 предложения. Не решай задания за ученика — подводи к ответу вопросами.»
+- st.title(«🎓 AI-репетитор»). Если в st.session_state нет messages — создай пустой список: только реплики user и assistant. Потом st.sidebar: subject = st.selectbox(«Предмет», SUBJECTS) и кнопка «Очистить чат», которая обнуляет messages
+- история: для каждой реплики with st.chat_message(роль): st.write(текст)
+- question = st.chat_input(«Вопрос учителю…»). Если он есть: добавь в messages user и покажи его; request = system с TEACHER.format(subject=subject) + все messages; в with st.chat_message("assistant"): stream = client.chat.completions.create (не client.responses) с model="deepseek-flash" (не меняй имя), messages=request, stream=True, extra_body={"thinking": {"type": "disabled"}}; answer = st.write_stream(stream). Потом добавь в messages assistant с answer
+Прокомментируй код для новичка. Ответь одним блоком кода.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Дождитесь, пока у всех откроется страница и учитель ответит. При запуске Streamlit сам открывает страницу в новой вкладке основного браузера компьютера, а в терминале печатает адреса: Local URL — для этого компьютера, порт по умолчанию 8501. Перед уроком один раз запустите streamlit run на компьютере класса и посмотрите, что именно печатает терминал при самом первом запуске: если он чего-то ждёт до строки Local URL, заранее подскажите классу, что делать. Терминал занят, пока работает Streamlit: если понадобится снова запустить task_gen.py, откройте второй терминал. Путь tutor/app.py в команде считается от папки, где открыт терминал, поэтому запускаем из lesson-16. Правило урока 15 действует и здесь: учителю личное не нужно, вопросы — о предмете. Всё, что ученик пишет, уходит на сервер нейросети с каждым запросом. По условиям DeepSeek сервис предназначен прежде всего для взрослых, а политика конфиденциальности прямо говорит, что сервисы не рассчитаны на детей. Если страница не открылась или на ней красная ошибка — слайд 20.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Запуск каркаса</div>
+    <h2>Запускаем и <span class="acc">спрашиваем учителя</span></h2>
+  </div>
+  <ol class="steps steps--tight">
+    <li><div>Скопируйте код из ответа DeepSeek в <span class="code-chip">tutor/app.py</span> и сохраните (<span class="code-chip">Ctrl+S</span>)</div></li>
+    <li><div>В терминале VS Code — в папке <span class="code-chip">lesson-16</span> — выполните <span class="code-chip">streamlit run tutor/app.py</span></div></li>
+    <li><div>Страница репетитора откроется в браузере сама. Не открылась — скопируйте адрес из строки <span class="code-chip">Local URL</span> в терминале (обычно <span class="code-chip">http://localhost:8501</span>) в адресную строку браузера</div></li>
+    <li><div>Выберите предмет в сайдбаре и спросите учителя: «Объясни, как складывать дроби»</div></li>
+  </ol>
+  <div class="ek-note">Учителю личное не нужно — спрашивайте о предмете. Если представляетесь, то именем своего героя. Адрес, телефон и пароли не пишем никогда: всё, что вы вводите, уходит нейросети.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ключевой момент К4: вы собрали полноценное веб-приложение — страницу с меню, чатом и стримингом, и запускается оно одной командой. st.write_stream печатает текст с эффектом печатной машинки и возвращает весь ответ — его мы и кладём в историю как assistant. Попросите задать учителю второй вопрос: он помнит первый, потому что история уходит в каждый запрос, как на уроке 12. Если учитель решает задачу целиком — проверьте, попала ли в TEACHER фраза про наводящие вопросы.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Первый результат</div>
+    <h2>Учитель отвечает <span class="acc">по кусочкам</span></h2>
+  </div>
+  <div class="term">
+    <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">ТЕРМИНАЛ</span></div>
+    <div class="term-body">🎓 AI-репетитор
+[ сайдбар ]  Предмет: Математика  ·  [ Очистить чат ]
+
+user       Объясни, как складывать дроби
+assistant  Сначала дроби приводят к общему знаменателю. Например,
+           в 1/2 + 1/3 общий знаменатель 6: получаем 3/6 + 2/6.
+           А дальше — сколько получится, как думаешь?
+
+Вопрос учителю… ▸</div>
+  </div>
+  <p>Ответ печатается постепенно — это <span class="code-chip">st.write_stream</span>: он сам читает поток openai SDK и возвращает весь текст, который мы кладём в историю. Учитель не решает за вас, а подводит вопросом — так велит <span class="code-chip">system</span>.</p>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пусть все обновят страницу сами — это мотивация для правки 3. По документации Session State живёт, пока открыта вкладка, и никуда не сохраняется. Пройдитесь по плану правок: каждая закрывает одно слабое место. Обязательно — правки 1–3.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Момент урока</div>
+    <h2>Учитель есть — <span class="acc">заданий нет</span></h2>
+  </div>
+  <p>Обновите страницу (F5) и посмотрите на чат.</p>
+  <div class="ek-note ek-note--red">Чат пропал. <span class="code-chip">st.session_state</span> живёт, пока открыта вкладка: обновили или закрыли — всё стёрлось. А ещё учитель не даёт заданий и не проверяет ответы.</div>
+  <ul class="clean">
+    <li>Правка 1 · задание по кнопке — генератор из разминки и форма ответа</li>
+    <li>Правка 2 · автопроверка — калькулятор и вердикт ✅ / ❌</li>
+    <li><div>Правка 3 · прогресс — <span class="code-chip">progress.json</span> переживёт F5, слабые темы пойдут в задания</div></li>
+    <li>Правка 4 · прогресс с собой — скачать и загрузить свой файл (резерв)</li>
+    <li>Правка 5 · предохранитель для публичной ссылки (резерв)</li>
+  </ul>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пробегитесь по пяти ситуациям, остальным помогите лично. Вариант py -m streamlit run документация Streamlit не описывает; при проверке урока 15 работала обычная команда streamlit run. «Нет ключа DEEPSEEK_KEY» — это наша собственная ошибка из get_key: ключ не нашёлся ни в Secrets, ни в .env. load_dotenv ищет .env от папки app.py вверх по папкам, поэтому .env в lesson-16 найдётся, а в соседней lesson-15 — нет. Если помощник DeepSeek предложит завести .streamlit/secrets.toml — не нужно, ключ уже в .env. Пауза перед ответом: deepseek-flash по умолчанию сначала размышляет, а выключает это строка extra_body из промпта. Непонятную красную ошибку целиком копируем в тот же чат DeepSeek.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Если каркас не запустился</div>
+    <h2>Типичные ситуации <span class="acc">каркаса</span></h2>
+  </div>
+  <div class="kv">
+    <div class="kv-row"><div class="k" style="text-transform:none;letter-spacing:0;font-size:15px"><span class="code-chip">streamlit</span> не найден</div><div class="v">Выполните <span class="code-chip">py -m streamlit run tutor/app.py</span>.</div></div>
+    <div class="kv-row"><div class="k" style="text-transform:none;letter-spacing:0;font-size:15px">«Нет ключа <span class="code-chip">DEEPSEEK_KEY</span>» на странице</div><div class="v"><span class="code-chip">.env</span> должен лежать в <span class="code-chip">lesson-16</span>: <span class="code-chip">load_dotenv</span> ищет его рядом с <span class="code-chip">app.py</span> и в папках выше.</div></div>
+    <div class="kv-row"><div class="k" style="text-transform:none;letter-spacing:0;font-size:15px">Streamlit не находит <span class="code-chip">tutor/app.py</span></div><div class="v">Терминал открыт не в <span class="code-chip">lesson-16</span>. Путь в команде считается от папки, где открыт терминал.</div></div>
+    <div class="kv-row"><div class="k" style="text-transform:none;letter-spacing:0;font-size:15px">Error code: 401 / 402</div><div class="v">Как в разминке: 401 — неверный ключ, 402 — кончились деньги на счёте.</div></div>
+    <div class="kv-row"><div class="k" style="text-transform:none;letter-spacing:0;font-size:15px">Ответ после долгой паузы</div><div class="v">В запросе нет <span class="code-chip">extra_body</span> с выключенными размышлениями: модель сначала думает, потом отвечает.</div></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Правка в тот же чат. На правку вместе с разбором — около 6 минут. Нейросеть-помощник видит task_gen.py выше в этом чате, поэтому функция переедет без изменений: это деталь, уже проверенная на разминке. Нет чата урока — новый чат: вставьте свой task_gen.py, под ним свой app.py, а под ними этот промпт. Задание кладём в session_state: Streamlit перезапускает скрипт на каждый клик, и без этого задание пропало бы после нажатия «Проверить». Форма отправляет ответ одним пакетом по кнопке. Простая проверка сравнением строк — нарочно: следующий слайд покажет, почему её мало. Streamlit замечает, что файл изменился, и спрашивает, перезапустить ли приложение; «Always rerun» перезапускает его сам после каждого изменения файла. Кнопка «Always rerun» показывается не всегда — тогда каждый раз нажимайте «Rerun». Подписи и их место проверьте заранее на своём компьютере. Если кто-то вместо этого обновил страницу, session_state стёрт — это нормально, задание просто запросите заново.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 1 · задание по кнопке</div>
+    <h2>Задание <span class="acc">по кнопке</span> и форма ответа</h2>
+  </div>
+  <p>Генератор из разминки переезжает в репетитора без изменений. Проверку пока делаем простой — сравниваем строки.</p>
+  <div class="prompt-card prompt-card--copy" style="margin-top:12px;padding:18px 22px 14px">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text" style="font-size:15.5px;line-height:1.36;margin-top:4px">Добавь в app.py задания по кнопке и форму ответа.
+- import json. Перенеси из task_gen.py (он выше в этом чате) TASK_PROMPT, EXAMPLES и make_task без изменений
+- рядом с messages создай в st.session_state task и verdict (оба None)
+- после сайдбара, перед историей чата: кнопка st.button(«Новое задание»). По нажатию в st.spinner(«Придумываю задание…») task = make_task(subject); None — st.warning(«Не получилось придумать задание — нажмите ещё раз»); иначе task["subject"] = subject, st.session_state.task = task, st.session_state.verdict = None
+- если задание есть: st.subheader(f"Задание · {task['topic']}") и st.write(task["question"]), ответ и подсказку не показывай. Ниже st.form("answer_form", clear_on_submit=True) с student = st.text_input(«Ваш ответ») и sent = st.form_submit_button(«Проверить»)
+- пока проверка простая — check_answer(task, student): correct = student.strip().lower() == task["answer"].strip().lower(); верно — верни {"correct": True, "explanation": "Ответ совпал с записанным."}, неверно — {"correct": False, "explanation": f"Ответ не совпал с записанным: {task['answer']}"}. После формы: если sent и student.strip() — st.session_state.verdict = check_answer(task, student)
+- если verdict есть: верно — st.success("✅ Верно! " + explanation), неверно — st.error("❌ Пока неверно. " + explanation)
+Остальной код не меняй. Верни весь файл.</div>
+  </div>
+  <div class="ek-note" style="margin-top:8px;padding:8px 18px;font-size:15px">Замените <span class="code-chip">tutor/app.py</span> кодом из ответа, сохраните, нажмите «Rerun» или «Always rerun». Проверка: «Новое задание» → ответ → ✅ или ❌.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пусть ученики сами поймают ошибку: ответят верно, но по-своему — с единицами («90 рублей»), десятичной дробью вместо обычной или с точкой в конце. Простая проверка сравнивает буквы, а не смысл. Вторая беда — на слайде 7: если нейросеть ошиблась в записанном ответе, сравнение строк примет её ошибку за правильный ответ. Обычную кнопку st.button и кнопку скачивания внутри формы ставить нельзя — в форме только st.form_submit_button; у каждой формы свой ключ, у нас answer_form. clear_on_submit=True очищает поле после отправки.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Что получилось</div>
+    <h2>Проверка по строке <span class="acc">ошибается</span></h2>
+  </div>
+  <div class="term"><div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">ТЕРМИНАЛ</span></div>
+    <div class="term-body">[ Новое задание ]
+Задание · проценты
+Сколько будет 20% от 450?
+Ваш ответ: 90 рублей                            [ Проверить ]
+❌ Пока неверно. Ответ не совпал с записанным: 90</div>
+  </div>
+  <p>Ответ верный, а проверка его не приняла: она сравнивает буквы, а не смысл. И она слепо верит записанному ответу — а его сочинила нейросеть.</p>
+  <div class="ek-note"><span class="code-chip">st.form</span> отправляет ответ одним пакетом — по кнопке «Проверить». Задание лежит в <span class="code-chip">st.session_state.task</span> и переживает перезапуски скрипта после каждого клика.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Главная правка К2, около 8 минут. Проверку делает отдельный запрос с двумя инструментами. calculate — тот же безопасный калькулятор урока 13: eval только после проверок, потому что eval выполняет любой код. record_result — бланк вердикта: программа ничего не вычисляет, а только читает аргументы. Аргументы приходят строкой JSON, и модель может прислать битый JSON или выдумать параметры — поэтому read_args. Строку «true» вместо true программа тоже переварит: это предосторожность, а не описанное в документации поведение. Обещания, что модель вызовет record_result, документация не даёт — поэтому напоминание и лимит в 5 шагов, как в уроке 13. temperature 0 — проверка строгая. Размышления выключены: иначе temperature не подействует, а с инструментами пришлось бы возвращать reasoning_content — без него сервер отвечает 400. JSON mode сюда не добавляем: совмещение с инструментами в документации не описано. Проверка: задание по математике, сначала неверный ответ, потом верный.">
+<div class="sl-body" style="padding:40px 36px 50px;gap:10px">
+  <div>
+    <div class="q-label">Правка 2 · автопроверка</div>
+    <h2>Проверяет нейросеть <span class="acc">с калькулятором</span></h2>
+  </div>
+  <div class="prompt-card prompt-card--copy" style="margin-top:10px;padding:14px 18px 12px">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text" style="font-size:14.5px;line-height:1.3;margin-top:2px">Замени простую check_answer проверкой нейросетью с инструментами.
+- MAX_STEPS = 5. calculate(expression): длиннее 100 символов, есть ** или символ, кроме цифр, пробела, точки, скобок и знаков + - * /, — верни «ошибка: недопустимое выражение»; иначе в try верни str(eval(expression)), при любом исключении — «ошибка: не получилось посчитать»
+- TOOLS (не functions). calculate: описание «Калькулятор. Используй для любых вычислений, даже простых. Пиши как в Python: * — умножить, / — разделить. Пример: 2*(3+4)», параметр expression (string). record_result: описание «Записать вердикт проверки. Вызови один раз, когда все вычисления готовы.», параметры по порядку: reasoning (string, «2–3 коротких шага проверки»), correct (boolean), explanation (string, «1–2 предложения для ученика; если ответ неверный, правильный не называй»), все required
+- CHECK_PROMPT: «Ты проверяешь ответ школьника. Если в задании есть вычисления — пересчитай его калькулятором calculate, не считай в уме: ответ из задания мог быть с ошибкой, верь калькулятору. Ответ, равный правильному по смыслу (7/8 и 0.875, Plays и plays), — верный. Вердикт запиши вызовом record_result.»
+- read_args(arguments): json.loads(arguments or "{}") в try; битый JSON или не словарь — {}. read_verdict(args): correct = args.get("correct"), строку замени на correct.strip().lower() == "true"; не bool — None; иначе {"correct": correct, "reasoning": str(args.get("reasoning", "")), "explanation": str(args.get("explanation", ""))}
+- check_answer(task, student): messages — system с CHECK_PROMPT и user f"Предмет: {task['subject']}\nЗадание: {task['question']}\nОтвет из задания: {task['answer']}\nОтвет ученика: {student}". for step in range(MAX_STEPS): client.chat.completions.create с model="deepseek-flash", messages, tools=TOOLS, temperature=0, extra_body={"thinking": {"type": "disabled"}}; message = response.choices[0].message; messages.append(message). Нет message.tool_calls — допиши user «Запиши вердикт: вызови record_result.» и continue. Для каждого tc: args = read_args(tc.function.arguments); result = «ошибка: нет такого инструмента»; calculate — result = calculate(str(args.get("expression", ""))); record_result — verdict = read_verdict(args), есть — верни его, нет — result = «ошибка: correct — true или false»; допиши {"role": "tool", "tool_call_id": tc.id, "content": result}. После цикла — None
+- check_answer вызывай в st.spinner(«Проверяю…»); None — st.warning("Не удалось проверить — нажмите «Проверить» ещё раз"), verdict не меняй. Верно — после st.success ещё st.caption("Как проверял: " + reasoning); неверно — после st.error ещё st.info("Подсказка: " + task["hint"])
+Остальной код не меняй. Верни весь файл.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ключевой момент К2. Пусть каждый получит задание по математике и ответит сначала неверно, потом верно. Слова и числа у вас будут свои. Для русского и английского calculate не нужен — модель сравнивает по смыслу, а строка «Как проверял» покажет её рассуждение. Если у кого-то нейросеть ошиблась в записанном ответе, проверка с калькулятором должна это поймать — покажите группе, это лучший пример, зачем двойная проверка. «Не удалось проверить» — честный ответ программы, когда модель так и не записала вердикт: нажмите «Проверить» ещё раз.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Что получилось</div>
+    <h2>Вердикт, подсказка и <span class="acc">вторая попытка</span></h2>
+  </div>
+  <div class="term"><div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">ТЕРМИНАЛ</span></div>
+    <div class="term-body">Задание · дроби
+Сколько будет 1/2 + 1/4?
+Ваш ответ: 2/6                                  [ Проверить ]
+❌ Пока неверно. Числители и знаменатели не складывают — сначала нужен общий знаменатель.
+Подсказка: Представьте 1/2 как 2/4.
+                     … вторая попытка …
+Ваш ответ: 3/4                                  [ Проверить ]
+✅ Верно! 1/2 — это 2/4, а 2/4 + 1/4 = 3/4.
+Как проверял: calculate(1/2+1/4) = 0.75; ответ ученика 3/4 = 0.75 — совпадает.</div>
+  </div>
+  <p>На неверный ответ репетитор не называет правильный: объясняет ошибку и даёт подсказку — можно попробовать ещё раз. На верный показывает, как проверял: ответ пересчитан калькулятором.</p>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Проговорите по строкам. Ответ модели дописываем в messages целиком, вместе с tool_calls, — так делает образец документации DeepSeek. На каждый вызов — своё сообщение роли tool со своим tool_call_id, даже если вызовов в ответе несколько. read_args страхует от битого JSON в аргументах. Если модель ответила текстом и вердикт не записала, программа не сдаётся сразу, а напоминает. Лимит в 5 шагов — стоп-кран, как в агенте урока 13: документация не обещает, что модель вызовет record_result. Вызов record_result сразу заканчивает проверку — лишний запрос за текстовым ответом не нужен. Размышления выключены: в режиме размышлений с инструментами пришлось бы возвращать reasoning_content, иначе ошибка 400.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2>Цикл агента, который <span class="acc">выносит вердикт</span></h2>
+  </div>
+  <p>Это цикл из урока 13, только инструментов два, а закончить проверку может лишь вызов <span class="code-chip">record_result</span>.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="font-size:13px;line-height:1.5">        message = response.choices[0].message
+        messages.append(message)  # ответ модели целиком, вместе с tool_calls
+        if not message.tool_calls:  # ответила текстом — напоминаем про вердикт
+            messages.append({"role": "user", "content": "Запиши вердикт: вызови record_result."})
+            continue
+        for tc in message.tool_calls:
+            args = read_args(tc.function.arguments)
+            result = "ошибка: нет такого инструмента"
+            if tc.function.name == "calculate":
+                result = calculate(str(args.get("expression", "")))
+            elif tc.function.name == "record_result":
+                verdict = read_verdict(args)
+                if verdict:
+                    return verdict  # вердикт записан — проверка окончена
+                result = "ошибка: correct — true или false"
+            messages.append({"role": "tool", "tool_call_id": tc.id, "content": result})</div>
+  </div>
+  <div class="ek-note">Модель может забыть записать вердикт: документация не обещает, что модель его запишет. Тогда программа напоминает, а после 5 шагов честно пишет «Не удалось проверить».</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Обязательная правка, около 7 минут. Результат каждой проверки ляжет в progress.json рядом с app.py. Это записная книжка урока 15, только вместо фактов — счёт по темам. HERE — папка app.py: файл найдётся, даже если Streamlit запущен из другой папки. Прогресс читается из файла один раз за сессию и после каждой проверки сразу сохраняется. st.rerun перерисовывает страницу, чтобы сайдбар показал новые числа: сайдбар нарисован раньше, чем закончилась проверка. Правило «верных меньше половины» придумали мы, это не требование API. Чтобы темы не дробились на похожие, модель просим писать название слабой темы точно как в списке. Проверка: ответьте неверно — тема станет слабой; обновите страницу — прогресс на месте; спросите учителя «Что мне повторить?».">
+<div class="sl-body" style="padding:48px 44px 56px;gap:12px">
+  <div>
+    <div class="q-label">Правка 3 · память прогресса</div>
+    <h2>Репетитор <span class="acc">помнит прогресс</span></h2>
+  </div>
+  <p>Слабые темы — где верных меньше половины — пойдут в новые задания и в <span class="code-chip">system</span> учителя.</p>
+  <div class="prompt-card prompt-card--copy" style="margin-top:12px">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text" style="font-size:15px;line-height:1.33;margin-top:4px">Добавь память прогресса в файл progress.json рядом с app.py.
+- from pathlib import Path. HERE = Path(__file__).resolve().parent, PROGRESS = HERE / "progress.json". Формат: {предмет: {тема: {"right": верных, "total": всего}}}
+- load_progress(): в try открой PROGRESS с encoding="utf-8" и json.load; FileNotFoundError — верни {}; json.JSONDecodeError — st.warning(«progress.json повреждён — начинаю с чистого листа») и верни {}; не словарь — {}. save_progress(): open(PROGRESS, "w", encoding="utf-8") и json.dump(st.session_state.progress, f, ensure_ascii=False, indent=2)
+- рядом с messages: если progress нет в st.session_state — st.session_state.progress = load_progress()
+- add_result(subject, topic, correct): в st.session_state.progress[subject][topic] (через setdefault, новая тема — {"right": 0, "total": 0}) total += 1, при correct right += 1, потом save_progress()
+- weak_topics(subject): список тем предмета, где right * 2 &lt; total
+- когда check_answer вернула вердикт: add_result(task["subject"], task["topic"], verdict["correct"]), сохрани verdict в session_state и вызови st.rerun()
+- в сайдбаре после «Очистить чат»: st.subheader(«Прогресс»); тем нет — st.caption(«Решите первое задание»); для каждой темы предмета st.write(f"{тема}: {right} из {total}"); есть слабые — st.warning("⚠ Повторить: " + темы через запятую)
+- teacher_prompt(subject): TEACHER.format(subject=subject), а если есть слабые темы — плюс "\nСлабые темы ученика: " + темы через запятую + ". Предлагай повторить их." В чате вместо TEACHER.format(subject=subject) — teacher_prompt(subject)
+- make_task(subject, weak): если weak не пуст — к последней просьбе user допиши f" Тема — одна из слабых: {', '.join(weak)}. В topic напиши её точно как в списке." Кнопка вызывает make_task(subject, weak_topics(subject))
+Остальной код не меняй. Верни весь файл.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ключевой момент К3: AI помнит прогресс. Покажите три вещи. Первая — F5: чат и задание пропали, а прогресс в сайдбаре на месте, потому что он в файле. Вторая — новое задание приходит по слабой теме. Третья — учитель сам предлагает повторить: слабые темы стоят в его system. Откройте progress.json в VS Code — это обычный JSON по предметам и темам, русские буквы читаются благодаря ensure_ascii=False. Если слабая тема не подсвечивается — проверьте условие в weak_topics: верных меньше половины.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Что получилось</div>
+    <h2>F5 не страшен: <span class="acc">дроби на месте</span></h2>
+  </div>
+  <div class="term"><div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">ТЕРМИНАЛ</span></div>
+    <div class="term-body">[ сайдбар ]  Предмет: Математика
+             Прогресс
+             проценты: 2 из 2
+             дроби: 1 из 3
+             ⚠ Повторить: дроби
+
+[ Новое задание ]
+Задание · дроби
+Сколько будет 2/5 + 1/10?
+
+user       Что мне стоит повторить?
+assistant  Давай ещё раз дроби — с ними пока трудно. Начнём с общего знаменателя…</div>
+  </div>
+  <p>Обновите страницу (F5): чат пропал, а прогресс на месте — он в <span class="code-chip">progress.json</span>. Слабая тема уходит и в новое задание, и в <span class="code-chip">system</span> учителя — поэтому он сам предлагает её повторить.</p>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Резервная правка, около 4 минут. Не успеваете — в ДЗ. Скачанный файл — строка JSON с русскими буквами, поэтому ensure_ascii=False; mime задаём сами, иначе для строки будет text/plain. Кнопки скачивания и загрузки — вне формы: в st.form их ставить нельзя. Загрузка — недоверенный ввод: файл мог прийти от кого угодно, а проверка расширения в file_uploader защиты не даёт, поэтому parse_progress проверяет каждое поле. Длину названия темы и размер файла тоже проверяем. Слабые темы видны в сайдбаре и уходят в каждый запрос учителю и генератору заданий, а в облаке файл прогресса один на всех посетителей. Огромное название темы или тысячи тем из чужого файла попадали бы в запросы каждого посетителя и тратили бы баланс школы. Настоящие темы короткие — TASK_PROMPT просит 1–3 слова, поэтому потолок 60 знаков им не мешает. Поле загрузки пропускает файлы до 200 МБ, поэтому размер ограничиваем сами: в 20 000 байт помещаются сотни коротких тем. Короткую грубую фразу такие проверки не поймают — поэтому ссылку дают только узкому кругу. last_upload нужен потому, что так устроен Streamlit: поле загрузки при каждом перезапуске скрипта снова отдаёт тот же файл. Без этой защиты загрузка затирала бы прогресс после каждого ответа. Проверка: скачайте прогресс, решите ещё задание, загрузите скачанный файл — прогресс вернётся к моменту скачивания.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 4 · резерв</div>
+    <h2>Прогресс <span class="acc">с собой</span></h2>
+  </div>
+  <p>Свой прогресс можно унести: скачали файл в конце занятия — загрузили в начале следующего, на любом компьютере или в облаке.</p>
+  <div class="prompt-card prompt-card--copy" style="margin-top:12px">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text" style="font-size:16px;line-height:1.45">Добавь «прогресс с собой»: свой файл прогресса можно скачать и загрузить.
+- parse_progress(raw): если len(raw) &gt; 20000 — сразу верни None. Потом в try data = json.loads(raw.decode("utf-8")), при UnicodeDecodeError или json.JSONDecodeError верни None. Верни None, если data не словарь, или любое его значение не словарь, или любое название темы длиннее 60 знаков, или любая запись темы не словарь с целыми right и total, где 0 &lt;= right &lt;= total. Иначе верни data
+- рядом с messages создай в st.session_state last_upload = None
+- в сайдбаре сразу после «Очистить чат», до прогресса: uploaded = st.file_uploader(«Загрузить прогресс», type="json"). uploaded None — last_upload = None. Иначе raw = uploaded.getvalue(); если raw != last_upload — last_upload = raw, data = parse_progress(raw); None — st.error(«Это не файл прогресса»); иначе st.session_state.progress = data, save_progress() и st.success(«Прогресс загружен»)
+- в сайдбаре после прогресса: st.download_button(«Скачать прогресс», data=json.dumps(st.session_state.progress, ensure_ascii=False, indent=2), file_name="progress.json", mime="application/json"). В st.form кнопки не клади
+Остальной код не меняй. Верни весь файл.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Подведите итог К3: прогресс живёт в трёх местах. Документация Streamlit прямо пишет: в Streamlit Cloud хранение локальных файлов не гарантировано, и платформа может удалить такие данные в любой момент. Когда именно — при перезапуске, обновлении кода или засыпании, — документация не называет, поэтому не говорите «сотрётся при засыпании». Что файл общий для всех посетителей, документация дословно не говорит — это следует из того, что файл лежит на диске одного приложения. Это мостик к уроку 17: чтобы хранить прогресс каждого ученика отдельно и надёжно, нужна база данных. На своём компьютере progress.json надёжен.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор</div>
+    <h2>Три места, где <span class="acc">живёт прогресс</span></h2>
+  </div>
+  <p>В облаке ваш прогресс — это ваш скачанный файл.</p>
+  <div class="grid-3">
+    <div class="info-card"><h3>Вкладка · session_state</h3><p>Рабочая копия прогресса. Живёт, пока открыта вкладка: обновили или закрыли — пропала.</p></div>
+    <div class="info-card"><h3>Файл приложения · progress.json</h3><p>Дома надёжно. В облаке платформа может удалить его в любой момент, и он один на всех, кто открыл ссылку.</p></div>
+    <div class="info-card"><h3>Ваш файл · скачанный</h3><p>Лежит у вас на диске и работает где угодно: загрузили — продолжили с того же места.</p></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Резервная правка, около 3 минут. Зачем: дома у репетитора может появиться публичная ссылка, а в Secrets опубликованного приложения лежит тот же школьный ключ — каждый запрос по ссылке тратит баланс школы. Лимит в приложении — решение курса: Streamlit сам такого ограничения не вводит. Счётчик хранится в st.cache_resource — по документации этот кэш общий для всех перезапусков скрипта и всех сессий приложения, а session_state у каждой вкладки свой. Счётчик живёт, пока работает приложение: дома — до остановки streamlit run, в облаке — до кнопки Reboot app, которая очищает память приложения. В облаке он может обнулиться и без вас: приложение без посетителей 12 часов засыпает, а после пробуждения, скорее всего, запускается заново — прямо документация этого не описывает. Поэтому 100 обращений — потолок на один запуск приложения, а не на всё время. Скажите честно: это предохранитель от случайных трат, а не замок. Настоящая защита — давать ссылку узкому кругу. Одно обращение — одно действие: вопрос, задание или проверка, а внутри проверки бывает несколько запросов к API. Счётчик бережёт от множества действий, а max_chars и max_tokens — от дорогих: без них посетитель мог бы вставлять огромные тексты или просить длинные ответы. Это важно, потому что API платный по токенам, а вся история чата уходит в каждый запрос. Ответ учителя длиннее 600 токенов оборвётся — это потолок, а не обычная длина ответа. max_chars есть и у st.chat_input (с его первой версии 1.24.0), и у st.text_input: поле не даст набрать больше лимита, при вводе видно счётчик знаков. Не обещайте «длинный текст обрежется»: документация этого не описывает, а по коду Streamlit вставка длиннее лимита не обрезается — поле её просто не принимает. Поэтому длинный текст сократите и вставьте снова. Лимит длины работает в браузере, сервер он не защищает — это тоже предохранитель, а не замок. Проверка: поставьте AI_LIMIT = 3, сохраните и перезапустите приложение — Ctrl+C в терминале, потом снова streamlit run tutor/app.py. Без перезапуска приложения счётчик продолжит с прежнего числа — st.cache_resource общий для всех перезапусков скрипта и всех вкладок, — и предупреждение может появиться раньше четвёртого действия. После перезапуска четвёртое действие покажет предупреждение; откройте вторую вкладку — счётчик тот же. Потом верните 100 и снова перезапустите.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Правка 5 · резерв</div>
+      <h2>Предохранитель для <span class="acc">публичной ссылки</span></h2>
+    </div>
+    <p style="font-size:14.5px;line-height:1.4">Дома у репетитора может появиться публичная ссылка, а каждый запрос с неё тратит деньги школы. Поставим общий лимит обращений к AI, ограничим длину текстов и предупредим о личных данных.</p>
+    <div class="prompt-card prompt-card--copy" style="margin-top:6px">
+      <span class="pc-tag">→ В тот же чат</span>
+      <div class="pc-text" style="font-size:13.5px;line-height:1.38">Подготовь репетитора к публичной ссылке.
+- сразу под st.title: st.caption(«Не пишите сюда настоящие имя, адрес, телефон и пароли: всё, что вы вводите, уходит нейросети.»)
+- длинные тексты не пропускай: у st.chat_input — max_chars=500, у st.text_input(«Ваш ответ») — max_chars=200; в запрос учителю добавь max_tokens=600
+- AI_LIMIT = 100. Функция usage() с декоратором @st.cache_resource возвращает {"count": 0} — один словарь на всё приложение, общий для всех вкладок
+- can_ask(): если usage()["count"] &gt;= AI_LIMIT — st.warning(f"Репетитор отдыхает: исчерпан лимит {AI_LIMIT} обращений к AI. Владелец может перезапустить приложение.") и верни False; иначе прибавь к count 1 и верни True
+- can_ask() ставь последним условием перед каждым обращением к AI: st.button(«Новое задание») and can_ask(), sent and student.strip() and can_ask(), question and can_ask()
+- в самом конце файла: with st.sidebar: st.caption(f"Обращений к AI: {usage()['count']} из {AI_LIMIT}")
+Остальной код не меняй. Верни весь файл.</div>
+    </div>
+    <div class="ek-note ek-note--green" style="margin-top:14px;padding:8px 16px;font-size:14px;line-height:1.4"><span class="code-chip">st.session_state</span> у каждой вкладки свой, а <span class="code-chip">st.cache_resource</span> — один на всё приложение. Поэтому счётчик общий: новая вкладка его не обнулит, только перезапуск приложения.</div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Не разбирайте шаги подробно: покажите, что публикация — несколько шагов на сайтах, без командной строки, и делает её взрослый. Попросите сфотографировать слайд или отправьте его родителям. Почему взрослый: по условиям Streamlit (редакция ноября 2025 года) аккаунт в Streamlit Cloud — только с 18 лет, исключений для родителей и школ нет; GitHub — с 13 лет, а в некоторых странах выше. Ученики свои аккаунты не заводят. У кого аккаунт Streamlit Cloud остался с урока 10, тот репетитора сам не публикует: публикует взрослый со своего аккаунта. Подробности для родителей. В документации сервис называется Streamlit Community Cloud. Про ключ: заводить свой ключ DeepSeek и пополнять счёт взрослому не нужно. В Secrets кладут тот же ключ, который выдала школа. Он записан в файле .env в папке lesson-16 после DEEPSEEK_KEY= — откройте файл в VS Code и скопируйте всё, что после знака равенства. Запросы по публичной ссылке оплачивает школа: деньги списываются с её баланса в DeepSeek. Шаг 1: Streamlit разворачивает приложения из публичных репозиториев, а для приватного нужна дополнительная авторизация. Код в публичном репозитории видят все — поэтому в app.py нет ключа, только get_key. Имя репозитория и адрес приложения — без имени и фамилии ребёнка: публичное приложение Streamlit помечает как открытое для поиска. Шаг 2: загружаем только app.py и requirements.txt. Не загружаем .env с ключом, progress.json с прогрессом и task_gen.py: при загрузке через браузер .gitignore не помогает. Шаг 3: Streamlit заводит аккаунт по e-mail из GitHub; меню Workspaces — в левом верхнем углу. Шаг 4: кнопка Create app — в правом верхнем углу рабочего пространства; файлы лежат в корне репозитория, поэтому путь — просто app.py; свой адрес можно задать в поле App URL. Шаг 5: Secrets пишутся в формате TOML — имя ключа, знак равенства и ключ в кавычках, без пробелов внутри ключа. Поменять их потом можно в App settings, вкладка Secrets, кнопка Save. Интерфейс может отличаться от описания — тогда ищите кнопки по смыслу. Если приложение пишет «Нет ключа DEEPSEEK_KEY» — проверьте Secrets и перезапустите: Manage app в правом нижнем углу, затем Reboot app. ModuleNotFoundError — в requirements.txt не хватает пакета; модуль называется dotenv, а пакет — python-dotenv. Ошибка 401 (Authentication Fails) — ключ неверный: сверьте ключ в Secrets с .env символ в символ; совпадает, а ошибка осталась — сообщите школе. Ошибка 402 (Insufficient Balance) — на балансе школы кончились деньги: сообщите школе. Ключ утёк — например, попал в файл на GitHub или его кому-то переслали — тоже сообщите школе. Если школа выдаст новый ключ, впишите его в .env и в Secrets, а если приложение его не подхватило — Reboot app. Шаг 6: по документации публичное приложение открывает любой, у кого есть ссылка, а вход описан только для приватных — окно инкогнито это проверяет. Приватное приложение классу не подходит: каждому зрителю нужен вход, а приватное приложение у аккаунта одно. Что ещё сказать родителям. Сервис бесплатный, но ресурсы ограничены. Приложение без посетителей 12 часов засыпает: перед показом откройте ссылку и нажмите «Yes, get this app back up!». Файлы в облаке не вечны — прогресс сохраняем кнопкой «Скачать прогресс». Ключ школьный: не пересылайте его и не вставляйте в код — по условиям DeepSeek ключ нельзя выкладывать в открытый доступ. Он лежит только в .env и в Secrets. Сервис DeepSeek рассчитан прежде всего на взрослых, а несовершеннолетним — с согласия законного представителя.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Публикация · дома</div>
+      <h2>Публикация дома — <span class="acc">вместе с родителем</span></h2>
+    </div>
+    <p style="font-size:15.5px">Аккаунт Streamlit Cloud можно завести только с 18 лет, поэтому репетитора публикует взрослый — со своих аккаунтов. Ключ DeepSeek берут тот же, что выдала школа. Командная строка не нужна.</p>
+    <ol class="steps steps--tight" style="gap:6px">
+      <li style="padding:6px 14px;font-size:14.5px;line-height:1.35"><span>GitHub: вход или регистрация на github.com/signup → «+» → «New repository»: имя без имени ребёнка, видимость public, README → «Create repository»</span></li>
+      <li style="padding:6px 14px;font-size:14.5px;line-height:1.35"><span>«Add file» → «Upload files»: только <span class="code-chip">app.py</span> и <span class="code-chip">requirements.txt</span> из папки <span class="code-chip">tutor</span> → «Commit changes»</span></li>
+      <li style="padding:6px 14px;font-size:14.5px;line-height:1.35"><span>share.streamlit.io: «Continue to sign-in» → вход через GitHub → «I accept». Просит подключить GitHub — «Workspaces» → «Connect GitHub account» → «Authorize streamlit»</span></li>
+      <li style="padding:6px 14px;font-size:14.5px;line-height:1.35"><span>«Create app» → «Yup, I have an app.» → репозиторий, ветка, файл <span class="code-chip">app.py</span>; в «App URL» — без имени ребёнка</span></li>
+      <li style="padding:6px 14px;font-size:14.5px;line-height:1.35"><span>«Advanced settings» → Secrets: строка <span class="code-chip">DEEPSEEK_KEY = "ключ из .env"</span> → «Save», запустите приложение и дождитесь сборки</span></li>
+      <li style="padding:6px 14px;font-size:14.5px;line-height:1.35"><span>Откройте ссылку в окне инкогнито — репетитор должен открыться без входа</span></li>
+    </ol>
+    <div class="ek-note ek-note--red" style="padding:8px 16px;font-size:14px">Публичная ссылка тратит баланс школы: давайте её узкому кругу. Ключ — только в Secrets, не в файлах на GitHub. Ошибка 401 — сверьте ключ в Secrets с <span class="code-chip">.env</span>. Ключ утёк, пришла ошибка 402 или осталась 401 — сообщите школе. В репетитора — только выдуманные данные.</div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Вопрос на К2. Дайте 10–15 секунд, потом раскройте ответ. 17 × 24 = 408. Свяжите со слайдом 7: проверка по строке верит записанному ответу, проверка с калькулятором — числу. А CHECK_PROMPT прямо говорит модели: ответ из задания мог быть с ошибкой, верь калькулятору.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Проверка · вопрос 1</div>
+      <h2>Изучите ситуацию и <span class="acc">ответьте</span></h2>
+    </div>
+    <div class="quiz-box" style="margin-top:10px">
+      <span class="q-num">Вопрос 1</span>
+      <p class="q-text">Нейросеть придумала задание «Сколько будет 17 × 24?» и записала ответ 418. Вы ответили 408. Что скажет репетитор после правки 1 — и что после правки 2?</p>
+      <div class="quiz-answer">
+        <button class="quiz-btn" type="button">Показать ответ</button>
+        <div class="quiz-reveal">
+          <p>После правки 1 — ❌: простая проверка сравнила 408 с записанным 418 и поверила записанному. После правки 2 — ✅: проверяющий запрос пересчитал 17*24 калькулятором, получил 408 и поверил калькулятору, а не ответу из задания. Нейросеть может ошибиться, сочиняя задачу, — поэтому числа пересчитываем инструментом.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Вопрос на К3 и К4. Дополнительный вопрос группе: а на своём компьютере такое случится? Файл тоже общий для всех, кто сидит за этим компьютером, но удалять его никто не будет. Это увидим на демо: сосед, решая задание в вашем репетиторе, пишет в ваш progress.json. Чтобы у каждого ученика был свой прогресс, нужна база данных — это урок 17.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Проверка · вопрос 2</div>
+      <h2>Изучите ситуацию и <span class="acc">ответьте</span></h2>
+    </div>
+    <div class="quiz-box" style="margin-top:10px">
+      <span class="q-num">Вопрос 2</span>
+      <p class="q-text">Петя с мамой опубликовали репетитора и дали ссылку двум друзьям. Через два дня Петя открыл ссылку: в прогрессе чужие темы, а его дробей нет. Что случилось — и как Пете не терять прогресс?</p>
+      <div class="quiz-answer">
+        <button class="quiz-btn" type="button">Показать ответ</button>
+        <div class="quiz-reveal">
+          <p><span class="code-chip">progress.json</span> лежит на диске приложения, а не у Пети: файл один на всех, кто открыл ссылку, и друзья записали туда свои результаты. К тому же платформа может удалить такие файлы в любой момент. Надёжно — свой файл: «Скачать прогресс» в конце занятия и «Загрузить прогресс» в начале следующего.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Самые частые жалобы — «не проверяет» и «всё пропало». Пройдитесь сверху вниз. «Не удалось проверить» — не поломка, а честный ответ программы: модель за 5 шагов не записала вердикт. Ошибка 400 при проверке значит, что сервер не принял формат запроса: чаще всего помощник DeepSeek выбросил extra_body или собрал сообщение ассистента вручную, без tool_calls. В режиме размышлений с инструментами сервер требует вернуть reasoning_content, без него — 400. Про форму: в каждой форме обязательна кнопка st.form_submit_button, а обычные кнопки и кнопку скачивания ставят вне формы. Если прогресс обнулился без предупреждения — проверьте, что сохранили app.py после правки 3.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Отладка</div>
+      <h2>Почему репетитор <span class="acc">не проверяет</span></h2>
+    </div>
+    <div class="kv">
+      <div class="kv-row"><div class="k" style="text-transform:none;font-size:15px">«Не удалось проверить»</div><div class="v">Модель за 5 шагов не записала вердикт. Нажмите «Проверить» ещё раз. Повторяется — сверьте <span class="code-chip">record_result</span> и <span class="code-chip">CHECK_PROMPT</span> с промптом правки 2.</div></div>
+      <div class="kv-row"><div class="k" style="text-transform:none;font-size:15px">Error code: 400 при проверке</div><div class="v">В запросе проверки нет <span class="code-chip">extra_body</span> с выключенными размышлениями, или ответ модели не добавлен в <span class="code-chip">messages</span> целиком.</div></div>
+      <div class="kv-row"><div class="k" style="text-transform:none;font-size:15px">Задание и чат пропали</div><div class="v">Вы обновили страницу: <span class="code-chip">session_state</span> живёт, пока открыта вкладка. Прогресс — в файле, он на месте.</div></div>
+      <div class="kv-row"><div class="k" style="text-transform:none;font-size:15px">Красная ошибка про форму</div><div class="v">В форме нет <span class="code-chip">st.form_submit_button</span>, или внутрь попала обычная кнопка либо кнопка скачивания — их ставят вне формы.</div></div>
+      <div class="kv-row"><div class="k" style="text-transform:none;font-size:15px">«Это не файл прогресса»</div><div class="v">Загрузили не тот файл или правили его руками. Скачайте прогресс заново.</div></div>
+    </div>
+    <div class="ek-note">Непонятная ошибка — копируйте traceback целиком в тот же чат DeepSeek и просите объяснить и починить.</div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пять привычек урока и всего модуля — дайте сфотографировать слайд. Первая — как собирают большие проекты: каждую деталь проверяют отдельно, потом соединяют. Вторая — главный урок модуля: модель не всегда присылает правильный JSON и не обещает вызвать нужный инструмент, поэтому проверяет программа. Четвёртая: ключ, который выдала школа, лежит дома в .env, а в облаке — в Secrets. В код его не пишем: код на GitHub виден всем, а по условиям DeepSeek ключ нельзя выкладывать в открытый доступ. Пятую подчеркните особо: публичную ссылку откроет любой, у кого она есть, а запросы по ней оплачивает школа.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Запомните</div>
+      <h2>Привычки <span class="acc">большого проекта</span></h2>
+    </div>
+    <div class="grid-3" style="gap:16px">
+      <div class="info-card"><h3>01 · Собирайте из проверенных деталей</h3><p style="font-size:15.5px">Генератор проверили в разминке и перенесли без изменений. Сначала деталь, потом сборка.</p></div>
+      <div class="info-card"><h3>02 · Не верьте модели на слово</h3><p style="font-size:15.5px">Задачу сочинила нейросеть — пересчитываем калькулятором. JSON и аргументы проверяет программа.</p></div>
+      <div class="info-card"><h3>03 · Храните память там, где она выживет</h3><p style="font-size:15.5px">Вкладка забывает при F5, файл в облаке ненадёжен, а скачанный файл — ваш.</p></div>
+      <div class="info-card"><h3>04 · Ключ — не в коде</h3><p style="font-size:15.5px">Дома школьный ключ в <span class="code-chip">.env</span>, в облаке тот же ключ — в Secrets. В <span class="code-chip">app.py</span> только <span class="code-chip">get_key</span>.</p></div>
+      <div class="info-card"><h3>05 · Публичная ссылка — чужие деньги и данные</h3><p style="font-size:15.5px">Предохранитель, узкий круг, только выдуманные данные.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Демо в группе. Пусть сосед сядет за ваш компьютер и решит задание в вашем репетиторе: результат попадёт в ваш progress.json. Спросите: чей это теперь прогресс? Файл один на всех, кто открывает репетитора, — в облаке будет так же, только посетителей больше. Это мостик к уроку 17. Проверьте у всех .gitignore и requirements.txt: без них дома с публикацией будут проблемы.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Чек-лист</div>
+      <h2>Что должно быть к <span class="acc">55-й минуте</span></h2>
+    </div>
+    <div class="grid-2">
+      <div class="info-card">
+        <h3 style="color:var(--ek-green-deep)">Готово</h3>
+        <ul class="clean">
+          <li><span><span class="code-chip">streamlit run tutor/app.py</span> — страница репетитора, учитель отвечает по кусочкам</span></li>
+          <li><span>«Новое задание» — карточка задания, ответа на странице нет</span></li>
+          <li><span>«Проверить» — ✅ или ❌ с объяснением, на неверный ответ — подсказка</span></li>
+          <li><span>В сайдбаре прогресс по темам; после F5 он на месте, слабая тема подсвечена</span></li>
+          <li><span>В <span class="code-chip">lesson-16</span> — <span class="code-chip">.gitignore</span>, в <span class="code-chip">tutor</span> — <span class="code-chip">requirements.txt</span></span></li>
+        </ul>
+      </div>
+      <div class="info-card">
+        <h3 style="color:var(--ek-violet-deep)">Работает (если успели)</h3>
+        <ul class="clean">
+          <li><span>«Скачать прогресс» и «Загрузить прогресс»</span></li>
+          <li><span>Счётчик обращений к AI и предохранитель</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="ek-note ek-note--green">Демо: пусть сосед по парте сядет за ваш компьютер и решит задание — репетитор запомнит результат.</div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="ДЗ примерно на 30 минут. Публикация — по желанию родителей: это их аккаунты, навязывать её нельзя. Свой ключ DeepSeek родителям не нужен: в Secrets кладут тот же ключ, что выдала школа, и запросы по ссылке оплачивает школа. Если родители не готовы, засчитывается показ на своём компьютере. Ученики свои аккаунты GitHub и Streamlit Cloud не заводят: Streamlit — только с 18 лет, GitHub — с 13. У кого аккаунт Streamlit Cloud остался с урока 10, тот репетитора сам не публикует: публикует взрослый со своего аккаунта. Банк заданий и свой предмет делают в чате урока. Нет чата — новый чат: свой app.py, а под ним задача. Банк заданий проверяйте на своём компьютере: в облаке файлы не гарантированы. Если репетитор опубликован, перед показом классу откройте ссылку: уснувшее приложение просыпается кнопкой «Yes, get this app back up!». Недоделанные правки 4–5 — тоже дома, в чате урока. Разберём на слайде 3 урока 17: общий progress.json в облаке смешивает учеников, а в растущем tasks.json неудобно искать. Когда записей много, файла мало — нужна база данных.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Домашнее задание · около 30 минут</div>
+      <h2>Покажите <span class="acc">репетитора</span> миру</h2>
+    </div>
+    <p>Три задания. Банк заданий и свой предмет делайте в чате урока: там уже есть весь код репетитора.</p>
+    <div class="grid-3">
+      <div class="info-card">
+        <h3>Опубликуйте с родителем</h3>
+        <p style="font-size:14.5px">Если родители согласны, взрослый публикует репетитора со своего аккаунта по шагам слайда 31. Ключ — тот же, что выдала школа. Дайте ссылку 2–3 одноклассникам: пусть каждый решит 5 заданий. Запишите, что понравилось и что сломалось. Без публикации — покажите репетитора родным на своём компьютере.</p>
+      </div>
+      <div class="info-card">
+        <h3>Банк заданий</h3>
+        <p style="font-size:14.5px">Пусть каждое новое задание сохраняется в <span class="code-chip">tasks.json</span>: предмет, тема, вопрос, ответ. В сайдбаре — поиск задания по теме. Наберите 20 заданий или больше.</p>
+      </div>
+      <div class="info-card">
+        <h3>Свой предмет</h3>
+        <p style="font-size:14.5px">Добавьте четвёртый предмет — историю, географию или биологию — и два примера к нему в <span class="code-chip">EXAMPLES</span>. Проверьте, что задания приходят и проверяются.</p>
+      </div>
+    </div>
+    <div class="ek-note ek-note--red">Перед публикацией — правка 5: не успели на уроке, сделайте её в чате урока. В Secrets — тот же ключ, что в <span class="code-chip">.env</span>, а в <span class="code-chip">app.py</span> и на GitHub ключа нет. В репетиторе по ссылке — только выдуманные данные.</div>
+  </div>
+</section>
+
+<section class="slide slide--green"
+  data-notes="Закройте модуль 4. За шесть уроков группа прошла путь от одного запроса к нейросети до веб-приложения, где нейросеть придумывает, проверяет и помнит. При этом нейросеть по-прежнему ничего не помнит сама и ничего не запускает сама: память живёт в наших файлах, а инструменты запускает наша программа. На уроке 17 прогресс каждого ученика переедет в базу данных, где он хранится отдельно.">
+<div class="sl-orbit">
+    <i class="sl-ring"></i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:75px;top:20px;width:150px;height:150px;transform:rotate(-10deg)"><use href="#ek-i-trophy"/></svg>
+    <i class="sl-letter" style="left:466px;top:13px;width:78px;height:78px;--fs:36px">T</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1040px;top:15px;width:130px;height:130px;transform:rotate(12deg)"><use href="#ek-i-heart"/></svg>
+    <i class="sl-letter" style="left:68px;top:268px;width:100px;height:100px;--fs:46px">U</i>
+    <i class="sl-letter" style="left:1137px;top:327px;width:95px;height:95px;--fs:44px">T</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:102px;top:532px;width:125px;height:125px;transform:rotate(-15deg)"><use href="#ek-i-star"/></svg>
+    <i class="sl-letter" style="left:726px;top:613px;width:78px;height:78px;--fs:36px">O</i>
+    <i class="sl-letter" style="left:380px;top:620px;width:70px;height:70px;--fs:32px">R</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1045px;top:540px;width:110px;height:110px;transform:rotate(8deg)"><use href="#ek-i-gem"/></svg>
+  </div>
+  <div class="cover-center">
+    <div class="bubble">
+      <h1>До встречи<br>на уроке 17!</h1>
+      <p>Сегодня вы собрали из деталей модуля веб-репетитора: он придумывает задания, проверяет ответы калькулятором и помнит прогресс. Дальше — модуль 5 и первая база данных.</p>
+    </div>
+  </div>
+</section>
+</main>
+
+<div class="notes" id="notes">
+  <div class="notes__header">Заметки преподавателя &middot; N — скрыть</div>
+  <div class="notes__body" id="notesBody">—</div>
+</div>
+
+<div class="hint"><kbd>←</kbd><kbd>→</kbd> слайды &middot; <kbd>N</kbd> заметки &middot; <kbd>F</kbd> весь экран</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="ek-i-trophy" viewBox="0 0 100 100"><path fill="currentColor" d="M24 16h52v12h8c6 0 10 4 10 10 0 15-11 25-23 27-3 5-8 9-14 10v8h14c4 0 7 3 7 7v4H22v-4c0-4 3-7 7-7h14v-8c-6-1-11-5-14-10C17 63 6 53 6 38c0-6 4-10 10-10h8V16zM24 36h-7c-2 0-4 2-4 4 0 8 5 15 12 18-1-5-1-10-1-16v-6zM76 36v6c0 6 0 11-1 16 7-3 12-10 12-18 0-2-2-4-4-4h-7z"/></symbol>
+<symbol id="ek-i-heart" viewBox="0 0 100 100"><path fill="currentColor" d="M50 88C28 72 10 56 10 38 10 24 21 14 34 14c6 0 12 3 16 8 4-5 10-8 16-8 13 0 24 10 24 24 0 18-18 34-40 50z"/></symbol>
+<symbol id="ek-i-star" viewBox="0 0 100 100"><path fill="currentColor" d="M50 8l12 27 29 3-22 20 6 29-25-15-25 15 6-29L9 38l29-3z"/></symbol>
+<symbol id="ek-i-gem" viewBox="0 0 100 100"><path fill="currentColor" d="M30 12h40l18 24-38 52L12 36zM36 20l-12 16h20zM64 20l-8 16h20zM50 22l-9 14h18zM26 44l20 30-8-30zM62 44l-8 30 20-30zM46 44h8l-4 26z"/></symbol>
+</defs></svg>
+
+<script>
+/* ============ Автомасштаб сцены ============ */
+(function(){
+  'use strict';
+  var stage = document.getElementById('deck');
+  function fit(){
+    var w = window.innerWidth, h = window.innerHeight;
+    if (!w || !h) return;
+    var s = Math.min(w / 1320, h / 780);
+    if (document.fullscreenElement) s = Math.min(w / 1280, h / 720);
+    stage.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+    stage.style.borderRadius = document.fullscreenElement ? '0' : '18px';
+  }
+  window.addEventListener('resize', fit);
+  document.addEventListener('fullscreenchange', fit);
+  fit();
+})();
+
+/* ============ Навигация по слайдам ============ */
+(function(){
+  'use strict';
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var total = slides.length;
+  var idx = 0;
+  document.getElementById('total').textContent = total;
+
+  var progressEl = document.getElementById('progress');
+  var currentEl = document.getElementById('current');
+  var notesPanel = document.getElementById('notes');
+  var notesBody = document.getElementById('notesBody');
+
+  slides.forEach(function(s, i){
+    if (s.classList.contains('slide--content')) s.setAttribute('data-page', i + 1);
+  });
+
+  function render(){
+    slides.forEach(function(s, i){
+      s.classList.remove('active', 'prev');
+      if (i === idx) s.classList.add('active');
+      else if (i < idx) s.classList.add('prev');
+    });
+    progressEl.style.width = ((idx + 1) / total * 100).toFixed(2) + '%';
+    currentEl.textContent = idx + 1;
+    notesBody.textContent = slides[idx].getAttribute('data-notes') || '—';
+  }
+
+  function go(n){ idx = Math.max(0, Math.min(total - 1, n)); render(); }
+  function next(){ go(idx + 1); }
+  function prev(){ go(idx - 1); }
+
+  document.addEventListener('keydown', function(e){
+    var active = document.activeElement;
+    if (active && (active.isContentEditable || active.tagName === 'TEXTAREA' || active.tagName === 'INPUT')) return;
+    switch (e.key){
+      case 'ArrowRight': case 'PageDown': case ' ':
+        e.preventDefault(); next(); break;
+      case 'ArrowLeft': case 'PageUp':
+        e.preventDefault(); prev(); break;
+      case 'Home': e.preventDefault(); go(0); break;
+      case 'End': e.preventDefault(); go(total - 1); break;
+      case 'f': case 'F': case 'а': case 'А':
+        e.preventDefault();
+        if (!document.fullscreenElement){ if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen(); }
+        else if (document.exitFullscreen) document.exitFullscreen();
+        break;
+      case 'n': case 'N': case 'т': case 'Т':
+        e.preventDefault(); notesPanel.classList.toggle('active'); break;
+      case 'Escape':
+        if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
+        notesPanel.classList.remove('active'); break;
+    }
+  });
+
+  var tx = 0, ty = 0;
+  document.addEventListener('touchstart', function(e){ tx = e.changedTouches[0].screenX; ty = e.changedTouches[0].screenY; }, { passive: true });
+  document.addEventListener('touchend', function(e){
+    var dx = e.changedTouches[0].screenX - tx, dy = e.changedTouches[0].screenY - ty;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)){ if (dx < 0) next(); else prev(); }
+  }, { passive: true });
+
+  document.addEventListener('click', function(e){
+    if (e.target.closest('a,button,input,textarea,code,pre,[contenteditable],.code-win,.term,.prompt-card,.quiz-box,.notes')) return;
+    var x = e.clientX, w = window.innerWidth;
+    if (x < w * 0.25) prev();
+    else if (x > w * 0.75) next();
+  });
+
+  render();
+})();
+
+/* ============ Квизы: показать ответ ============ */
+(function(){
+  'use strict';
+  Array.prototype.slice.call(document.querySelectorAll('.quiz-btn')).forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var box = btn.closest('.quiz-box');
+      var reveal = box && box.querySelector('.quiz-reveal');
+      if (!reveal) return;
+      var shown = reveal.classList.toggle('show');
+      btn.textContent = shown ? 'Скрыть ответ' : 'Показать ответ';
+    });
+  });
+})();
+</script>
+</body>
+</html>

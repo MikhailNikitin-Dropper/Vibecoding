@@ -202,7 +202,7 @@ ol.steps.steps--tight li::before{flex-basis:32px;height:32px;font-size:14px}
 
 <main class="stage" id="deck">
 <section class="slide slide--violet active"
-  data-notes="Поприветствуйте. Сегодня соберём AI-друга friend.py: Макс из урока 12 научится помнить разговор после закрытия программы. Три вида памяти урока: сам разговор, пересказ старой части и записная книжка фактов. Второй провайдер — Kimi: тот же openai SDK, другие адрес, модель и ключ. Ключ Kimi есть только у преподавателя, поэтому всё, что делает Kimi, группа видит на вашем экране, а у учеников тот же код работает на DeepSeek. Если ключа Kimi нет и у вас — весь урок идёт на DeepSeek, код не меняется. Обязательный минимум — каркас и правки 1, 3, 4: память между запусками, пересказ и записная книжка. Правку 2 вы показываете на своём экране, правка 5 — резерв.">
+  data-notes="Поприветствуйте. Сегодня соберём AI-друга friend.py: Макс из урока 12 научится помнить разговор после закрытия программы. Три вида памяти урока: сам разговор, пересказ старой части и записная книжка фактов. На уроке и вы, и ученики работаете только на DeepSeek, а Kimi сравниваем с ним на словах, на слайде 11. Обязательный минимум — каркас и правки 1, 3, 4: память между запусками, пересказ и записная книжка. Правку 2 вы показываете на своём экране, правка 5 — резерв.">
 <div class="sl-orbit">
     <i class="sl-ring"></i>
     <svg class="sl-ico" viewBox="0 0 100 100" style="left:75px;top:20px;width:150px;height:150px;transform:rotate(-10deg)"><use href="#ek-i-trophy"/></svg>
@@ -221,13 +221,13 @@ ol.steps.steps--tight li::before{flex-basis:32px;height:32px;font-size:14px}
       <div class="card-top"><span class="win-dots"><i></i><i></i><i></i></span><span class="win-close"></span></div>
       <h1>Программа, которая<br>помнит разговоры</h1>
       <p class="cover-sub">Соберём AI-друга Макса: он помнит разговор между запусками, сжимает старое в короткий пересказ и записывает важное о собеседнике в записную книжку.</p>
-      <div class="cover-chips"><span class="chip chip--green">DeepSeek API</span><span class="chip">Kimi API</span><span class="chip chip--gray">Память</span></div>
+      <div class="cover-chips"><span class="chip chip--green">DeepSeek API</span><span class="chip">Память</span><span class="chip chip--gray">Kimi API</span></div>
     </div>
   </div>
 </section>
 
 <section class="slide slide--content"
-  data-notes="Теории — минимум: с 10-й минуты каждый делает разминку. Контрольные точки: к 17-й минуте у всех запущен warmup.py и разобран слайд 11; к 28-й — каркас печатает серый счётчик, а после перезапуска Макс всё забыл; к 33-й — после правки 1 Макс помнит разговор после перезапуска; к 35-й — вы показали правку 2 на своём экране; к 43-й — у всех появилась строка 🗜 с пересказом; к 51-й — строка 📝 и команда /facts. Правку 2 ученики не делают: вы показываете её за 2 минуты, а они после правки 1 сразу дают промпт правки 3 — он написан так, что работает и без правки 2. Отстаёте больше чем на 3 минуты — разборы кода на слайдах 22, 27 и 29 сократите до одной главной мысли. Каждая правка — полная перегенерация friend.py. Перед уроком обязательно: 1) прогоните warmup.py со своим KIMI_KEY и засеките, сколько секунд Kimi отвечает: K3 размышляет всегда, а время ответа документация не называет. 2) Соберите демо — финальную версию friend.py с историей и фактами выдуманного героя — в отдельной папке, например vibe-coding/lesson-15-demo, и положите туда свой .env. Тогда каркас, который вы соберёте вместе с группой в lesson-15, и его history.json демо не затрут. В демо-папке поменяйте в history.json дату last_session на вчерашнюю — это демо для слайда 14 и финала. На слайде 14 вы ответите Максу, и программа запишет сегодняшнюю дату, поэтому перед финальным демо снова поставьте вчерашнюю. Расход: после правки 4 каждая реплика — два запроса, а каждые две реплики добавляют запрос пересказа. По нашей оценке, урок группы из 30 человек на DeepSeek — доли доллара. Цены Kimi в документации получить не удалось — посмотрите их в своей консоли Kimi.">
+  data-notes="Теории — минимум: с 10-й минуты каждый делает разминку. Контрольные точки: к 14-й минуте у всех запущен warmup.py; к 17-й — разобрано сравнение DeepSeek и Kimi на слайде 11; к 28-й — каркас печатает серый счётчик, а после перезапуска Макс всё забыл; к 33-й — после правки 1 Макс помнит разговор после перезапуска; к 35-й — вы показали правку 2 на своём экране; к 43-й — у всех появилась строка 🗜 с пересказом; к 51-й — строка 📝 и команда /facts. Правку 2 ученики не делают: вы показываете её за 2 минуты, а они после правки 1 сразу дают промпт правки 3 — он написан так, что работает и без правки 2. Отстаёте больше чем на 3 минуты — разборы кода на слайдах 22, 27 и 29 сократите до одной главной мысли. Каждая правка — полная перегенерация friend.py. Перед уроком обязательно соберите демо — финальную версию friend.py с историей и фактами выдуманного героя — в отдельной папке, например vibe-coding/lesson-15-demo, и положите туда свой .env. Тогда каркас, который вы соберёте вместе с группой в lesson-15, и его history.json демо не затрут. В демо-папке поменяйте в history.json дату last_session на вчерашнюю — это демо для слайда 14 и финала. На слайде 14 вы ответите Максу, и программа запишет сегодняшнюю дату, поэтому перед финальным демо снова поставьте вчерашнюю. Расход: после правки 4 каждая реплика — два запроса, а каждые две реплики добавляют запрос пересказа. По нашей оценке, урок группы из 30 человек на DeepSeek — доли доллара.">
 <div class="sl-body">
   <div>
     <div class="q-label">План занятия</div>
@@ -236,7 +236,7 @@ ol.steps.steps--tight li::before{flex-basis:32px;height:32px;font-size:14px}
   <div class="agenda" style="margin-top:10px">
     <div class="agenda-row"><span class="t">0–5</span><div><div class="tt">Разбор ДЗ</div><div class="dd">Дневник moods.json и facts.py: что помнит программа, а что нет.</div></div></div>
     <div class="agenda-row"><span class="t">5–10</span><div><div class="tt">Окно, токены и три вида памяти</div><div class="dd">Почему каждый запрос несёт всю историю.</div></div></div>
-    <div class="agenda-row"><span class="t">10–17</span><div><div class="tt">Разминка warmup.py</div><div class="dd">Один вопрос — DeepSeek и Kimi, счёт токенов туда и обратно.</div></div></div>
+    <div class="agenda-row"><span class="t">10–17</span><div><div class="tt">Разминка и два провайдера</div><div class="dd">warmup.py: вопрос к DeepSeek и счёт токенов туда и обратно. Чем от DeepSeek отличается Kimi.</div></div></div>
     <div class="agenda-row"><span class="t">17–28</span><div><div class="tt">Каркас friend.py</div><div class="dd">Друг Макс со стримингом и счётчиком токенов.</div></div></div>
     <div class="agenda-row"><span class="t">28–51</span><div><div class="tt">Правки через диалог</div><div class="dd">Обязательно: память между запусками → пересказ → записная книжка; окно — на экране преподавателя. Резерв: приветствие по памяти и /forget.</div></div></div>
     <div class="agenda-row"><span class="t">51–55</span><div><div class="tt">Вопросы и отладка</div><div class="dd">Квизы и ошибки файлов памяти.</div></div></div>
@@ -336,28 +336,27 @@ ol.steps.steps--tight li::before{flex-basis:32px;height:32px;font-size:14px}
 </section>
 
 <section class="slide slide--content"
-  data-notes="Ученики копируют промпт целиком в новый чат DeepSeek. В промпте прямо названы chat.completions.create, имена моделей и адреса: нейросеть-помощник по привычке может предложить старые имена — deepseek-chat (отключено после 24 июля 2026) или moonshot-v1 и kimi-latest (у Kimi отключены; на moonshot-v1 приходит ошибка 404 model not found). Для Kimi нарочно нет temperature и extra_body: у моделей K3 температура фиксирована, а параметр thinking относится к старым моделям K2.">
+  data-notes="Ученики копируют промпт целиком в новый чат DeepSeek. В промпте прямо названы chat.completions.create, имя модели и адрес: нейросеть-помощник по привычке может предложить старое имя deepseek-chat, а оно отключено после 24 июля 2026 года. Размышления выключаем через extra_body, как на уроках 13–14: по умолчанию deepseek-flash размышляет, и ответ пришлось бы ждать дольше.">
 <div class="sl-body">
   <div>
     <div class="q-label">Промпт #1 · разминка</div>
-    <h2>warmup.py: <span class="acc">две нейросети</span> одним кодом</h2>
+    <h2>warmup.py: сколько <span class="acc">токенов</span> в одном вопросе</h2>
   </div>
-  <p>Один вопрос уходит к DeepSeek и к Kimi через один и тот же openai SDK. Под каждым ответом — сколько токенов ушло и сколько пришло.</p>
+  <p>Один вопрос уходит к DeepSeek через openai SDK. Под ответом — сколько токенов ушло и сколько пришло.</p>
   <div class="prompt-card" style="margin-top:14px">
     <span class="pc-tag">→ Новый чат DeepSeek</span>
-    <div class="pc-text">Ты — опытный Python-разработчик и наставник школьника. Напиши warmup.py — разминку «две нейросети одним кодом» на openai SDK.
-- ключи из .env через load_dotenv() из python-dotenv: DEEPSEEK_KEY и KIMI_KEY = os.getenv("KIMI_KEY") — ключа Kimi может не быть
-- QUESTION = «Придумай имя для кота-программиста и объясни его одним предложением.»; messages — список из одного сообщения user с QUESTION, общий для обеих нейросетей
+    <div class="pc-text">Ты — опытный Python-разработчик и наставник школьника. Напиши warmup.py — разминку «сколько токенов в одном вопросе» на openai SDK.
+- ключ из .env через load_dotenv() из python-dotenv: DEEPSEEK_KEY
+- QUESTION = «Придумай имя для кота-программиста и объясни его одним предложением.»; messages — список из одного сообщения user с QUESTION
 - show(name, response): напечатай f"=== {name} ===", потом response.choices[0].message.content, потом usage = response.usage и f"Токенов ушло: {usage.prompt_tokens}, пришло: {usage.completion_tokens}"
 - DeepSeek: deepseek = OpenAI(api_key=os.getenv("DEEPSEEK_KEY"), base_url="https://api.deepseek.com"); deepseek.chat.completions.create (не client.responses) с model="deepseek-flash" (не меняй имя модели), messages=messages, extra_body={"thinking": {"type": "disabled"}}; потом show("DeepSeek", response)
-- Kimi: если KIMI_KEY есть — kimi = OpenAI(api_key=KIMI_KEY, base_url="https://api.moonshot.ai/v1"); kimi.chat.completions.create с model="kimi-k3.1-pro" (не меняй имя), messages=messages, reasoning_effort="low", без temperature, max_tokens и extra_body; потом show("Kimi", response). Если ключа нет — напечатай «=== Kimi ===» и «В .env нет KIMI_KEY — Kimi пропускаю»
 Прокомментируй код для новичка. Ответь одним блоком кода.</div>
   </div>
 </div>
 </section>
 
 <section class="slide slide--content"
-  data-notes="Дождитесь, пока у всех появится ответ DeepSeek и строка с токенами; имена котов и числа у всех свои. Затем запустите warmup.py на своём экране с KIMI_KEY в .env: группа видит два ответа одним кодом. Kimi K3 размышляет всегда, поэтому может ответить позже DeepSeek — насколько, документация не говорит, вы засекли это перед уроком. Обратите внимание группы на «пришло»: ответы одинаково короткие, а у Kimi число больше. По документации Kimi, в completion_tokens входят и размышления, и ответ; сколько из них ушло на размышления, показывает поле usage.completion_tokens_details.reasoning_tokens. Насколько больше получится, документация не говорит — ваше число вы увидите на прогоне перед уроком. Почему ключа Kimi нет у учеников: Kimi платный — работать с API можно после пополнения минимум на 1 доллар, а частным лицам онлайн-оплата доступна через WeChat Pay и Alipay; по условиям Kimi пользоваться сервисом можно с 18 лет или с минимального возраста по законам страны, несовершеннолетним — только с согласия родителей; ключами и доступом к аккаунту делиться запрещено. Ещё одно условие Kimi касается прямо этого урока: Kimi нельзя присылать персональные данные детей младше 14 лет или младше возраста цифрового согласия в их стране. Оговорки про согласие родителей у этого запрета нет — она есть только у соседнего, о допуске несовершеннолетних к сервису. Поэтому Kimi работает только на вашем экране и только с выдуманным собеседником: реплики и данные учеников в программу с KIMI_KEY не вводите. Доступность Kimi из России на официальных страницах не указана. Файл .env должен лежать в lesson-15: load_dotenv ищет его рядом со скриптом и в папках выше, а в соседней lesson-14 не найдёт.">
+  data-notes="Дождитесь, пока у всех появится ответ DeepSeek и строка с токенами; имена котов и числа у всех свои. Разминка короткая: к 14-й минуте warmup.py должен работать у всех, тогда хватит времени на сравнение провайдеров на слайде 11. Спросите 2–3 учеников, сколько у них «пришло»: числа разные, потому что ответы разной длины. Это тот же счёт usage, который через несколько минут появится в серой строке друга Макса. Файл .env должен лежать в lesson-15: load_dotenv ищет его рядом со скриптом и в папках выше, а в соседней lesson-14 не найдёт.">
 <div class="sl-body">
   <div>
     <div class="q-label">Запуск и разбор</div>
@@ -378,18 +377,15 @@ ol.steps.steps--tight li::before{flex-basis:32px;height:32px;font-size:14px}
       <div class="term-body"><span class="usr">$ python warmup.py</span>
 === DeepSeek ===
 Байтик — он мурлычет нулями и единицами и ловит баги вместо мышей.
-Токенов ушло: 21, пришло: 24
-=== Kimi ===
-Котлин — кот, который сам себе написал язык программирования.
-Токенов ушло: 23, пришло: 140</div>
+Токенов ушло: 21, пришло: 24</div>
     </div>
   </div>
-  <div class="ek-note" style="margin-top:12px"><b>Ушло</b> — сколько токенов прочитала модель: ваш вопрос. <b>Пришло</b> — сколько она написала. У Kimi сюда входят и скрытые размышления, поэтому токенов больше, чем в тексте на экране. Без ключа Kimi вместо ответа — строка «В .env нет KIMI_KEY — Kimi пропускаю»: так и должно быть, Kimi смотрим на экране преподавателя.</div>
+  <div class="ek-note" style="margin-top:12px"><span class="hl">Ушло</span> — сколько токенов прочитала модель: ваш вопрос. <span class="hl">Пришло</span> — сколько она написала в ответ. Оба числа присылает сервер в поле <span class="code-chip">usage</span> — за эти токены и платят.</div>
 </div>
 </section>
 
 <section class="slide slide--content"
-  data-notes="Почините у всех: та же папка и тот же ключ нужны для каркаса. Если pip не ставит openai — нужен Python 3.10 или новее. Ошибки Kimi на вашем экране: 401 invalid_authentication_error — обычно ключ от другой региональной платформы Kimi (для пользователей вне материкового Китая — platform.kimi.ai); если 401 пришла от DeepSeek — проверьте, не перепутаны ли ключи DeepSeek и Kimi в .env; model_not_found — клиент создан без base_url Kimi или имя модели устарело; 429 у Kimi бывает трёх видов — перегрузка сервера, достигнут лимит или кончились деньги (у Kimi нехватка денег приходит как 429, а у DeepSeek — как 402); запросы, прерванные ошибкой 429, Kimi не тарифицирует. Connection error — проверьте прокси школьной сети. Непонятную ошибку целиком копируем в DeepSeek.">
+  data-notes="Почините у всех: та же папка и тот же ключ нужны для каркаса. Если pip не ставит openai — нужен Python 3.10 или новее. Connection error — до сервера не достучались: проверьте прокси школьной сети. Непонятную ошибку целиком копируем в DeepSeek.">
 <div class="sl-body">
   <div>
     <div class="q-label">Типичные ситуации запуска</div>
@@ -398,51 +394,42 @@ ol.steps.steps--tight li::before{flex-basis:32px;height:32px;font-size:14px}
   <div class="kv" style="margin-top:16px">
     <div class="kv-row"><div class="k" style="text-transform:none"><span class="code-chip">Missing credentials</span></div><div class="v">Ключ не найден: <span class="code-chip">.env</span> не в папке <span class="code-chip">lesson-15</span> или переменная называется не <span class="code-chip">DEEPSEEK_KEY</span>.</div></div>
     <div class="kv-row"><div class="k" style="text-transform:none"><span class="code-chip">Error code: 401 / 402</span></div><div class="v">401 — ключ неверный: скопируйте его заново, без пробелов. 402 — на счёте закончились деньги: скажите преподавателю.</div></div>
-    <div class="kv-row"><div class="k" style="text-transform:none">«Kimi пропускаю»</div><div class="v">Это не ошибка: ключ Kimi есть только у преподавателя. Ответ Kimi — на экране преподавателя.</div></div>
     <div class="kv-row"><div class="k" style="text-transform:none"><span class="code-chip">ModuleNotFoundError</span></div><div class="v">Выполните <span class="code-chip">pip install openai python-dotenv</span>; не сработало — <span class="code-chip">py -m pip install openai python-dotenv</span>.</div></div>
   </div>
 </div>
 </section>
 
 <section class="slide slide--content"
-  data-notes="Проговорите три отличия Kimi: адрес, имя модели и ключ. Затем честная поправка к уроку 11: вызов chat.completions.create одинаковый, но параметры управления размышлениями разные — у DeepSeek extra_body с thinking, у Kimi K3 reasoning_effort со значениями low, high или max (по умолчанию max). reasoning_effort — обычный именованный аргумент chat.completions.create в openai SDK, и Kimi принимает его на верхнем уровне вызова, без extra_body. По документации Kimi, low снижает задержку ответа. Поэтому в общий код нельзя бездумно подставить одинаковые параметры для обоих провайдеров. В примерах Kimi ключ лежит в переменной MOONSHOT_API_KEY — имя KIMI_KEY придумали мы, как DEEPSEEK_KEY.">
-<div class="sl-body" style="padding:36px 80px 44px;gap:10px">
+  data-notes="Kimi на уроке только для сравнения: его не запускают ни ученики, ни вы. Сначала общее: с обоими провайдерами работают через openai SDK и один и тот же вызов chat.completions.create, а меняются три вещи — адрес base_url, имя модели и ключ (в примерах Kimi ключ лежит в переменной MOONSHOT_API_KEY). Окна почти одинаковые: у deepseek-flash 1 млн токенов, у моделей Kimi K3 — 1 048 576. Затем честная поправка к уроку 11: параметры управления размышлениями у провайдеров разные. У DeepSeek размышления по умолчанию включены, и мы выключаем их через extra_body с thinking. Kimi K3 размышляет всегда, выключить нельзя, temperature у неё фиксирована; можно выбрать только глубину — reasoning_effort со значениями low, high или max (по умолчанию max), и, по документации Kimi, low снижает задержку ответа. reasoning_effort — обычный именованный аргумент chat.completions.create в openai SDK, и Kimi принимает его на верхнем уровне вызова, без extra_body. Поэтому в общий код нельзя бездумно подставить одинаковые параметры для обоих провайдеров. Свяжите с разминкой: по документации Kimi, в completion_tokens входят и размышления, и ответ, поэтому «пришло» на Kimi было бы больше, чем токенов в тексте на экране. Почему на уроке только DeepSeek: ключ DeepSeek выдала школа, и все запускают одно и то же. Kimi платный — работать с API можно после пополнения минимум на 1 доллар, а частным лицам онлайн-оплата доступна через WeChat Pay и Alipay. По условиям Kimi пользоваться сервисом можно с 18 лет или с минимального возраста по законам страны, несовершеннолетним — только с согласия родителей; ключами и доступом к аккаунту делиться запрещено. И главное для урока про память: Kimi нельзя присылать персональные данные детей младше 14 лет или младше возраста цифрового согласия в их стране, и оговорки про согласие родителей у этого запрета нет. Доступность Kimi из России на официальных страницах не указана. У DeepSeek тоже есть условия для несовершеннолетних (о них — на слайде 15), поэтому и с DeepSeek говорим от лица выдуманного героя.">
+<div class="sl-body" style="padding:36px 80px 44px;gap:12px">
   <div>
-    <div class="q-label">Как это работает</div>
-    <h2>Один код — <span class="acc">два провайдера</span></h2>
+    <div class="q-label">Сравнение провайдеров</div>
+    <h2>DeepSeek и Kimi: вызов один, <span class="acc">настройки разные</span></h2>
   </div>
-  <p style="font-size:15px;line-height:1.4">Меняются адрес <span class="code-chip">base_url</span>, имя модели и ключ. На уроке 11 мы говорили «меняются только адрес и ключ» — уточним: настройки размышлений у каждой нейросети свои.</p>
-  <div class="code-win">
-    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
-    <div class="code-body" style="font-size:14px;line-height:1.5;padding:10px 18px">deepseek = OpenAI(api_key=os.getenv("DEEPSEEK_KEY"), base_url="https://api.deepseek.com")
-response = deepseek.chat.completions.create(
-    model="deepseek-flash",
-    messages=messages,
-    extra_body={"thinking": {"type": "disabled"}},  <span class="cm"># размышления выключаем</span>
-)
-show("DeepSeek", response)
-
-<span class="kw">if</span> KIMI_KEY:  <span class="cm"># ключ Kimi есть только у преподавателя</span>
-    kimi = OpenAI(api_key=KIMI_KEY, base_url="https://api.moonshot.ai/v1")
-    response = kimi.chat.completions.create(
-        model="kimi-k3.1-pro",
-        messages=messages,
-        reasoning_effort="low",  <span class="cm"># K3 размышляет всегда; low — чтобы быстрее</span>
-    )
-    show("Kimi", response)</div>
+  <p style="font-size:15px;line-height:1.4">Kimi — другая нейросеть, но с ней работают через тот же openai SDK и тот же вызов <span class="code-chip">chat.completions.create</span>. Меняются адрес <span class="code-chip">base_url</span>, имя модели и ключ. На уроке 11 мы говорили «меняются только адрес и ключ» — уточним: настройки размышлений у каждого провайдера свои.</p>
+  <div class="vs">
+    <div class="vs-col vs-col--plain">
+      <h4>Kimi K3 — только для сравнения</h4>
+      <p>Адрес <span class="code-chip">https://api.moonshot.ai/v1</span>, модель <span class="code-chip">kimi-k3.1-pro</span>, окно — 1 048 576 токенов. Размышляет всегда, выключить нельзя — можно только выбрать глубину, например <span class="code-chip">reasoning_effort="low"</span>.</p>
+      <p class="note">по условиям Kimi — с 18 лет</p>
+    </div>
+    <div class="vs-col vs-col--win">
+      <h4>DeepSeek — работаем на уроке</h4>
+      <p>Адрес <span class="code-chip">https://api.deepseek.com</span>, модель <span class="code-chip">deepseek-flash</span>, окно — 1 млн токенов. Размышления включены по умолчанию — выключаем через <span class="code-chip">extra_body</span>, как на уроках 13–14.</p>
+      <p class="note">ключ выдала школа, он уже лежит в вашем <span class="code-chip">.env</span></p>
+    </div>
   </div>
-  <div class="ek-note" style="font-size:14px;line-height:1.4;padding:9px 16px">У DeepSeek режим размышлений включён по умолчанию — выключаем, как на уроках 13–14. Kimi K3 размышляет всегда, выключить нельзя, а <span class="code-chip">temperature</span> у неё фиксирована. Можно только выбрать глубину размышлений: <span class="code-chip">reasoning_effort="low"</span> — самый низкий уровень, с ним ответ приходит быстрее.</div>
 </div>
 </section>
 
 <section class="slide slide--content"
-  data-notes="Это кусок каркаса, который ученики получат через несколько минут. Цикл стрима знаком с урока 12, новое — две проверки. По документации DeepSeek, с include_usage поле usage есть в каждом кусочке, но заполнено только в последнем, а в остальных равно None. Без stream_options DeepSeek тоже присылает счёт: в документации прямо сказано, что с опцией или без неё последний кусочек перед концом стрима несёт счёт токенов. Опцию ставим ради Kimi — в примере стрима из документации Kimi счёт просят именно так. Если любопытный ученик уберёт stream_options, токены на DeepSeek всё равно посчитаются: это не ошибка, а поведение DeepSeek. В последнем кусочке DeepSeek список choices не пустой: в нём ровно один элемент без нового текста — в примере документации content там пустая строка, но схема ответа допускает и null (в Python — None). У Kimi список choices в этом кусочке пустой. Поэтому проверяем оба поля и подставляем пустую строку, если текста нет, — код работает у обоих провайдеров. Режим размышлений выключаем, чтобы ответ начинал печататься сразу, как обещал урок 12: иначе перед ответом будет пауза на размышление. Если usage не пришёл совсем, каркас посчитает символы — это запасной счётчик.">
+  data-notes="Это кусок каркаса, который ученики получат через несколько минут. Цикл стрима знаком с урока 12, новое — две проверки. По документации DeepSeek, с include_usage поле usage есть в каждом кусочке, но заполнено только в последнем, а в остальных равно None. Без stream_options DeepSeek тоже присылает счёт: в документации прямо сказано, что с опцией или без неё последний кусочек перед концом стрима несёт счёт токенов. Опцию оставляем как явную просьбу о счёте: она безвредна, а код с ней подойдёт и другим провайдерам — в документации некоторых из них счёт в стриме просят именно так. Если любопытный ученик уберёт stream_options, токены на DeepSeek всё равно посчитаются: это не ошибка, а поведение DeepSeek. В последнем кусочке DeepSeek список choices не пустой: в нём ровно один элемент без нового текста — в примере документации content там пустая строка, но схема ответа допускает и null (в Python — None). Поэтому подставляем пустую строку, если текста нет. Проверка if chunk.choices — защита на случай, если кусочек со счётом придёт совсем без choices: у DeepSeek так не бывает, а у других провайдеров бывает. Режим размышлений выключаем, чтобы ответ начинал печататься сразу, как обещал урок 12: иначе перед ответом будет пауза на размышление. Если usage не пришёл совсем, каркас посчитает символы — это запасной счётчик.">
 <div class="sl-body" style="padding:36px 80px 44px;gap:10px">
   <div>
     <div class="q-label">Как это работает</div>
     <h2>Счёт токенов <span class="acc">в стриме</span></h2>
   </div>
-  <p style="font-size:15px;line-height:1.4">Сколько токенов ушло в запрос, сервер пишет в поле <span class="code-chip">usage</span>. В стриме ответ приходит кусочками, а счёт — в последнем из них. DeepSeek присылает его сам, а в документации Kimi счёт в стриме просят через <span class="code-chip">stream_options</span>. Просим и мы — так код подходит обоим.</p>
+  <p style="font-size:15px;line-height:1.4">Сколько токенов ушло в запрос, сервер пишет в поле <span class="code-chip">usage</span>. В стриме ответ приходит кусочками, а счёт — в последнем из них. DeepSeek присылает счёт и без просьбы, но мы просим его явно через <span class="code-chip">stream_options</span> — с этой опцией код подойдёт и другим провайдерам.</p>
   <div class="code-win">
     <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
     <div class="code-body" style="font-size:14px;line-height:1.5;padding:10px 18px">    stream = client.chat.completions.create(
@@ -462,7 +449,7 @@ show("DeepSeek", response)
             print(piece, end="", flush=True)
             answer += piece</div>
   </div>
-  <div class="ek-note" style="font-size:14px;line-height:1.4;padding:9px 16px"><span class="code-chip">stream_options</span> работает только вместе с <span class="code-chip">stream=True</span>, иначе сервер ответит ошибкой 400. В кусочке со счётом текста может не быть, а у Kimi в нём пустой даже список <span class="code-chip">choices</span>. Поэтому две защиты: проверка <span class="code-chip">chunk.choices</span> и <span class="code-chip">or ""</span>.</div>
+  <div class="ek-note" style="font-size:14px;line-height:1.4;padding:9px 16px"><span class="code-chip">stream_options</span> работает только вместе с <span class="code-chip">stream=True</span>, иначе сервер ответит ошибкой 400. В кусочке со счётом текста может не быть, а у некоторых провайдеров в нём пустой даже список <span class="code-chip">choices</span>. Поэтому две защиты: проверка <span class="code-chip">chunk.choices</span> и <span class="code-chip">or ""</span>.</div>
 </div>
 </section>
 
@@ -487,7 +474,7 @@ show("DeepSeek", response)
     <div class="info-card">
       <h3>Сделаете</h3>
       <ul class="clean">
-        <li>Разминку: один код — DeepSeek и Kimi</li>
+        <li>Разминку: вопрос к DeepSeek и счёт токенов</li>
         <li>Друга Макса со счётчиком токенов</li>
         <li>Память между запусками и пересказ старого</li>
         <li>Записную книжку <span class="code-chip">facts.json</span>; успеете — приветствие по памяти</li>
@@ -638,17 +625,17 @@ __pycache__/
 </section>
 
 <section class="slide slide--content"
-  data-notes="Пробегитесь по пяти ситуациям и помогите лично тем, у кого не работает. Ошибка 400 значит, что сервер не принял запрос; по документации DeepSeek, stream_options без stream=True — как раз такой случай. TypeError и AttributeError возникают, если нейросеть-помощник выбросила одну из защит: подстановку пустой строки в цикле или проверку if usage в счётчике. В примере документации DeepSeek кусочки без текста несут пустую строку, а не null, но схема ответа допускает и null — поэтому подстановку оставляем. Проверку if chunk.choices тоже оставляем: у DeepSeek в последнем кусочке ровно один элемент choices, а у Kimi список choices в нём пустой, и без проверки код упал бы с IndexError. «Символов в запросе» на DeepSeek значит, что цикл не поймал usage. DeepSeek присылает счёт в последнем кусочке, и список choices в этом кусочке не пустой. Если нейросеть-помощник написала цикл так: if chunk.choices: …, а ниже elif chunk.usage: …, — до ветки со счётом дело не доходит. Чиним, как в промпте: две отдельные проверки. Опция stream_options тут ни при чём: без неё DeepSeek тоже присылает счёт. Программа при этом работает — запасной счётчик так и задуман. Непонятную ошибку целиком копируем в тот же чат DeepSeek.">
+  data-notes="Пробегитесь по пяти ситуациям и помогите лично тем, у кого не работает. Ошибка 400 значит, что сервер не принял запрос; по документации DeepSeek, stream_options без stream=True — как раз такой случай. TypeError и AttributeError возникают, если нейросеть-помощник выбросила одну из защит: подстановку пустой строки в цикле или проверку if usage в счётчике. В примере документации DeepSeek кусочки без текста несут пустую строку, а не null, но схема ответа допускает и null — поэтому подстановку оставляем. Проверку if chunk.choices тоже оставляем: у DeepSeek в последнем кусочке ровно один элемент choices, но у других провайдеров кусочек со счётом может прийти с пустым списком choices, и без проверки код упал бы с IndexError. «Символов в запросе» на DeepSeek значит, что цикл не поймал usage. DeepSeek присылает счёт в последнем кусочке, и список choices в этом кусочке не пустой. Если нейросеть-помощник написала цикл так: if chunk.choices: …, а ниже elif chunk.usage: …, — до ветки со счётом дело не доходит. Чиним, как в промпте: две отдельные проверки. Опция stream_options тут ни при чём: без неё DeepSeek тоже присылает счёт. Программа при этом работает — запасной счётчик так и задуман. Непонятную ошибку целиком копируем в тот же чат DeepSeek.">
 <div class="sl-body">
   <div>
     <div class="q-label">Если каркас не запустился</div>
     <h2>Типичные ситуации <span class="acc">каркаса</span></h2>
   </div>
   <div class="kv">
-    <div class="kv-row"><div class="k">Error code: 400</div><div class="v">Сверьте <span class="code-chip">create(...)</span> с промптом: <span class="code-chip">stream_options</span> работает только вместе с <span class="code-chip">stream=True</span>.</div></div>
-    <div class="kv-row"><div class="k">TypeError</div><div class="v">Потерялось <span class="code-chip">or ""</span>: если в кусочке вместо текста пришло <span class="code-chip">None</span>, к строке его не прибавить.</div></div>
-    <div class="kv-row"><div class="k">AttributeError: … 'prompt_tokens'</div><div class="v">Счётчик берёт <span class="code-chip">usage</span>, которого нет. Нужна проверка <span class="code-chip">if usage</span>, как в промпте.</div></div>
-    <div class="kv-row"><div class="k">«символов в запросе»</div><div class="v">Счёт токенов не пойман: проверка <span class="code-chip">if chunk.usage</span> должна стоять отдельно, а не в <span class="code-chip">elif</span> после <span class="code-chip">if chunk.choices</span>. Программа работает — это запасной счётчик.</div></div>
+    <div class="kv-row"><div class="k" style="text-transform:none"><span class="code-chip">Error code: 400</span></div><div class="v">Сверьте <span class="code-chip">create(...)</span> с промптом: <span class="code-chip">stream_options</span> работает только вместе с <span class="code-chip">stream=True</span>.</div></div>
+    <div class="kv-row"><div class="k" style="text-transform:none"><span class="code-chip">TypeError</span></div><div class="v">Потерялось <span class="code-chip">or ""</span>: если в кусочке вместо текста пришло <span class="code-chip">None</span>, к строке его не прибавить.</div></div>
+    <div class="kv-row"><div class="k" style="text-transform:none"><span class="code-chip" style="white-space:normal;max-width:100%">AttributeError: … 'prompt_tokens'</span></div><div class="v">Счётчик берёт <span class="code-chip">usage</span>, которого нет. Нужна проверка <span class="code-chip">if usage</span>, как в промпте.</div></div>
+    <div class="kv-row"><div class="k" style="text-transform:none"><span class="code-chip">«символов в запросе»</span></div><div class="v">Счёт токенов не пойман: проверка <span class="code-chip">if chunk.usage</span> должна стоять отдельно, а не в <span class="code-chip">elif</span> после <span class="code-chip">if chunk.choices</span>. Программа работает — это запасной счётчик.</div></div>
     <div class="kv-row"><div class="k">Слова столбиком или всё разом</div><div class="v">В <span class="code-chip">print</span> нет <span class="code-chip">end=""</span> или <span class="code-chip">flush=True</span> — как на уроке 12.</div></div>
   </div>
 </div>
@@ -758,22 +745,22 @@ __pycache__/
 </section>
 
 <section class="slide slide--content"
-  data-notes="Правка в тот же чат. Это самая длинная правка — дайте на неё около 8 минут. Промпт работает и без правки 2: константу WINDOW он добавит сам, а запрос не трогает. Приём из документации Kimi: отброшенные сообщения пересказать и добавить пересказ в разговор. Последний обмен репликами остаётся дословно, чтобы Макс не потерял нить. Если пересказ пришёл пустым, история не сокращается — ничего не теряем. На своём экране запустите версию с KIMI_KEY: в строке 🗜 будет Kimi. Если Kimi ответит ошибкой, программа напишет об этом серым и перескажет через DeepSeek. Kimi пересказывает только разговор вашего выдуманного героя: пока в .env есть KIMI_KEY, не предлагайте ученикам рассказывать Максу о себе — причина в заметке слайда 9.">
+  data-notes="Правка в тот же чат. Это самая длинная правка — дайте на неё около 8 минут. Промпт работает и без правки 2: константу WINDOW он добавит сам, а запрос не трогает. Приём описан в документации Kimi: отброшенные сообщения пересказать и добавить пересказ в разговор. Последний обмен репликами остаётся дословно, чтобы Макс не потерял нить. Если пересказ пришёл пустым, история не сокращается — ничего не теряем. Пересказывает та же модель deepseek-flash, что и отвечает за Макса, но отдельным запросом: со своей инструкцией, без стрима и с выключенными размышлениями.">
 <div class="sl-body">
   <div>
     <div class="q-label">Правка 3 · сжатие</div>
     <h2>Не выбрасываем, а <span class="acc">пересказываем</span></h2>
   </div>
-  <p style="font-size:16px;line-height:1.4">Когда история дорастает до окна, старые сообщения нейросеть пересказывает в 3–5 предложениях, а пересказ встаёт в <span class="code-chip">system</span>. Есть ключ Kimi — пересказывает Kimi, нет — DeepSeek.</p>
+  <p style="font-size:16px;line-height:1.4">Когда история дорастает до окна, старые сообщения нейросеть пересказывает в 3–5 предложениях, а пересказ встаёт в <span class="code-chip">system</span>. Пересказывает тот же DeepSeek — отдельным запросом.</p>
   <div class="prompt-card prompt-card--copy" style="margin-top:8px;padding:16px 22px 12px">
     <span class="pc-tag">→ В тот же чат</span>
-    <div class="pc-text" style="font-size:14px;line-height:1.45">Добавь сжатие старых сообщений пересказом. Пересказывает Kimi, если в .env есть KIMI_KEY, иначе DeepSeek.
-- import openai. KIMI_KEY = os.getenv("KIMI_KEY"); kimi = None; если KIMI_KEY есть — kimi = OpenAI(api_key=KIMI_KEY, base_url="https://api.moonshot.ai/v1"). Константа WINDOW = 6, если её ещё нет
+    <div class="pc-text" style="font-size:14px;line-height:1.45">Добавь сжатие старых сообщений пересказом.
+- константа WINDOW = 6, если её ещё нет
 - SUMMARY_PROMPT: «Ты сжимаешь переписку школьника с его другом Максом. Перескажи её в 3–5 коротких предложениях. Сохрани имена (собеседника, друзей, питомцев), что он рассказал о себе и о чём договорились. Если есть прошлый пересказ, объедини его с новыми сообщениями в один. Пиши только пересказ.»
-- summarize(summary, old): lines = [f'{m["role"]}: {m["content"]}' for m in old]; ask — system с SUMMARY_PROMPT и user: "Прошлый пересказ: " + (summary or "нет") + "\nНовые сообщения:\n" + "\n".join(lines). Если kimi не None — в try: kimi.chat.completions.create(model="kimi-k3.1-pro", messages=ask, reasoning_effort="low") без temperature и max_tokens, верни (content or "").strip() и "Kimi"; except (openai.APIStatusError, openai.APIConnectionError) as error — напечатай серым f"Kimi не ответил: {error}" и иди дальше. Потом client.chat.completions.create(model="deepseek-flash", messages=ask, max_tokens=500, extra_body={"thinking": {"type": "disabled"}}), верни (content or "").strip() и "DeepSeek"
+- summarize(summary, old): lines = [f'{m["role"]}: {m["content"]}' for m in old]; ask — system с SUMMARY_PROMPT и user: "Прошлый пересказ: " + (summary or "нет") + "\nНовые сообщения:\n" + "\n".join(lines). Запрос без стрима: client.chat.completions.create(model="deepseek-flash", messages=ask, max_tokens=500, extra_body={"thinking": {"type": "disabled"}}), верни (content or "").strip()
 - build_system(summary): PERSONA, а если summary не пустой — плюс "\nПересказ ваших прошлых разговоров: " + summary. В request вместо PERSONA — build_system(summary), остальное в request не меняй
 - при запуске summary = memory.get("summary", ""); сохраняй save_json(HISTORY, {"summary": summary, "messages": history})
-- после show_counter, до сохранения: если len(history) >= WINDOW — old = history[:-2]; new_summary, who = summarize(summary, old); если new_summary не пустой — summary = new_summary, history = history[-2:], напечатай серым f"🗜 {who} сжал сообщений: {len(old)}. Пересказ:\n{summary}"
+- после show_counter, до сохранения: если len(history) >= WINDOW — old = history[:-2]; new_summary = summarize(summary, old); если new_summary не пустой — summary = new_summary, history = history[-2:], напечатай серым f"🗜 сжал сообщений: {len(old)}. Пересказ:\n{summary}"
 Остальной код не меняй. Верни весь файл.</div>
   </div>
 </div>
@@ -791,7 +778,7 @@ __pycache__/
     <div class="term-body">Вы: Мою кошку зовут Пончик, ей три года
 … ответ Макса и ещё две реплики: рисование и контрольная …
 <span class="dim">📊 сообщений в истории: 6 · токенов в запросе: 128</span>
-<span class="dim">🗜 DeepSeek сжал сообщений: 4. Пересказ:</span>
+<span class="dim">🗜 сжал сообщений: 4. Пересказ:</span>
 <span class="dim">У собеседника кошка Пончик. Он любит рисовать. Макс спросил, что он рисует.</span>
 Вы: Какой у тебя любимый мультфильм?
 Макс: Про космос, конечно! А у тебя?
@@ -799,7 +786,7 @@ __pycache__/
 Вы: Как зовут мою кошку?
 Макс: Пончик! Как она поживает?
 <span class="dim">📊 сообщений в истории: 6 · токенов в запросе: 142</span>
-<span class="dim">🗜 DeepSeek сжал сообщений: 4. Пересказ:</span>
+<span class="dim">🗜 сжал сообщений: 4. Пересказ:</span>
 <span class="dim">У собеседника кошка Пончик. Он любит рисовать. В четверг у него контрольная.</span></div>
   </div>
   <p style="margin-top:12px">Сообщения про Пончика удалены из истории, но имя кошки Макс помнит — из пересказа в <span class="code-chip">system</span>. История снова доросла до 6 — и второй пересказ объединил прошлый с новыми сообщениями. Запрос больше не растёт бесконечно.</p>
@@ -807,38 +794,31 @@ __pycache__/
 </section>
 
 <section class="slide slide--content"
-  data-notes="Пересказ без стрима: короткий текст, ждать по кусочкам незачем. Обратите внимание, как честно устроен второй провайдер: вызов тот же, а параметры размышлений свои — у Kimi reasoning_effort, у DeepSeek extra_body с thinking. Блок try и except: openai.APIStatusError — сервер ответил ошибкой с кодом (401, 429 и другие), openai.APIConnectionError — до сервера не достучались; в обоих случаях программа не падает, а пересказывает через DeepSeek. Это важно и для детских тем: Kimi может отклонить запрос фильтром содержимого. У DeepSeek есть кэш: повторяющееся начало запроса дешевле. Пересказ, вставленный в system, меняет начало запроса, поэтому кэш срабатывает хуже — это плата за короткую историю.">
+  data-notes="Пересказ без стрима: короткий текст, ждать по кусочкам незачем. Размышления выключены, как в stream_answer, а max_tokens ограничивает длину пересказа. Обратите внимание на первую строку user: прошлый пересказ уходит в запрос вместе с новыми сообщениями, поэтому новый пересказ объединяет старое и новое. Модель при этом пересказывает собственный пересказ — к этому вернёмся в квизе 2. У DeepSeek есть кэш: повторяющееся начало запроса дешевле. Пересказ, вставленный в system, меняет начало запроса, поэтому кэш срабатывает хуже — это плата за короткую историю.">
 <div class="sl-body">
   <div>
     <div class="q-label">Разбор кода</div>
-    <h2>Пересказ делает <span class="acc">Kimi или DeepSeek</span></h2>
+    <h2>Пересказ — <span class="acc">отдельный запрос</span></h2>
   </div>
-  <div style="display:grid;grid-template-columns:2.3fr 1fr;gap:24px;align-items:start">
-    <div class="code-win">
-      <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
-      <div class="code-body" style="font-size:13px;line-height:1.5;max-height:none">    <span class="kw">if</span> kimi:  <span class="cm"># есть ключ Kimi — пересказывает Kimi</span>
-        <span class="kw">try</span>:
-            response = kimi.chat.completions.create(
-                model=<span class="st">"kimi-k3.1-pro"</span>,
-                messages=ask,
-                reasoning_effort=<span class="st">"low"</span>,  <span class="cm"># K3 размышляет всегда; low — чтобы быстрее</span>
-            )
-            <span class="kw">return</span> (response.choices[0].message.content <span class="kw">or</span> <span class="st">""</span>).strip(), <span class="st">"Kimi"</span>
-        <span class="kw">except</span> (openai.APIStatusError, openai.APIConnectionError) <span class="kw">as</span> error:
-            print(f<span class="st">"{GRAY}Kimi не ответил: {error}{RESET}"</span>)
-    response = client.chat.completions.create(  <span class="cm"># запасной путь — DeepSeek</span>
+  <p>У пересказа своя инструкция <span class="code-chip">SUMMARY_PROMPT</span>. Старые сообщения уходят в запрос обычным текстом, строками <span class="code-chip">user: …</span> и <span class="code-chip">assistant: …</span>, а вместе с ними — прошлый пересказ.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="font-size:12.5px;line-height:1.4;max-height:none"><span class="kw">def</span> summarize(summary, old):
+    lines = [f<span class="st">'{m["role"]}: {m["content"]}'</span> <span class="kw">for</span> m <span class="kw">in</span> old]  <span class="cm"># старые сообщения — текстом</span>
+    ask = [
+        {<span class="st">"role"</span>: <span class="st">"system"</span>, <span class="st">"content"</span>: SUMMARY_PROMPT},
+        {<span class="st">"role"</span>: <span class="st">"user"</span>, <span class="st">"content"</span>: <span class="st">"Прошлый пересказ: "</span> + (summary <span class="kw">or</span> <span class="st">"нет"</span>)
+                                    + <span class="st">"\nНовые сообщения:\n"</span> + <span class="st">"\n"</span>.join(lines)},
+    ]
+    response = client.chat.completions.create(  <span class="cm"># без стрима: ответ короткий</span>
         model=<span class="st">"deepseek-flash"</span>,
         messages=ask,
         max_tokens=500,
         extra_body={<span class="st">"thinking"</span>: {<span class="st">"type"</span>: <span class="st">"disabled"</span>}},
     )
-    <span class="kw">return</span> (response.choices[0].message.content <span class="kw">or</span> <span class="st">""</span>).strip(), <span class="st">"DeepSeek"</span></div>
+    <span class="kw">return</span> (response.choices[0].message.content <span class="kw">or</span> <span class="st">""</span>).strip()</div>
   </div>
-    <div style="display:flex;flex-direction:column;gap:16px">
-      <p style="font:500 17px/1.5 var(--f-body);color:#3C3C45">Пересказ — отдельный запрос со своей инструкцией <span class="code-chip">SUMMARY_PROMPT</span>. Есть ключ Kimi — пересказывает Kimi. Ключа нет или Kimi ответил ошибкой — DeepSeek.</p>
-      <div class="ek-note ek-note--red" style="margin-top:0">Пересказ — это пересказ, а не копия. Модель сама решает, что важно, и может упустить или исказить деталь: в примере на прошлом слайде пропало, что Пончику три года. Поэтому самое важное о собеседнике сохраним отдельно — в записной книжке.</div>
-    </div>
-  </div>
+  <div class="ek-note ek-note--red" style="margin-top:8px">Пересказ — это пересказ, а не копия. Модель сама решает, что важно, и может упустить или исказить деталь: в примере на прошлом слайде пропало, что Пончику три года. Поэтому самое важное о собеседнике сохраним отдельно — в записной книжке.</div>
 </div>
 </section>
 
@@ -949,7 +929,7 @@ __pycache__/
 </section>
 
 <section class="slide slide--content"
-  data-notes="Вопрос на К1. Дайте 10–15 секунд, потом раскройте ответ. Свяжите со счётчиком: в каркасе токены росли с каждой репликой, после правок 2–3 рост остановился.">
+  data-notes="Вопрос на К1. Дайте 10–15 секунд, потом раскройте ответ. Свяжите со счётчиком: в каркасе токены росли с каждой репликой, после правок 2–3 рост остановился. Что история рано или поздно перерастёт окно, прямо предупреждает документация Kimi.">
 <div class="sl-body">
     <div>
       <div class="q-label">Проверка · вопрос 1</div>
@@ -961,7 +941,7 @@ __pycache__/
       <div class="quiz-answer">
         <button class="quiz-btn" type="button">Показать ответ</button>
         <div class="quiz-reveal">
-          <p>Не прав. Модель ничего не помнит между запросами, поэтому программа каждый ход отправляет всю историю заново. Чем длиннее разговор, тем больше токенов в каждом запросе — а платим за каждый. Друг, с которым общаются месяцами, тащил бы в каждый запрос тысячи сообщений. И даже огромное окно рано или поздно закончится — об этом прямо пишет документация Kimi. Поэтому историю ограничиваем сами, а старое пересказываем.</p>
+          <p>Не прав. Модель ничего не помнит между запросами, поэтому программа каждый ход отправляет всю историю заново. Чем длиннее разговор, тем больше токенов в каждом запросе — а платим за каждый. Друг, с которым общаются месяцами, тащил бы в каждый запрос тысячи сообщений. И даже огромное окно не бесконечно: рано или поздно история его перерастёт. Поэтому историю ограничиваем сами, а старое пересказываем.</p>
         </div>
       </div>
     </div>
@@ -1054,7 +1034,7 @@ __pycache__/
 </section>
 
 <section class="slide slide--content"
-  data-notes="ДЗ примерно на 30 минут. Новый диалог с DeepSeek нужен учебному профилю, а чату урока 10 — только если после правки app.py по карточке он не работает. «Три дня с другом» — разговоры с готовым Максом, а приветствие появится после правки 5. Её промпт опирается на код урока — build_system, stream_answer, константу WINDOW, — поэтому недоделанную правку делают в чате урока, где этот код уже есть. Нет чата урока — новый чат: свой friend.py, а под ним промпт правки 5 со слайда 30; ключа в friend.py нет, он лежит в .env. Подготовка к уроку 16 — это обязательный минимум урока 10: чат запускается командой streamlit run app.py и отвечает в браузере. Сам по себе app.py урока 10 сегодня не заработает, поэтому на карточке два точных действия. Первое — имя модели. В app.py стоит старое имя deepseek-chat, а DeepSeek отключил его после 24 июля 2026 года — без замены чат на вопрос не ответит. Меняем на deepseek-flash, как в программах с урока 13. В самом запросе больше ничего менять не нужно: адрес https://api.deepseek.com прежний, а текст ответа по-прежнему лежит в choices[0].message.content. Второе — ключ. У всех, кто публиковал чат на уроке 10 или в его ДЗ, app.py читает ключ через st.secrets: так велел промпт правки 5 урока 10. На Streamlit Cloud ключ лежал в разделе Secrets, а на компьютере файла секретов .streamlit/secrets.toml у учеников нет. Streamlit ищет этот файл в трёх местах: в папке .streamlit рядом со скриптом, в папке .streamlit там, откуда запущена команда, и в папке пользователя (на Windows — %userprofile%/.streamlit). Если файла нет нигде, обращение к st.secrets заканчивается ошибкой, а не пустым значением. Вариант st.secrets.get(…) or os.getenv(…) со слайда 31 урока 10 тоже не спасает. По исходникам Streamlit 1.66.1 get выручает, только когда файл есть, а нужного ключа в нём нет. Без файла get падает так же, как st.secrets[…], и до os.getenv дело не доходит. Ошибка называется StreamlitSecretNotFoundError — это разновидность FileNotFoundError, а её текст начинается со слов «No secrets found», дальше идёт список путей, где Streamlit искал файл. Поэтому карточка не просит разбираться, что стоит в файле: ключ у всех читается одинаково — из .env, как в программах уроков 11–15, а load_dotenv находит .env рядом со скриптом. У кого ключ и так читался из .env, ничего не сломается: повторные строки import и load_dotenv() не мешают. Путь через secrets.toml не берём: ключ оказался бы ещё в одном файле, который пришлось бы отдельно прятать от git. Если помощник DeepSeek предложит завести secrets.toml — не нужно, ключ уже в .env. .gitignore из lesson-15 копируем ради строки .env: у тех, кто публиковал, папка lesson-10 могла попасть на GitHub, и при следующей выгрузке через git .gitignore не даст добавить туда .env. Если .env или ключ уже попали на GitHub раньше, .gitignore их не уберёт — ключ нужно перевыпустить. В запасном пути на карточке сказано «без ключа»: если ключ где-то записан прямо в app.py, перед вставкой в чат его нужно стереть — делиться ключом запрещают условия DeepSeek. Предупредите, что ответ придёт не сразу: deepseek-flash по умолчанию размышляет, а запрос урока 10 размышления не выключает. Пока ответ готовится, на странице крутится «Думаю…» из урока 10 — это не зависание. Если ученик просит помощи у DeepSeek, пусть сам назовёт модель deepseek-flash и напишет, что ключ читается из .env, как на карточке: помощник по привычке может вернуть deepseek-chat, об этом — на слайде 8. Регистрацию на GitHub и в Streamlit Cloud и публикацию в ДЗ не даём. По условиям Streamlit (редакция ноября 2025 года, сервис там называется Community Cloud) аккаунт в Streamlit Cloud можно завести только с 18 лет; ни согласия родителей, ни учебных целей как исключения в условиях нет. По условиям GitHub аккаунт — с 13 лет: пользователей младше 13 GitHub не допускает и, если узнает о таком, сразу закрывает аккаунт. Для жителей других стран, кроме США, условия GitHub добавляют: местный минимальный возраст может быть выше, и соблюдать его должен сам пользователь. Оговорки про согласие родителей у GitHub тоже нет. Учебный профиль заполняется от лица того же героя: любимый предмет и трудные темы тоже его. В учебном профиле study — словарь внутри словаря: по нашим правилам слияния он заменяется целиком, и новая тема может стереть любимый предмет. Поэтому на карточке подсказка: попросить DeepSeek, чтобы программа дописывала темы без повторов, как списки. Разберём на слайде 3 урока 16: Макс уже помнит, где герой ошибается, — это почти репетитор. Не хватает заданий, проверки ответов и сайта, и всё это будет на уроке 16. Скриншоты с приветствием открывайте на разборе только с согласия автора. Про ключ Kimi скажите прямо: дома его в .env не добавляем, даже если он есть у родителей. По условиям Kimi владелец аккаунта не может давать другим свой ключ и доступ к аккаунту, а персональные данные детей младше 14 лет (или младше возраста цифрового согласия в их стране) присылать Kimi нельзя — оговорки про согласие родителей у этого запрета нет.">
+  data-notes="ДЗ примерно на 30 минут. Новый диалог с DeepSeek нужен учебному профилю, а чату урока 10 — только если после правки app.py по карточке он не работает. «Три дня с другом» — разговоры с готовым Максом, а приветствие появится после правки 5. Её промпт опирается на код урока — build_system, stream_answer, константу WINDOW, — поэтому недоделанную правку делают в чате урока, где этот код уже есть. Нет чата урока — новый чат: свой friend.py, а под ним промпт правки 5 со слайда 30; ключа в friend.py нет, он лежит в .env. Подготовка к уроку 16 — это обязательный минимум урока 10: чат запускается командой streamlit run app.py и отвечает в браузере. Сам по себе app.py урока 10 сегодня не заработает, поэтому на карточке два точных действия. Первое — имя модели. В app.py стоит старое имя deepseek-chat, а DeepSeek отключил его после 24 июля 2026 года — без замены чат на вопрос не ответит. Меняем на deepseek-flash, как в программах с урока 13. В самом запросе больше ничего менять не нужно: адрес https://api.deepseek.com прежний, а текст ответа по-прежнему лежит в choices[0].message.content. Второе — ключ. У всех, кто публиковал чат на уроке 10 или в его ДЗ, app.py читает ключ через st.secrets: так велел промпт правки 5 урока 10. На Streamlit Cloud ключ лежал в разделе Secrets, а на компьютере файла секретов .streamlit/secrets.toml у учеников нет. Streamlit ищет этот файл в трёх местах: в папке .streamlit рядом со скриптом, в папке .streamlit там, откуда запущена команда, и в папке пользователя (на Windows — %userprofile%/.streamlit). Если файла нет нигде, обращение к st.secrets заканчивается ошибкой, а не пустым значением. Вариант st.secrets.get(…) or os.getenv(…) со слайда 31 урока 10 тоже не спасает. По исходникам Streamlit 1.66.1 get выручает, только когда файл есть, а нужного ключа в нём нет. Без файла get падает так же, как st.secrets[…], и до os.getenv дело не доходит. Ошибка называется StreamlitSecretNotFoundError — это разновидность FileNotFoundError, а её текст начинается со слов «No secrets found», дальше идёт список путей, где Streamlit искал файл. Поэтому карточка не просит разбираться, что стоит в файле: ключ у всех читается одинаково — из .env, как в программах уроков 11–15, а load_dotenv находит .env рядом со скриптом. У кого ключ и так читался из .env, ничего не сломается: повторные строки import и load_dotenv() не мешают. Путь через secrets.toml не берём: ключ оказался бы ещё в одном файле, который пришлось бы отдельно прятать от git. Если помощник DeepSeek предложит завести secrets.toml — не нужно, ключ уже в .env. .gitignore из lesson-15 копируем ради строки .env: у тех, кто публиковал, папка lesson-10 могла попасть на GitHub, и при следующей выгрузке через git .gitignore не даст добавить туда .env. Если .env или ключ уже попали на GitHub раньше, .gitignore их не уберёт — ключ нужно перевыпустить. В запасном пути на карточке сказано «без ключа»: если ключ где-то записан прямо в app.py, перед вставкой в чат его нужно стереть — делиться ключом запрещают условия DeepSeek. Предупредите, что ответ придёт не сразу: deepseek-flash по умолчанию размышляет, а запрос урока 10 размышления не выключает. Пока ответ готовится, на странице крутится «Думаю…» из урока 10 — это не зависание. Если ученик просит помощи у DeepSeek, пусть сам назовёт модель deepseek-flash и напишет, что ключ читается из .env, как на карточке: помощник по привычке может вернуть deepseek-chat, об этом — на слайде 8. Регистрацию на GitHub и в Streamlit Cloud и публикацию в ДЗ не даём. По условиям Streamlit (редакция ноября 2025 года, сервис там называется Community Cloud) аккаунт в Streamlit Cloud можно завести только с 18 лет; ни согласия родителей, ни учебных целей как исключения в условиях нет. По условиям GitHub аккаунт — с 13 лет: пользователей младше 13 GitHub не допускает и, если узнает о таком, сразу закрывает аккаунт. Для жителей других стран, кроме США, условия GitHub добавляют: местный минимальный возраст может быть выше, и соблюдать его должен сам пользователь. Оговорки про согласие родителей у GitHub тоже нет. Учебный профиль заполняется от лица того же героя: любимый предмет и трудные темы тоже его. В учебном профиле study — словарь внутри словаря: по нашим правилам слияния он заменяется целиком, и новая тема может стереть любимый предмет. Поэтому на карточке подсказка: попросить DeepSeek, чтобы программа дописывала темы без повторов, как списки. Разберём на слайде 3 урока 16: Макс уже помнит, где герой ошибается, — это почти репетитор. Не хватает заданий, проверки ответов и сайта, и всё это будет на уроке 16. Скриншоты с приветствием открывайте на разборе только с согласия автора.">
 <div class="sl-body">
     <div>
       <div class="q-label">Домашнее задание · около 30 минут</div>
@@ -1077,7 +1057,7 @@ __pycache__/
         <p style="font-size:16px;line-height:1.5">Скопируйте с заменой <span class="code-chip">.env</span> и <span class="code-chip">.gitignore</span> из <span class="code-chip">lesson-15</span> в <span class="code-chip">lesson-10</span>. В <span class="code-chip">app.py</span> урока 10 замените <span class="code-chip">deepseek-chat</span> на <span class="code-chip">deepseek-flash</span>. Ключ берём из <span class="code-chip">.env</span>: в начало <span class="code-chip">app.py</span> добавьте три строки — <span class="code-chip">import os</span>, <span class="code-chip">from dotenv import load_dotenv</span>, <span class="code-chip">load_dotenv()</span>, а в строке <span class="code-chip">API_KEY = …</span> всё после <span class="code-chip">=</span> замените на <span class="code-chip">os.getenv("DEEPSEEK_KEY")</span>. Сохраните, в папке <span class="code-chip">lesson-10</span> выполните <span class="code-chip">streamlit run app.py</span> и задайте вопрос — чат должен ответить. Не работает — вставьте в новый чат DeepSeek свой <span class="code-chip">app.py</span> без ключа и ошибку целиком, а в просьбе укажите: модель — <span class="code-chip">deepseek-flash</span>, ключ — из <span class="code-chip">.env</span>.</p>
       </div>
     </div>
-    <div class="ek-note ek-note--red" style="font-size:15px;padding:10px 18px">Дома говорите с Максом от лица того же выдуманного героя, а адрес, телефон и пароли не рассказывайте вообще: всё сказанное лежит в файлах и уходит на сервер нейросети. <span class="code-chip">KIMI_KEY</span> в <span class="code-chip">.env</span> не добавляйте, даже если ключ Kimi есть дома. На скриншотах личное замажьте. Недоделанная правка 5 — тоже дома, в чате урока. Нет чата урока — вставьте в новый чат свой <span class="code-chip">friend.py</span> и под ним промпт правки 5 со слайда 30.</div>
+    <div class="ek-note ek-note--red" style="font-size:15px;padding:10px 18px">Дома говорите с Максом от лица того же выдуманного героя, а адрес, телефон и пароли не рассказывайте вообще: всё сказанное лежит в файлах и уходит на сервер нейросети. На скриншотах личное замажьте. Недоделанная правка 5 — тоже дома, в чате урока. Нет чата урока — вставьте в новый чат свой <span class="code-chip">friend.py</span> и под ним промпт правки 5 со слайда 30.</div>
   </div>
 </section>
 

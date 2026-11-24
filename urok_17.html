@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Урок 17 — Первая база данных | Eduson Kids</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+/* ============ Дизайн-токены Eduson Kids ============ */
+:root{
+  --ek-violet:#8C7FF6; --ek-violet-soft:#A79EF9; --ek-violet-deep:#6F61E8; --ek-violet-bg:#F0EEFE;
+  --ek-green:#3DF79D; --ek-green-soft:#7BF9BD; --ek-green-mint:#C9F7E3; --ek-green-pale:#E7FDF2; --ek-green-deep:#0FBF6E;
+  --ek-ink:#17171C; --ek-gray:#8F8F98; --ek-gray-light:#EFEFF2; --ek-line:#E3E3EA;
+  --ek-red:#FF6B6B; --ek-red-soft:#FF8A8A; --ek-red-deep:#E04848; --ek-red-pale:#FFECEC;
+  --f-head:'Inter Tight','Inter','Segoe UI',system-ui,sans-serif;
+  --f-body:'Inter','Segoe UI',system-ui,sans-serif;
+  --f-mono:'JetBrains Mono','Cascadia Mono','Consolas',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--f-body);background:#E9E9F1;color:var(--ek-ink);-webkit-font-smoothing:antialiased}
+
+/* ============ Хром: прогресс, счётчик, подсказка ============ */
+.progress{position:fixed;top:0;left:0;right:0;height:4px;background:rgba(23,23,28,.08);z-index:100}
+.progress__fill{height:100%;width:0%;background:var(--ek-violet);transition:width 300ms ease}
+.counter{position:fixed;top:14px;right:18px;z-index:90;font:600 13px var(--f-body);color:var(--ek-gray);background:#fff;border:1px solid var(--ek-line);padding:6px 14px;border-radius:999px;font-variant-numeric:tabular-nums}
+.counter b{color:var(--ek-ink)}
+.hint{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:90;font:500 11px var(--f-body);color:var(--ek-gray);background:#fff;border:1px solid var(--ek-line);padding:6px 14px;border-radius:999px;letter-spacing:.03em}
+.hint kbd{font-family:var(--f-mono);background:var(--ek-gray-light);padding:1px 6px;border-radius:4px;font-size:10px;margin:0 2px;color:var(--ek-ink)}
+
+/* ============ Сцена 1280×720 ============ */
+.stage{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform:translate(-50%,-50%);border-radius:18px;overflow:hidden;box-shadow:0 30px 90px rgba(23,23,28,.18);background:#fff}
+.slide{position:absolute;inset:0;background:#fff;opacity:0;transform:translateY(26px);transition:opacity 280ms ease,transform 280ms ease;pointer-events:none;font-family:var(--f-head)}
+.slide.active{opacity:1;transform:none;pointer-events:auto}
+.slide.prev{transform:translateY(-26px)}
+.slide--violet{background:var(--ek-violet)}
+.slide--green{background:var(--ek-green)}
+
+/* Номер страницы на контентных слайдах */
+.slide--content::after{content:attr(data-page);position:absolute;right:54px;bottom:30px;font:800 30px/1 var(--f-head);color:var(--ek-ink);opacity:.5}
+
+/* ============ Декор «Орбита» ============ */
+.sl-orbit{position:absolute;inset:0;pointer-events:none}
+.slide--violet .sl-orbit{--decor:#A79EF9;--letter:#C4BEFA}
+.slide--green .sl-orbit{--decor:#7BF9BD;--letter:#C4FCE0}
+.sl-ring{position:absolute;left:50%;top:50%;width:1040px;height:660px;transform:translate(-50%,-50%);border:3px solid var(--decor);border-radius:50%;opacity:.9}
+.sl-ico{position:absolute;color:var(--decor)}
+.sl-letter{position:absolute;border-radius:50%;background:var(--decor);color:var(--letter);display:flex;align-items:center;justify-content:center;font:800 var(--fs,40px)/1 var(--f-head);font-style:normal}
+
+/* ============ Каверы: карточка-окно и спич-бабл ============ */
+.cover-center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2}
+.cover-card{position:relative;width:860px;background:#fff;border-radius:28px;box-shadow:0 30px 80px rgba(23,23,28,.18)}
+.card-top{display:flex;justify-content:space-between;align-items:center;padding:24px 30px 0}
+.win-dots{display:flex;gap:9px}
+.win-dots i{width:13px;height:13px;border-radius:50%;background:var(--ek-violet)}
+.win-close{position:relative;width:22px;height:22px}
+.win-close::before,.win-close::after{content:"";position:absolute;left:-1px;top:9px;width:24px;height:4px;border-radius:2px;background:var(--ek-violet)}
+.win-close::before{transform:rotate(45deg)}
+.win-close::after{transform:rotate(-45deg)}
+.cover-card .badge{position:absolute;left:50%;top:-30px;transform:translateX(-50%) rotate(-4deg)}
+.cover-card h1{padding:26px 64px 30px;text-align:center;font:800 50px/1.14 var(--f-head);letter-spacing:-.015em;color:var(--ek-ink)}
+.cover-card .cover-sub{padding:0 80px 34px;text-align:center;font:500 19px/1.5 var(--f-body);color:#3C3C45}
+.cover-card .cover-chips{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;padding:0 40px 40px}
+.bubble{position:relative;width:660px;background:#EFEFF1;border-radius:30px;padding:56px 70px;text-align:center}
+.bubble::after{content:"";position:absolute;right:56px;bottom:-24px;width:0;height:0;border-left:38px solid transparent;border-top:28px solid #EFEFF1}
+.bubble h1{font:800 42px/1.25 var(--f-head);letter-spacing:-.01em;color:var(--ek-ink)}
+.bubble p{margin-top:16px;font:500 18px/1.5 var(--f-body);color:#3C3C45}
+
+/* ============ Стикер-бейдж и чипы ============ */
+.badge{display:inline-block;background:var(--ek-green);color:var(--ek-ink);font:800 24px/1 var(--f-head);padding:13px 22px;border-radius:13px;transform:rotate(-3deg);box-shadow:0 10px 24px rgba(23,23,28,.10)}
+.badge--violet{background:var(--ek-violet);color:#fff}
+.badge--sm{font-size:16px;padding:9px 16px;border-radius:10px}
+.chip{display:inline-block;font:700 14px/1 var(--f-body);padding:8px 14px;border-radius:999px;background:var(--ek-violet-bg);color:var(--ek-violet-deep)}
+.chip--green{background:var(--ek-green-pale);color:var(--ek-green-deep)}
+.chip--gray{background:var(--ek-gray-light);color:#3C3C45}
+
+/* ============ Контентные слайды ============ */
+.sl-body{position:absolute;inset:0;padding:56px 80px 62px;display:flex;flex-direction:column;gap:16px;overflow:hidden}
+h2{font:800 38px/1.16 var(--f-head);letter-spacing:-.01em;color:var(--ek-ink)}
+.acc{color:var(--ek-violet-deep)}
+.sl-body>p, .col p{font:500 18px/1.5 var(--f-body);color:#3C3C45}
+.code-chip{font-family:var(--f-mono);font-weight:700;font-size:.88em;background:var(--ek-violet-bg);color:var(--ek-violet-deep);padding:2px 8px;border-radius:8px;white-space:nowrap}
+.hl{color:var(--ek-violet-deep);font-weight:700}
+.out-chip{font-family:var(--f-mono);font-weight:700;font-size:.88em;background:var(--ek-green-pale);color:#0B7A48;padding:2px 8px;border-radius:8px;white-space:nowrap}
+
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;align-items:stretch}
+
+.info-card{background:#F5F5F9;border-radius:18px;padding:18px 22px;font:500 16px/1.55 var(--f-body);color:#3C3C45}
+.info-card h3{font:800 19px/1.3 var(--f-head);color:var(--ek-ink);margin-bottom:8px}
+.ek-note{background:var(--ek-violet-bg);border-left:4px solid var(--ek-violet);border-radius:0 14px 14px 0;padding:14px 20px;font:600 17px/1.5 var(--f-body);color:#3C3560}
+.ek-note--green{background:var(--ek-green-pale);border-left-color:var(--ek-green-deep);color:#0B5B39}
+.ek-note--red{background:var(--ek-red-pale);border-left-color:var(--ek-red);color:#7A2E2E}
+
+ul.clean{list-style:none;display:flex;flex-direction:column;gap:10px}
+ul.clean li{display:flex;gap:14px;align-items:flex-start;font:500 17.5px/1.5 var(--f-body);color:#3C3C45}
+ul.clean li::before{content:'—';flex:0 0 auto;color:var(--ek-violet-deep);font-weight:800}
+
+ol.steps{list-style:none;counter-reset:step;display:flex;flex-direction:column;gap:12px}
+ol.steps li{counter-increment:step;display:flex;gap:16px;align-items:center;padding:14px 20px;background:#F5F5F9;border-radius:16px;font:500 17.5px/1.45 var(--f-body);color:#2E2E36}
+ol.steps li::before{content:counter(step);flex:0 0 40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:var(--ek-violet);font:800 18px var(--f-head);color:#fff}
+ol.steps li:last-child::before{background:var(--ek-green);color:var(--ek-ink)}
+ol.steps.steps--tight{gap:8px}
+ol.steps.steps--tight li{padding:9px 16px;font-size:15.5px;gap:12px}
+ol.steps.steps--tight li::before{flex-basis:32px;height:32px;font-size:14px}
+
+.q-label{font:700 13px/1 var(--f-head);letter-spacing:.08em;text-transform:uppercase;color:var(--ek-gray)}
+
+/* ============ План занятия (agenda) ============ */
+.agenda{display:flex;flex-direction:column;gap:8px}
+.agenda-row{display:flex;gap:16px;align-items:center;padding:10px 18px;background:#F5F5F9;border-radius:14px}
+.agenda-row .t{flex:0 0 84px;text-align:center;font:800 14px/1 var(--f-mono);color:var(--ek-ink);background:var(--ek-green);border-radius:999px;padding:8px 0}
+.agenda-row .tt{font:700 16.5px/1.3 var(--f-head);color:var(--ek-ink)}
+.agenda-row .dd{font:500 14px/1.4 var(--f-body);color:var(--ek-gray)}
+
+/* ============ Ключ-значение (привычки, шпаргалки) ============ */
+.kv{display:flex;flex-direction:column}
+.kv-row{display:grid;grid-template-columns:250px 1fr;gap:18px;align-items:start;padding:11px 4px;border-bottom:1.5px solid var(--ek-line)}
+.kv-row:last-child{border-bottom:none}
+.kv-row .k{font:800 14px/1.35 var(--f-head);letter-spacing:.05em;text-transform:uppercase;color:var(--ek-violet-deep);padding-top:2px}
+.kv-row .v{font:500 16.5px/1.5 var(--f-body);color:#3C3C45}
+
+/* ============ Окно кода (статичное) ============ */
+.code-win{background:#fff;border:2.5px solid var(--ek-ink);border-radius:16px;overflow:hidden;font-family:var(--f-mono);box-shadow:10px 10px 0 rgba(140,127,246,.14)}
+.code-head{display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:2px solid var(--ek-ink)}
+.code-head .win-dots i{width:11px;height:11px}
+.lang-badge{font:700 11px var(--f-mono);letter-spacing:.14em;color:var(--ek-gray)}
+.code-body{padding:14px 20px;font:500 14.5px/1.6 var(--f-mono);color:var(--ek-ink);white-space:pre;overflow:auto;max-height:400px;tab-size:4}
+.code-body .cm{color:var(--ek-gray)}
+.code-body .st{color:var(--ek-green-deep)}
+.code-body .kw{color:var(--ek-violet-deep);font-weight:700}
+
+/* ============ Терминал (тёмное окно) ============ */
+.term{background:var(--ek-ink);border-radius:16px;overflow:hidden;font-family:var(--f-mono);box-shadow:10px 10px 0 rgba(23,23,28,.12)}
+.term-head{display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,.14)}
+.term-head .win-dots i{width:11px;height:11px;background:var(--ek-green)}
+.term-head .lang-badge{color:rgba(255,255,255,.5)}
+.term-body{padding:14px 20px;font:500 14.5px/1.62 var(--f-mono);color:var(--ek-green);white-space:pre-wrap;word-break:break-word;overflow:auto;max-height:420px}
+.term-body .usr{color:#fff}
+.term-body .dim{color:rgba(255,255,255,.55)}
+
+/* ============ Промпт-карточка (диалог с DeepSeek) ============ */
+.prompt-card{position:relative;background:var(--ek-violet-bg);border:2.5px solid var(--ek-violet);border-radius:18px;padding:20px 26px 18px;box-shadow:10px 10px 0 rgba(140,127,246,.18)}
+.prompt-card .pc-tag{position:absolute;top:-16px;left:22px;background:var(--ek-violet);color:#fff;font:800 14px/1 var(--f-head);padding:9px 16px;border-radius:10px;transform:rotate(-2deg);box-shadow:0 8px 18px rgba(23,23,28,.12)}
+.prompt-card .pc-text{margin-top:6px;font:500 15px/1.62 var(--f-mono);color:#2E2A52;white-space:pre-wrap}
+.prompt-card .pc-text .hl{color:var(--ek-violet-deep)}
+.prompt-card--copy .pc-tag{background:var(--ek-green);color:var(--ek-ink)}
+
+/* ============ Сравнение (vs) ============ */
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:stretch}
+.vs-col{border-radius:18px;padding:20px 24px}
+.vs-col h4{font:800 15px/1 var(--f-head);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
+.vs-col p{font:500 16px/1.55 var(--f-body)}
+.vs-col .note{margin-top:12px;font:500 13.5px/1.4 var(--f-body);opacity:.75}
+.vs-col--plain{background:var(--ek-gray-light);color:#3C3C45}
+.vs-col--plain h4{color:var(--ek-gray)}
+.vs-col--win{background:var(--ek-green-pale);color:#124F35;border:2px solid var(--ek-green-soft)}
+.vs-col--win h4{color:var(--ek-green-deep)}
+
+/* ============ Квиз с раскрытием ответа ============ */
+.quiz-box{background:#F5F5F9;border:2.5px solid var(--ek-ink);border-radius:18px;padding:22px 26px;box-shadow:10px 10px 0 rgba(61,247,157,.25)}
+.quiz-box .q-num{display:inline-block;background:var(--ek-green);color:var(--ek-ink);font:800 13px/1 var(--f-head);letter-spacing:.08em;text-transform:uppercase;padding:8px 14px;border-radius:999px;margin-bottom:14px}
+.quiz-box .q-text{font:700 21px/1.42 var(--f-head);color:var(--ek-ink)}
+.quiz-answer{margin-top:16px}
+.quiz-btn{border:0;border-radius:12px;padding:12px 22px;font:800 15px/1 var(--f-head);cursor:pointer;background:var(--ek-violet);color:#fff;transition:background .15s}
+.quiz-btn:hover{background:var(--ek-violet-deep)}
+.quiz-reveal{display:none;margin-top:14px;background:var(--ek-green-pale);border-left:4px solid var(--ek-green-deep);border-radius:0 14px 14px 0;padding:14px 20px;font:500 16.5px/1.55 var(--f-body);color:#0B5B39}
+.quiz-reveal.show{display:block}
+.quiz-reveal p+p{margin-top:8px}
+
+/* Появление контента */
+.slide.active .info-card,.slide.active ul.clean li,.slide.active ol.steps li,.slide.active .grid-2>*,.slide.active .grid-3>*,.slide.active .agenda-row,.slide.active .kv-row{animation:reveal 450ms ease backwards}
+.slide.active .info-card:nth-child(2),.slide.active ul.clean li:nth-child(2),.slide.active ol.steps li:nth-child(2),.slide.active .grid-2>*:nth-child(2),.slide.active .grid-3>*:nth-child(2),.slide.active .agenda-row:nth-child(2),.slide.active .kv-row:nth-child(2){animation-delay:80ms}
+.slide.active ul.clean li:nth-child(3),.slide.active ol.steps li:nth-child(3),.slide.active .grid-3>*:nth-child(3),.slide.active .agenda-row:nth-child(3),.slide.active .kv-row:nth-child(3){animation-delay:160ms}
+.slide.active ol.steps li:nth-child(4),.slide.active .agenda-row:nth-child(4),.slide.active .kv-row:nth-child(4){animation-delay:240ms}
+.slide.active ol.steps li:nth-child(5),.slide.active .agenda-row:nth-child(5),.slide.active .kv-row:nth-child(5){animation-delay:320ms}
+.slide.active .agenda-row:nth-child(6),.slide.active ol.steps li:nth-child(6),.slide.active .kv-row:nth-child(6){animation-delay:400ms}
+.slide.active .agenda-row:nth-child(7),.slide.active ol.steps li:nth-child(7),.slide.active .kv-row:nth-child(7){animation-delay:480ms}
+@keyframes reveal{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@media (prefers-reduced-motion:reduce){.slide.active .info-card,.slide.active ul.clean li,.slide.active ol.steps li,.slide.active .grid-2>*,.slide.active .grid-3>*,.slide.active .agenda-row,.slide.active .kv-row{animation:none}}
+
+/* ============ Заметки преподавателя ============ */
+.notes{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--ek-line);box-shadow:0 -16px 40px rgba(23,23,28,.10);padding:20px 40px;z-index:95;max-height:40vh;overflow-y:auto;transform:translateY(100%);transition:transform 300ms ease}
+.notes.active{transform:translateY(0)}
+.notes__header{font:800 11px var(--f-head);letter-spacing:.2em;text-transform:uppercase;color:var(--ek-violet-deep);margin-bottom:8px}
+.notes__body{font:500 15px/1.55 var(--f-body);color:#3C3C45}
+
+:focus-visible{outline:3px solid var(--ek-violet-soft);outline-offset:2px;border-radius:6px}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(23,23,28,.15);border-radius:4px}
+</style>
+</head>
+<body>
+
+<div class="progress"><div class="progress__fill" id="progress"></div></div>
+<div class="counter"><b id="current">1</b> / <span id="total">38</span></div>
+
+<main class="stage" id="deck">
+<section class="slide slide--violet active"
+  data-notes="Поприветствуйте. Модуль 5 начинается с вопроса из ДЗ урока 16: что делать, когда записей становится много. Сегодня каждый соберёт каталог книг library.py: 46 книг из раздаточного books.json переедут в базу данных books.db, и программа научится искать книги, просить у DeepSeek описание с тегами и показывать подборку по тегу. Обязательный минимум к 50-й минуте — каркас и правки 1–3: это и есть каталог из карточки. Правки 4 и 5 (статистика, удаление и изменение книг) — резерв: кто не успеет, сделает их дома по желанию. Ставить сегодня ничего не нужно: модуль sqlite3 входит в Python. Ключ DeepSeek — школьный, он лежит только в .env и понадобится с правки 2.">
+<div class="sl-orbit">
+    <i class="sl-ring"></i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:75px;top:20px;width:150px;height:150px;transform:rotate(-10deg)"><use href="#ek-i-trophy"/></svg>
+    <i class="sl-letter" style="left:466px;top:13px;width:78px;height:78px;--fs:36px">S</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1040px;top:15px;width:130px;height:130px;transform:rotate(12deg)"><use href="#ek-i-heart"/></svg>
+    <i class="sl-letter" style="left:68px;top:268px;width:100px;height:100px;--fs:46px">Q</i>
+    <i class="sl-letter" style="left:1137px;top:327px;width:95px;height:95px;--fs:44px">L</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:102px;top:532px;width:125px;height:125px;transform:rotate(-15deg)"><use href="#ek-i-star"/></svg>
+    <i class="sl-letter" style="left:726px;top:613px;width:78px;height:78px;--fs:36px">D</i>
+    <i class="sl-letter" style="left:520px;top:655px;width:60px;height:60px;--fs:28px">B</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1045px;top:540px;width:110px;height:110px;transform:rotate(8deg)"><use href="#ek-i-gem"/></svg>
+  </div>
+  <div class="cover-center">
+    <div class="cover-card">
+      <div class="badge">Урок №17</div>
+      <div class="card-top"><span class="win-dots"><i></i><i></i><i></i></span><span class="win-close"></span></div>
+      <h1>Первая<br>база данных</h1>
+      <p class="cover-sub">Соберём каталог книг на SQLite: книги живут в базе, находятся по куску слова, а DeepSeek пишет к ним описания и подбирает теги.</p>
+      <div class="cover-chips"><span class="chip chip--green">SQLite</span><span class="chip">SQL</span><span class="chip chip--gray">DeepSeek API</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Теории — минимум: на 10-й минуте каждый уже пишет промпт разминки. Контрольные точки: к 16-й минуте warmup.py запущен дважды и показал 6 строк; к 28-й — library.py перенёс 46 книг, а после перезапуска их по-прежнему 47 вместе с добавленной; к 33-й — поиск находит «гарри»; к 42-й — у книги появились описание и теги; к 50-й — подборка по тегу. Правки 4 и 5 — только если группа опережает; иначе их можно сделать дома по желанию, по промптам со слайдов 28 и 30. Каждая правка — полная перегенерация library.py: к правке 3 файл вырастет примерно до 250 строк, к правке 5 — примерно до 330, а с комментариями DeepSeek — ещё длиннее. Закладывайте на каждую перегенерацию 1–1,5 минуты: пока DeepSeek печатает файл, показывайте слайд с разбором. Если группа отстаёт, сокращайте так. К 16-й минуте отставание больше 2 минут — на демо слайда 13 покажите только поиск и карточку книги, без подборки по тегу и перезапуска. К 25-й минуте каркас ещё не у всех перенёс 46 книг — разбор слайда 18 одной фразой: книги переносим только в пустую таблицу. К 28-й минуте отставание больше 3 минут — в разборах слайдов 22, 25 и 27 покажите по одной главной строке; квиз 1 — устно за 20 секунд; правки 4 и 5 — только дома. Если у ученика правка сломала файл и за 2 минуты не чинится, дайте ему запасную копию library.py этого этапа (пункт 3 ниже). Пусть заменит ею свой файл, а следующее сообщение в том же чате начнёт словами «Мой library.py теперь такой — дальше правь его, а не прошлую версию:», ниже вставит весь файл копии, а под ним — промпт следующей правки. books.db при этом не трогаем: копия кода работает с той же базой. Перед уроком обязательно: 1) скачайте books.json по ссылке «Скачать books.json» на слайде 14 этой презентации. Если браузер открыл файл вместо скачивания, нажмите на ссылку правой кнопкой и выберите «Сохранить ссылку как…». Ссылка работает, когда презентация открыта из своей папки, рядом с папкой assets. Файл должен называться ровно books.json: в нём 46 книг, кодировка UTF-8. Не правьте его и не пересохраняйте в других программах: от него зависят номера книг на слайдах 13, 17 и 21. Отправьте файл в чат группы — ученики кладут его в lesson-17 до 16-й минуты; 2) прогоните всю цепочку промптов на своём ключе, вместе с правками 4 и 5, в папке с этим же books.json; 3) во время прогона сохраняйте копию library.py после каждого этапа: library_base.py, library_1.py, library_2.py, library_3.py, library_4.py — это запасные копии, ключа в них нет; 4) соберите финальную версию в отдельной папке, например vibe-coding/lesson-17-demo, со своим .env и копией того же books.json: без него каталог стартует пустым, и демо слайда 13 не получится. Выберите в ней дважды пункт 5 — опишутся книги 1–10; книгу 15 оставьте без описания, её опишете на демо слайда 13. Расход ключа маленький: по нашей оценке на основе цен DeepSeek, одно описание стоит около 0,0003 доллара, а весь урок группы — порядка 10 центов.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">План занятия</div>
+    <h2>Как пройдут <span class="acc">60 минут</span></h2>
+  </div>
+  <div class="agenda" style="margin-top:14px">
+    <div class="agenda-row"><span class="t">0–4</span><div><div class="tt">Разбор ДЗ</div><div class="dd">Банк заданий в tasks.json и гости в progress.json.</div></div></div>
+    <div class="agenda-row"><span class="t">4–10</span><div><div class="tt">Файл против базы</div><div class="dd">Таблица, SQLite и пять команд SQL.</div></div></div>
+    <div class="agenda-row"><span class="t">10–16</span><div><div class="tt">Разминка warmup.py</div><div class="dd">Первая база: запускаем дважды и считаем строки.</div></div></div>
+    <div class="agenda-row"><span class="t">16–28</span><div><div class="tt">Цель и каркас library.py</div><div class="dd">Знак ?, демо каталога, 46 книг в books.db, проверка «закрыли — открыли».</div></div></div>
+    <div class="agenda-row"><span class="t">28–50</span><div><div class="tt">Правки через диалог</div><div class="dd">Обязательно: поиск → AI-описание и теги → подборка по тегу. Успеете — статистика, удаление и изменение книг.</div></div></div>
+    <div class="agenda-row"><span class="t">50–55</span><div><div class="tt">Вопросы и отладка</div><div class="dd">Квизы, типичные ошибки и привычки.</div></div></div>
+    <div class="agenda-row"><span class="t">55–60</span><div><div class="tt">Демо и ДЗ</div><div class="dd">Сосед находит книгу по тегу в вашем каталоге.</div></div></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="На весь блок 4 минуты. Откройте 2–3 работы и разбирайте переписку с DeepSeek, а не только результат. Скриншоты и файлы показывайте группе только с согласия автора. В «Покажите дома» спросите, что случилось с прогрессом автора после гостей: их ответы попали в тот же progress.json. Это пример «людей несколько» — назовите его и отложите до урока 21, где у каждого появятся вход и свои данные. Главное сегодня — банк заданий. Спросите автора: как устроен поиск по теме? Обычно программа загружает весь tasks.json в список и перебирает его в цикле, а после добавления задания записывает весь файл заново. На 20 заданиях это незаметно. Но так ищет и записывает сама программа, и каждую такую функцию приходится писать руками. База данных берёт эту работу на себя. Свой предмет — короткая похвала тем, кто сделал: фиксированный список тем пригодится сегодня, у книг будет фиксированный список тегов. Мостик: когда записей много, файла мало — сегодня перенесём каталог книг в базу данных.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор ДЗ урока 16</div>
+    <h2>Когда записей <span class="acc">становится много</span></h2>
+  </div>
+  <p>Открываем 2–3 работы: что сказали гости о репетиторе, банк заданий в <span class="code-chip">tasks.json</span> и новый предмет.</p>
+  <div class="grid-3" style="margin-top:18px">
+    <div class="info-card"><h3>Покажите дома</h3>Гости решали задания на вашем компьютере, и их ответы записались в ваш <span class="code-chip">progress.json</span>. Результаты разных людей смешались в одном файле.</div>
+    <div class="info-card"><h3>Банк заданий</h3>20 заданий в <span class="code-chip">tasks.json</span>. Чтобы найти задания по теме, программа читает весь файл, а чтобы добавить одно — переписывает его целиком. А если заданий станет 20 000?</div>
+    <div class="info-card"><h3>Свой предмет</h3>Предмет в <span class="code-chip">SUBJECTS</span>, темы в <span class="code-chip">TOPICS</span> и пример в <span class="code-chip">EXAMPLES</span> — по правилам урока 14: темы из своего списка.</div>
+  </div>
+  <div class="ek-note" style="margin-top:18px">Когда записей много, одного файла мало. Сегодня — первая база данных. А как разделить данные разных людей, разберём на уроке 21.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ключевой слайд для К1. Начните с вопроса группе: как найти в tasks.json все задания по процентам? Ответ — загрузить весь файл и перебрать в цикле. А как добавить одно задание? Загрузить весь файл, дописать в список и записать весь файл заново. Пока заданий 20, это незаметно. Но каждую такую операцию программист пишет сам: поиск, сортировку, подсчёт, защиту от сломанного файла. База данных — программа, которая хранит записи и сама выполняет такие просьбы. Наш код только формулирует вопрос на языке SQL. Не обещайте конкретных цифр скорости: на нашем каталоге из 46 книг разницы на глаз не будет. Главная выгода сегодня — не скорость, а то, что поиск, сортировку и подсчёт не нужно писать руками, а данные переживают перезапуск без json.dump.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Идея урока</div>
+    <h2>Файл хранит, <span class="acc">база отвечает</span></h2>
+  </div>
+  <p>Каталог из 46 книг поместился бы и в JSON. Но книг становится больше, а вопросы к ним — сложнее: «книги Толстого», «сказки до 1950 года», «сколько книг без описания».</p>
+  <div class="vs" style="margin-top:18px">
+    <div class="vs-col vs-col--plain">
+      <h4>Файл JSON (было)</h4>
+      <p>Программа сама читает весь файл, ищет перебором в цикле и после каждого изменения переписывает файл целиком.</p>
+      <p class="note">Так работали дневник урока 7 и банк заданий урока 16.</p>
+    </div>
+    <div class="vs-col vs-col--win">
+      <h4>База данных (стало)</h4>
+      <p>Программа отправляет базе команду: «дай книги Толстого по порядку», «добавь книгу», «сколько сказок?». Искать, сортировать и считать — работа базы.</p>
+      <p class="note">Так устроим каталог сегодня.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Так выглядит таблица books после каркаса. Это не вывод программы, а рисунок: показываем, как устроены строки и столбцы. Каждая строка — одна книга, у каждой книги одни и те же поля. Похоже на таблицу в Excel или на список словарей в JSON, только поля задаются один раз для всей таблицы. Столбцы tags и description сегодня пустые — их заполнит DeepSeek в правке 2. Столбец id — номер записи: при добавлении книги без номера база ставит его сама. Почему типы — подсказка: в SQLite тип относится к значению, а не к столбцу, поэтому строка в year не вызовет ошибки. Отсюда правило урока: что можно проверить в Python — проверяем в Python. Если хотите показать настоящую таблицу, а не рисунок, используйте на своём экране DB Browser for SQLite — бесплатную программу для Windows и macOS. Открывайте в ней books.db только после того, как каталог закрыт. Детям .db в VS Code не открываем.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Как это работает</div>
+    <h2>База — это <span class="acc">таблицы</span></h2>
+  </div>
+  <p>Строка — одна книга. Столбец — одно поле, у каждого свой тип: <span class="code-chip">INTEGER</span> — целое число, <span class="code-chip">TEXT</span> — текст. <span class="code-chip">id</span> — номер записи: его ставит сама база.</p>
+  <div class="term" style="margin-top:14px">
+    <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">ТАБЛИЦА</span></div>
+    <div class="term-body">id │ title                       │ author          │ year │ genre       │ tags │ description
+───┼─────────────────────────────┼─────────────────┼──────┼─────────────┼──────┼────────────
+ 1 │ Гарри Поттер и философский… │ Джоан Роулинг   │ 1997 │ фэнтези     │      │
+ 2 │ Маленький принц             │ Антуан де Сент… │ 1943 │ сказка      │      │
+ 3 │ Чучело                      │ Владимир Желез… │ 1981 │ повесть     │      │</div>
+  </div>
+  <div class="ek-note" style="margin-top:14px">Тип столбца в SQLite — подсказка, а не строгое правило: в <span class="code-chip">year</span> можно записать и слово, база не возразит. Поэтому год проверяет наша программа.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Это шпаргалка на весь урок, на квиз 2 и на ДЗ 2 — предложите сфотографировать: в квизе 2 ученики напишут по ней запрос сами. Ключевой слайд для К2 и К3. SQLite — не отдельная программа: модуль sqlite3 входит в стандартную библиотеку Python, а вся база — один файл. Команда connect открывает этот файл, а если его нет — создаёт. Команды SQL мы пишем большими буквами, а имена таблиц и столбцов — маленькими: так их легко отличить. Знак вопроса в INSERT и UPDATE — место для значения: его подставит Python. Почему не вписать значение прямо в строку — слайд 11. Прочитайте SELECT вслух как фразу: выбери все столбцы из books, где год меньше 1950, по порядку лет, не больше 20 строк. Красная рамка — главное предупреждение урока: UPDATE или DELETE без WHERE меняют или удаляют всё. Сегодня такие команды пишет DeepSeek по нашим промптам, и в каждой есть WHERE id = ?.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Шпаргалка SQL</div>
+    <h2>SQLite и <span class="acc">пять команд SQL</span></h2>
+  </div>
+  <p><span class="hl">SQL</span> — язык, на котором программа говорит с базой. <span class="hl">SQLite</span> — база, которая живёт в одном файле и уже встроена в Python модулем <span class="code-chip">sqlite3</span>: ставить ничего не нужно.</p>
+  <div class="kv" style="margin-top:12px">
+    <div class="kv-row" style="grid-template-columns:610px 1fr;gap:22px;align-items:center"><div class="k" style="text-transform:none;font-size:17px;letter-spacing:0"><span class="code-chip">CREATE TABLE books (…)</span></div><div class="v">Создать таблицу и назвать её столбцы</div></div>
+    <div class="kv-row" style="grid-template-columns:610px 1fr;gap:22px;align-items:center"><div class="k" style="text-transform:none;font-size:17px;letter-spacing:0"><span class="code-chip">INSERT INTO books (title, year) VALUES (?, ?)</span></div><div class="v">Добавить строку</div></div>
+    <div class="kv-row" style="grid-template-columns:610px 1fr;gap:22px;align-items:center"><div class="k" style="text-transform:none;font-size:17px;letter-spacing:0"><span class="code-chip">SELECT * FROM books WHERE year &lt; 1950 ORDER BY year LIMIT 20</span></div><div class="v">Выбрать строки: какие (<span class="code-chip">WHERE</span>), в каком порядке (<span class="code-chip">ORDER BY</span>), сколько (<span class="code-chip">LIMIT</span>). <span class="code-chip">*</span> — все столбцы</div></div>
+    <div class="kv-row" style="grid-template-columns:610px 1fr;gap:22px;align-items:center"><div class="k" style="text-transform:none;font-size:17px;letter-spacing:0"><span class="code-chip">UPDATE books SET genre = ? WHERE id = ?</span></div><div class="v">Изменить строки</div></div>
+    <div class="kv-row" style="grid-template-columns:610px 1fr;gap:22px;align-items:center"><div class="k" style="text-transform:none;font-size:17px;letter-spacing:0"><span class="code-chip">DELETE FROM books WHERE id = ?</span></div><div class="v">Удалить строки</div></div>
+  </div>
+  <div class="ek-note ek-note--red" style="margin-top:12px">Без <span class="code-chip">WHERE</span> команды <span class="code-chip">UPDATE</span> и <span class="code-chip">DELETE</span> касаются всех строк таблицы.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ученики копируют промпт целиком в новый чат DeepSeek. Этот чат — только для разминки: для каталога на слайде 15 откроем другой. Промпт называет каждую команду: так у всех получится одинаковый код, и его легко разобрать на слайде 9. Путь к test.db строим от папки скрипта, как progress.json на уроке 16: иначе файл появится там, откуда запустили команду. Ключ DeepSeek разминке не нужен — она работает без интернета.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Промпт #1 · разминка</div>
+    <h2>warmup.py: <span class="acc">первая база</span></h2>
+  </div>
+  <p>Маленькая база игр: создадим таблицу, добавим три строки и прочитаем их из базы.</p>
+  <div class="prompt-card" style="margin-top:18px">
+    <span class="pc-tag">→ Новый чат DeepSeek</span>
+    <div class="pc-text">Ты — опытный Python-разработчик и наставник школьника. Напиши warmup.py — первое знакомство с базой данных SQLite через модуль sqlite3 из стандартной библиотеки Python.
+- import sqlite3, from pathlib import Path; DB = Path(__file__).resolve().parent / "test.db" — файл базы рядом со скриптом
+- con = sqlite3.connect(DB); con.execute("CREATE TABLE IF NOT EXISTS games (id INTEGER PRIMARY KEY, title TEXT, genre TEXT)")
+- games = [("Minecraft", "песочница"), ("Тетрис", "головоломка"), ("Portal 2", "головоломка")]; для каждой пары con.execute("INSERT INTO games (title, genre) VALUES (?, ?)", (title, genre)) — значения только через ?, без f-строк; потом con.commit()
+- rows = con.execute("SELECT id, title, genre FROM games").fetchall(); print("Строк в таблице:", len(rows)); для каждой строки print(row[0], row[1], "—", row[2]); в конце con.close()
+Прокомментируй код для новичка. Ответь одним блоком кода.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Дождитесь, пока у всех второй запуск покажет 6 строк. Спросите группу: откуда взялись строки 4–6? Программа ничего не знает о прошлом запуске — она просто снова выполнила три INSERT, а база честно их сохранила. Это сразу два вывода. Первый — для К1: данные пережили конец программы без json.dump, их хранит файл test.db рядом с warmup.py. Второй — на каркас: книги из books.json будем переносить только в пустую таблицу, иначе каждый запуск добавлял бы 46 дублей. Номера 4, 5, 6 база поставила сама. Файл test.db не открываем в VS Code: его читает программа через sqlite3. Хотите начать с чистой таблицы — переименуйте test.db в проводнике VS Code, например в test_old.db: при следующем запуске программа создаст новый.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Запуск и разбор</div>
+    <h2>Запускаем <span class="acc">дважды</span></h2>
+  </div>
+  <div class="grid-2" style="margin-top:12px">
+    <div>
+      <ol class="steps steps--tight">
+        <li><div>В <span class="code-chip">vibe-coding</span> создайте папку <span class="code-chip">lesson-17</span> и откройте её в VS Code: <span class="code-chip">File → Open Folder</span></div></li>
+        <li><div>Создайте <span class="code-chip">warmup.py</span>, вставьте код из ответа и сохраните</div></li>
+        <li><div>Выполните <span class="code-chip">python warmup.py</span>, а потом ещё раз</div></li>
+      </ol>
+      <p style="margin-top:14px">Программа закончилась, а строки остались: база помнит их между запусками. Но второй запуск добавил те же три игры ещё раз — добавлять записи «вслепую» при каждом запуске нельзя.</p>
+    </div>
+    <div class="term">
+      <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">ТЕРМИНАЛ</span></div>
+      <div class="term-body"><span class="usr">$ python warmup.py</span>
+Строк в таблице: 3
+1 Minecraft — песочница
+2 Тетрис — головоломка
+3 Portal 2 — головоломка
+<span class="usr">$ python warmup.py</span>
+Строк в таблице: 6
+1 Minecraft — песочница
+2 Тетрис — головоломка
+3 Portal 2 — головоломка
+4 Minecraft — песочница
+5 Тетрис — головоломка
+6 Portal 2 — головоломка</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Проговорите по строкам. connect — как открыть файл, только файл этот понимает SQL. CREATE TABLE IF NOT EXISTS создаёт таблицу, только если её ещё нет: поэтому второй запуск не упал. INSERT с двумя знаками вопроса: значения подставляет sqlite3, а почему так, а не f-строкой, — слайд 11. Главное — commit. По документации Python команда INSERT неявно открывает транзакцию, и её нужно подтвердить через commit, иначе изменения не сохранятся. Перед close документация прямо советует сделать commit, чтобы не потерять несохранённые изменения. SELECT ничего не меняет, поэтому commit ему не нужен. fetchall возвращает все найденные строки списком, а строка — набор значений по порядку столбцов: row[0] — id, row[1] — title. Ещё одно правило: один вызов execute — одна команда SQL. Две команды через точку с запятой execute не выполнит, а выдаст ошибку.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2>connect → execute → <span class="acc">commit</span> → close</h2>
+  </div>
+  <p>Четыре шага работы с базой. <span class="code-chip">connect</span> открывает файл, <span class="code-chip">execute</span> выполняет одну команду SQL, <span class="code-chip">commit</span> сохраняет изменения, <span class="code-chip">close</span> закрывает соединение.</p>
+  <div class="code-win" style="margin-top:8px">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body">con = sqlite3.connect(DB)  <span class="cm"># подключиться; нет файла — SQLite создаст его</span>
+con.execute("CREATE TABLE IF NOT EXISTS games (id INTEGER PRIMARY KEY, title TEXT, genre TEXT)")
+games = [("Minecraft", "песочница"), ("Тетрис", "головоломка"), ("Portal 2", "головоломка")]
+for title, genre in games:
+    con.execute("INSERT INTO games (title, genre) VALUES (?, ?)", (title, genre))  <span class="cm"># значения — через ?</span>
+con.commit()  <span class="cm"># сохранить изменения в файл</span>
+
+rows = con.execute("SELECT id, title, genre FROM games").fetchall()
+print("Строк в таблице:", len(rows))
+for row in rows:
+    print(row[0], row[1], "—", row[2])
+con.close()  <span class="cm"># закрыть соединение</span></div>
+  </div>
+  <div class="ek-note" style="margin-top:8px">Без <span class="code-chip">commit()</span> добавленные строки пропадут, когда соединение закроется: <span class="code-chip">INSERT</span> открывает изменение, а <span class="code-chip">commit</span> его подтверждает.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Почините у всех: дальше нужна та же папка lesson-17. Если команда python не находится или открывает Microsoft Store, на Windows помогает команда py: её ставит установщик Python. Остальные три ошибки появятся, только если DeepSeek отступил от промпта. Ошибка syntax error значит, что SQLite не разобрал команду, а слово после near показывает, где искать опечатку. Ошибка про one statement значит, что в одном execute оказались две команды через точку с запятой. Ещё одна ловушка — значение в двойных кавычках внутри SQL. Текст в SQL пишут в одинарных кавычках, а двойные — для имён столбцов. Слово в двойных кавычках SQLite сначала ищет среди столбцов, а не найдя, может молча посчитать его текстом: ошибки нет, и опечатку никто не заметит. Поэтому значения передаём через знак вопроса — тогда кавычки вообще не нужны. Непонятную ошибку целиком копируем в тот же чат DeepSeek.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Типичные ситуации запуска</div>
+    <h2>Если warmup.py <span class="acc">не запустился</span></h2>
+  </div>
+  <div class="kv" style="margin-top:16px">
+    <div class="kv-row" style="grid-template-columns:610px 1fr;gap:22px;align-items:center"><div class="k" style="text-transform:none;font-size:17px;letter-spacing:0"><span class="code-chip">python</span> не найден или открылся Microsoft Store</div><div class="v">Запустите так: <span class="code-chip">py warmup.py</span>.</div></div>
+    <div class="kv-row" style="grid-template-columns:610px 1fr;gap:22px;align-items:center"><div class="k" style="text-transform:none;font-size:17px;letter-spacing:0">Строк всё время 3</div><div class="v">В коде нет <span class="code-chip">con.commit()</span> после <span class="code-chip">INSERT</span>: изменения не сохраняются. Попросите DeepSeek добавить.</div></div>
+    <div class="kv-row" style="grid-template-columns:610px 1fr;gap:22px;align-items:center"><div class="k" style="text-transform:none;font-size:17px;letter-spacing:0"><span class="code-chip">OperationalError: near "…": syntax error</span></div><div class="v">SQLite не понял команду SQL: в ней опечатка, пропущенная запятая или лишняя кавычка. После <span class="code-chip">near</span> стоит слово, на котором он запутался.</div></div>
+    <div class="kv-row" style="grid-template-columns:610px 1fr;gap:22px;align-items:center"><div class="k" style="text-transform:none;font-size:17px;letter-spacing:0"><span class="code-chip">ProgrammingError: You can only execute one statement at a time</span></div><div class="v">Две команды SQL в одном <span class="code-chip">execute</span>. Нужна одна команда на вызов.</div></div>
+    <div class="kv-row" style="grid-template-columns:610px 1fr;gap:22px;align-items:center"><div class="k" style="text-transform:none;font-size:17px;letter-spacing:0"><span class="code-chip">test.db</span> не там, где ждали</div><div class="v">Он лежит рядом с <span class="code-chip">warmup.py</span>: путь строится от <span class="code-chip">Path(__file__)</span>.</div></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ключевой слайд для К3 и безопасности. Покажите, что получится из f-строки: в запрос попадёт текст с одинарными кавычками вокруг названия, а апостроф в слове Philosopher's закроет кавычку посередине. Хвост «s Stone» SQLite прочитает уже как часть команды — и не поймёт её. Поэтому в ошибке после слова near стоит буква s: на ней SQLite и запутался. Это безобидная поломка. Хуже, если в поле ввода нарочно напечатают кусок SQL: склеенный f-строкой, он станет частью команды. Со знаком вопроса такого не бывает: sqlite3 передаёт значение отдельно от команды, и любые кавычки в нём остаются просто буквами. Документация Python формулирует это прямо: всегда используйте подстановку вместо форматирования строк, чтобы защититься от SQL-инъекций. Сколько знаков вопроса — столько значений в кортеже, иначе ProgrammingError. Для одного значения нужна запятая: (title,), а не (title). DeepSeek по привычке иногда собирает SQL f-строкой, поэтому каждый наш промпт требует знак вопроса. Апостроф проверим своими руками на слайде 16: добавим эту книгу в каталог. Пример с f-строкой ученики не запускают.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Как это работает</div>
+    <h2>Значения — только <span class="acc">через ?</span></h2>
+  </div>
+  <p>Если собрать запрос f-строкой, апостроф в названии закроет кавычку раньше времени, и команда сломается: <span class="code-chip">sqlite3.OperationalError: near "s": syntax error</span>. А чужой ввод вообще может стать частью команды — это называется <span class="hl">SQL-инъекция</span>.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body">title = "Harry Potter and the Philosopher's Stone"
+
+# ❌ Запрос собран f-строкой: апостроф закроет кавычку раньше времени
+con.execute(f"SELECT * FROM books WHERE title = '{title}'")
+
+# ✅ Значение подставляет sqlite3 — с любыми кавычками
+con.execute("SELECT * FROM books WHERE title = ?", (title,))</div>
+  </div>
+  <div class="ek-note ek-note--green">Документация Python советует всегда подставлять значения через <span class="code-chip">?</span>, а не собирать запрос f-строкой, чтобы избежать SQL-инъекций. Запятая в <span class="code-chip">(title,)</span> делает кортеж из одного значения.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Прочитайте цель вслух. Обязательный минимум — каркас и правки 1–3: это каталог из карточки с поиском, тегами и AI-описаниями. Правки 4 и 5 — для тех, кто опережает; остальные могут сделать их дома по желанию. Слева теория, справа практика.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Цель · что будет в конце</div>
+    <h2><span class="acc">Цель</span> урока</h2>
+  </div>
+  <div class="ek-note">К 50-й минуте у каждого — каталог книг <span class="code-chip">library.py</span>: 46 книг в базе <span class="code-chip">books.db</span>, поиск по куску слова, AI-описания с тегами и подборка книг по тегу. Закрыли программу, открыли — всё на месте. Успеете — статистика, удаление и изменение книг.</div>
+  <div class="grid-2">
+    <div class="info-card">
+      <h3>Узнаете</h3>
+      <ul class="clean">
+        <li>Зачем нужна база данных, если есть файлы</li>
+        <li>Как устроены таблица, строки и столбцы</li>
+        <li>Как читать и писать команды SQL</li>
+        <li>Почему значения в SQL передают через <span class="code-chip">?</span></li>
+      </ul>
+    </div>
+    <div class="info-card">
+      <h3>Сделаете</h3>
+      <ul class="clean">
+        <li>Первую базу <span class="code-chip">test.db</span> в разминке</li>
+        <li>Каталог <span class="code-chip">library.py</span> с 46 книгами</li>
+        <li>Поиск без учёта регистра — и по-русски</li>
+        <li>AI-описания, теги и подборку по тегу</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Покажите финальную версию из папки lesson-17-demo: её и десяток описанных книг вы подготовили перед уроком, а книгу 15 оставили без описания. Найдите «гарри», опишите книгу 15, потом выберите 6 — по тегу — и покажите подборку «про дружбу». Описание у вас будет своё: его каждый раз пишет модель. Скажите сразу и честно: описание — это текст нейросети, а не аннотация из библиотеки. Поэтому у него пометка 🤖, и про незнакомую книгу модель должна ответить «не знаю эту книгу». Закройте программу и запустите снова: книги и описание на месте — это и есть база.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Демо результата</div>
+    <h2>Что <span class="acc">соберём</span> сегодня</h2>
+  </div>
+  <div class="term">
+    <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">ТЕРМИНАЛ</span></div>
+    <div class="term-body"><span class="usr">$ python library.py</span>
+📚 Книг в каталоге: 46
+Выбор: 3
+Часть названия или автора: гарри
+ 15. Гарри Поттер и Тайная комната — Джоан Роулинг, 1998 · фэнтези
+  1. Гарри Поттер и философский камень — Джоан Роулинг, 1997 · фэнтези
+Выбор: 4
+Номер книги: 15
+⏳ Спрашиваю AI…
+📖 Гарри Поттер и Тайная комната — Джоан Роулинг, 1998 · фэнтези
+🤖 AI-описание: Гарри возвращается в Хогвартс, а в школе начинаются странные нападения.
+🏷 Теги: волшебство, про дружбу, загадки</div>
+  </div>
+  <p>Поиск нашёл обе книги по куску слова с маленькой буквы. Описание и теги написал DeepSeek, а программа записала их в базу: после перезапуска они на месте. Меню между командами мы убрали, чтобы всё поместилось.</p>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Раздайте books.json в чате группы до урока или прямо сейчас. Это файл, который вы скачали по ссылке на этом слайде, — как это сделать, сказано в заметке слайда 2. Имя файла у учеников должно быть ровно books.json: если мессенджер или браузер сохранил его как books (1).json, переименуйте. Файл в кодировке UTF-8: программа читает его с encoding=«utf-8», иначе на Python 3.11–3.14 русские буквы могут испортиться. Год в списке — год первого издания книгой, а не публикации в журнале. Поэтому он бывает позже первой публикации: «Детство» Льва Толстого напечатал журнал «Современник» в 1852 году, а книгой — вместе с «Отрочеством» — оно вышло в 1856-м. Ключ в .env — школьный: он нужен только с правки 2, но скопируйте его сейчас, чтобы потом не отвлекаться. Ключ — как пароль от счёта школы: только в .env, никогда в коде, в чате и на скриншотах. Если books.json потерялся, каталог всё равно запустится — просто пустым. Книги руками пока не добавляйте: программа переносит книги из файла только в пустую таблицу. Как только файл появится рядом, при следующем запуске она перенесёт их сама.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Подготовка</div>
+    <h2>Книги для <span class="acc">каталога</span></h2>
+  </div>
+  <ol class="steps steps--tight">
+    <li><div>Положите <span class="code-chip">books.json</span> от преподавателя в <span class="code-chip">lesson-17</span> — рядом с будущим <span class="code-chip">library.py</span></div></li>
+    <li><div>Скопируйте <span class="code-chip">.env</span> из <span class="code-chip">lesson-16</span> в <span class="code-chip">lesson-17</span>: школьный ключ <span class="code-chip">DEEPSEEK_KEY</span> понадобится в правке 2</div></li>
+    <li><div>Ставить ничего не нужно: <span class="code-chip">sqlite3</span> входит в Python, а <span class="code-chip">openai</span> и <span class="code-chip">python-dotenv</span> стоят с прошлых уроков</div></li>
+  </ol>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">JSON</span></div>
+    <div class="code-body">[
+  {"title": "Гарри Поттер и философский камень", "author": "Джоан Роулинг", "year": 1997, "genre": "фэнтези"},
+  {"title": "Маленький принц", "author": "Антуан де Сент-Экзюпери", "year": 1943, "genre": "сказка"},
+  …
+]</div>
+  </div>
+  <p>46 книг: у каждой название, автор, год первого издания и жанр. Это обычный JSON, как на уроках 7 и 15. Файл для преподавателя: <a href="assets/lesson17-books.json" download="books.json">Скачать books.json</a>.</p>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ученики копируют промпт в новый чат DeepSeek: чат разминки для каталога не нужен. Скажите вслух: этот чат — на весь урок, каркас и все правки пойдут в него, чтобы DeepSeek видел весь library.py. Почему каркас такой: таблица сразу со всеми столбцами, включая tags и description, которые заполнятся только в правке 2. CREATE TABLE IF NOT EXISTS не меняет уже созданную таблицу: если бы столбцы добавлялись позже, старая books.db осталась бы без них, и программа упала бы с ошибкой no such column. Книги переносятся только в пустую таблицу — вывод из разминки. Соединение открывается на каждое действие и сразу закрывается: так проще не забыть commit и close, а на уроках 19 и 20 этот же шаблон понадобится для Streamlit и сервера. row_factory позволяет писать b[«title»] вместо b[1] — так код читается легче. Если ученик потерял чат — пусть откроет новый и вставит этот же промпт.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Промпт #2 · новый чат — на весь урок</div>
+    <h2>Каркас: <span class="acc">каталог в базе</span></h2>
+  </div>
+  <div class="prompt-card">
+    <span class="pc-tag">→ Новый чат DeepSeek</span>
+    <div class="pc-text" style="font-size:15px;line-height:1.4">Ты — опытный Python-разработчик и наставник школьника. Напиши library.py — каталог книг в терминале на базе SQLite (модуль sqlite3 из стандартной библиотеки).
+- import json, sqlite3, from pathlib import Path. HERE = Path(__file__).resolve().parent; DB = HERE / "books.db"; BOOKS_JSON = HERE / "books.json"
+- connect(): con = sqlite3.connect(DB); con.row_factory = sqlite3.Row; верни con. Каждая функция сама открывает connect(), после изменений делает con.commit() и в конце con.close()
+- все значения в SQL — только через ?, никаких f-строк и склейки строк в запросах
+- init_db(): CREATE TABLE IF NOT EXISTS books (id INTEGER PRIMARY KEY, title TEXT, author TEXT, year INTEGER, genre TEXT, tags TEXT, description TEXT). Если SELECT COUNT(*) FROM books даёт 0 и BOOKS_JSON существует — with open(BOOKS_JSON, encoding="utf-8") as f: books = json.load(f) (список словарей title, author, year, genre), каждую книгу INSERT, commit и print(f"📥 Перенёс книги из books.json: {len(books)}")
+- count_books(): SELECT COUNT(*) FROM books. print_books(rows): если rows пустой — «Ничего не нашлось»; для каждой строки b печатай f'{b["id"]:&gt;3}. {b["title"]} — {b["author"]}, {b["year"]} · {b["genre"]}'. list_books(): SELECT * FROM books ORDER BY title LIMIT 20 → print_books(rows)
+- add_book(): input «Название: », «Автор: », «Год: », «Жанр: », у всех .strip(); нет названия или автора — «Нужны название и автор»; год не isdigit() — «Год — это число, например 1997»; иначе cur = con.execute(INSERT с (title, author, int(year), genre)), commit, new_id = cur.lastrowid до close и f"✅ Добавлено, номер книги: {new_id}"
+- MENU = "1 все книги · 2 добавить · 0 выход". При запуске init_db() и print(f"📚 Книг в каталоге: {count_books()}"). Цикл: print(MENU); choice = input("Выбор: ").strip(); 1 — list_books(), 2 — add_book(), 0 — «Пока! Книги сохранены в books.db» и выход, другое — «Нет такой команды»
+Прокомментируй код для новичка. Ответь одним блоком кода.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Дождитесь, пока у всех перенесутся 46 книг. Рядом с library.py появился books.db — файл базы. В VS Code его не открываем: это не текст, его читает только программа. Добавление книги с апострофом — опыт со слайда 11 вживую: название с одинарной кавычкой спокойно сохранилось. Английское название набираем обычным апострофом с клавиатуры. Если после выбора 1 нет ни одной книги — books.json не рядом с library.py, слайд 20. Порядок «по названию» — по кодам символов: цифры и латиница идут раньше русских букв, поэтому «451° по Фаренгейту» и Harry Potter окажутся в начале списка.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Запуск каркаса</div>
+    <h2>46 книг <span class="acc">переезжают в базу</span></h2>
+  </div>
+  <ol class="steps steps--tight">
+    <li><div>Вставьте код из ответа в <span class="code-chip">library.py</span> и сохраните (<span class="code-chip">Ctrl+S</span>)</div></li>
+    <li><div>Выполните <span class="code-chip">python library.py</span> — появятся «📥 Перенёс книги из books.json: 46» и «📚 Книг в каталоге: 46»</div></li>
+    <li><div><span class="code-chip">1</span> — первые 20 книг по названию</div></li>
+    <li><div><span class="code-chip">2</span> — добавьте книгу с апострофом: <span class="code-chip">Harry Potter and the Philosopher's Stone</span>, автор <span class="code-chip">J. K. Rowling</span>, год <span class="code-chip">1997</span>, жанр <span class="code-chip">фэнтези</span></div></li>
+    <li><div><span class="code-chip">0</span> — выход</div></li>
+  </ol>
+  <div class="ek-note ek-note--green">Апостроф не сломал программу: название ушло в базу через <span class="code-chip">?</span>, а не f-строкой.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Момент для К2: полноценная база данных, и ничего не устанавливали. Номер 47 — следующий после 46 книг из файла. Если у кого-то номер другой — значит, он добавлял книги несколько раз, это нормально. Если строка «📥 Перенёс книги» появилась и при втором запуске, а книг стало 93 — программа переносит книги без проверки на пустую таблицу. Это слайд 20.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Первый результат</div>
+    <h2>Книга с апострофом <span class="acc">на месте</span></h2>
+  </div>
+  <div class="term">
+    <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">ТЕРМИНАЛ</span></div>
+    <div class="term-body"><span class="usr">$ python library.py</span>
+📥 Перенёс книги из books.json: 46
+📚 Книг в каталоге: 46
+1 все книги · 2 добавить · 0 выход
+Выбор: 2
+Название: Harry Potter and the Philosopher's Stone
+Автор: J. K. Rowling
+Год: 1997
+Жанр: фэнтези
+✅ Добавлено, номер книги: 47
+1 все книги · 2 добавить · 0 выход
+Выбор: 0
+Пока! Книги сохранены в books.db</div>
+  </div>
+  <p>Новая книга получила номер 47 — его поставила база. Строка «📥» появилась один раз: при следующем запуске таблица уже не пустая, и книги не переносятся заново.</p>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Проговорите по строкам. COUNT считает строки — база сама, без цикла в Python. fetchone берёт одну строку результата, а [0] — первое значение в ней. Дальше знакомое с урока 7: json.load читает файл в список словарей, но с encoding=«utf-8», иначе на Python 3.11–3.14 русские названия могут испортиться. Каждая книга — один INSERT с четырьмя знаками вопроса и кортежем из четырёх значений. Столбцы id, tags и description в INSERT не названы: id база поставит сама, а tags и description останутся пустыми до правки 2. Один commit после цикла сохраняет все 46 книг разом. Чем это лучше json.dump на уроке 16: мы больше не переписываем весь файл — каждая новая книга уходит в базу одной командой INSERT.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2>Переносим <span class="acc">только в пустую</span> таблицу</h2>
+  </div>
+  <p>Таблицу <span class="code-chip">books</span> создаём сразу со всеми столбцами, даже с теми, что пока пустые. Книги из <span class="code-chip">books.json</span> переносим, только если в таблице 0 строк — иначе каждый запуск добавлял бы 46 дублей, как игры в разминке.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body">    count = con.execute("SELECT COUNT(*) FROM books").fetchone()[0]
+    if count == 0 and BOOKS_JSON.exists():  # переносим книги только в пустую таблицу
+        with open(BOOKS_JSON, encoding="utf-8") as f:
+            books = json.load(f)
+        for b in books:
+            con.execute(
+                "INSERT INTO books (title, author, year, genre) VALUES (?, ?, ?, ?)",
+                (b["title"], b["author"], b["year"], b["genre"]),  # значения — только через ?
+            )
+        con.commit()  # без commit книги не сохранятся
+        print(f"📥 Перенёс книги из books.json: {len(books)}")
+    con.close()</div>
+  </div>
+  <div class="ek-note"><span class="code-chip">SELECT COUNT(*)</span> возвращает одну строку с одним числом — сколько строк в таблице. <span class="code-chip">fetchone()[0]</span> берёт это число.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Обязательная проверка для всех: закрыть программу через 0 и запустить снова. Если книг 47 — commit на месте, база рядом со скриптом, перенос не повторился. Если книг снова 46, а добавленной нет — в add_book нет commit: попросите DeepSeek добавить его. Если книг 0 — программу запустили из другой папки, а путь собран не от Path(__file__): тогда рядом с местом запуска появился второй, пустой books.db. Это ключевой момент для К1: никакого json.dump, а данные на месте. Пройдитесь по плану правок: обязательны первые три, это и есть каталог из карточки. Правки 4 и 5 — резерв.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Момент урока</div>
+    <h2>Закрыли — открыли: <span class="acc">книги на месте</span></h2>
+  </div>
+  <p>Запустите <span class="code-chip">python library.py</span> ещё раз: <span class="out-chip">📚 Книг в каталоге: 47</span>, а строки «📥» нет. Книги пережили перезапуск, дублей нет. Теперь найдите «гарри»… А искать нечем, и у книг нет ни описаний, ни тегов.</p>
+  <div class="ek-note ek-note--red">47 книг в базе, а спросить её пока можно только «покажи первые 20».</div>
+  <ul class="clean">
+    <li>Правка 1 · поиск — по куску названия или автора, и по-русски</li>
+    <li>Правка 2 · AI-описание — описание и теги от DeepSeek прямо в базу</li>
+    <li>Правка 3 · по тегу — описание ещё 5 книг и подборка по тегу</li>
+    <li>Правка 4 · статистика — резерв: сколько книг по жанрам и десятилетиям</li>
+    <li>Правка 5 · удалить и изменить — резерв: с подтверждением и копией базы</li>
+  </ul>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пробегитесь по ситуациям и помогите лично. Во всех случаях, где нужна чистая база, мы не удаляем books.db, а переименовываем его в проводнике VS Code: правый клик — Rename. Программа при следующем запуске создаст новый books.db и перенесёт книги из books.json, а старый файл останется на всякий случай. Переименовывать — только после выхода из программы через 0. Если ученик без books.json успел добавить книгу, таблица уже не пустая и перенос не начнётся: закройте программу, переименуйте books.db в books_old.db и запустите снова. no such column появляется, если DeepSeek в первой версии забыл столбец, а потом добавил его: CREATE TABLE IF NOT EXISTS видит, что таблица уже есть, и ничего в ней не меняет. Кодировка: на Python 3.11–3.14 файл без encoding читается в кодировке системы, а на русской Windows это не UTF-8, и русские буквы ломаются. С Python 3.15 по умолчанию UTF-8, но encoding всё равно пишем явно — так советует и документация. Непонятную ошибку целиком — в тот же чат DeepSeek.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Если каркас не запустился</div>
+    <h2>Типичные ситуации <span class="acc">с базой</span></h2>
+  </div>
+  <div class="kv">
+    <div class="kv-row"><div class="k">«Ничего не нашлось» после выбора 1</div><div class="v"><span class="code-chip">books.json</span> лежит не в <span class="code-chip">lesson-17</span>. Положите его рядом с <span class="code-chip">library.py</span> и запустите снова: таблица пустая, книги перенесутся.</div></div>
+    <div class="kv-row"><div class="k">Книг стало вдвое больше</div><div class="v">Книги переносятся без проверки «таблица пуста». Почините код, закройте программу, переименуйте <span class="code-chip">books.db</span> в <span class="code-chip">books_old.db</span> и запустите снова.</div></div>
+    <div class="kv-row"><div class="k"><span class="code-chip">UnicodeDecodeError</span> или странные буквы</div><div class="v"><span class="code-chip">books.json</span> открыт без <span class="code-chip">encoding="utf-8"</span>.</div></div>
+    <div class="kv-row"><div class="k"><span class="code-chip">no such column: tags</span></div><div class="v">Таблицу создала старая версия без этого столбца. Закройте программу, переименуйте <span class="code-chip">books.db</span> в <span class="code-chip">books_old.db</span> и запустите снова.</div></div>
+    <div class="kv-row"><div class="k">После перезапуска добавленной книги нет</div><div class="v">В <span class="code-chip">add_book</span> нет <span class="code-chip">con.commit()</span>.</div></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Правка в тот же чат, около 5 минут вместе с разбором. Промпт прямо запрещает LIKE и встроенный lower: DeepSeek по привычке напишет WHERE title LIKE с процентами, и на русских словах поиск без учёта регистра не сработает. Почему — на слайде 22. Пусть каждый проверит три запроса. «гарри» — две книги о Гарри Поттере, хотя в базе «Гарри» с большой буквы. «толст» — три книги двух разных Толстых: Льва и Алексея. «POTTER» большими буквами — английская книга, которую добавили на слайде 16. А теперь попросите найти «мушкетер» через е: «Ничего не нашлось». Книга называется «Три мушкетёра», а ё и е для программы — разные буквы. Это честная граница нашего поиска. База не менялась: правка меняет только код, книги остаются в books.db.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 1 · поиск</div>
+    <h2>Поиск <span class="acc">по куску слова</span></h2>
+  </div>
+  <p>Ищем по части названия или автора, и большие буквы не важны — даже русские.</p>
+  <div class="prompt-card prompt-card--copy" style="margin-top:12px">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text">Добавь поиск по части названия или автора без учёта регистра — и для русских букв.
+- py_lower(s): верни s.lower(), если s не None, иначе None. В connect() после row_factory добавь con.create_function("py_lower", 1, py_lower, deterministic=True) — так функция будет в каждом соединении
+- search_books(): q = input("Часть названия или автора: ").strip().lower(); пустой q — return. con = connect(); SELECT * FROM books WHERE instr(py_lower(title), ?) &gt; 0 OR instr(py_lower(author), ?) &gt; 0 ORDER BY title LIMIT 20 с параметрами (q, q); close; print_books(rows). LIKE и встроенный lower() из SQLite не используй
+- MENU = "1 все книги · 2 добавить · 3 найти · 0 выход"; в цикле 3 — search_books()
+Остальной код не меняй. Верни весь файл.</div>
+  </div>
+  <div class="ek-note" style="margin-top:12px">После каждой правки замените всё содержимое <span class="code-chip">library.py</span> кодом из ответа и сохраните. <span class="code-chip">books.db</span> не трогаем: книги останутся в базе. Проверка: <span class="code-chip">3</span> → «гарри» — две книги, «толст» — три, «POTTER» — английская книга со слайда 16.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Документация SQLite говорит прямо: по умолчанию SQLite понимает большие и маленькие буквы только у ASCII, то есть у латиницы. LIKE для букв за пределами ASCII различает регистр: пример из документации — «a» LIKE «A» истинно, а «æ» LIKE «Æ» ложно. То же с русскими буквами. Встроенная функция lower тоже работает только с ASCII. Поэтому «гарри» через LIKE не нашёл бы «Гарри», а «potter» нашёл бы «Potter». Решение — create_function: мы регистрируем в соединении свою SQL-функцию py_lower, а внутри неё работает lower из Python, который знает все буквы. Функция живёт в соединении, а не в файле базы, поэтому её подключает connect: так она есть у каждого соединения. Покажите на слайде строку с create_function — это главная строка правки, на неё опирается и отладка на слайде 34. Знаков вопроса здесь два, и значений в кортеже тоже два — по одному на title и author. Строка с input на слайд не поместилась: search_books сначала спрашивает запрос и сразу переводит его в маленькие буквы. Так сравниваются маленькие буквы с маленькими: название и автор — через py_lower, запрос — через lower. instr вместо LIKE ещё и проще: знаки процента и подчёркивания в запросе пользователя остаются просто символами, а в LIKE они работают как шаблон. Буквы ё и е lower не склеивает — отсюда «мушкетер» без результата.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2>Учим SQLite <span class="acc">русским буквам</span></h2>
+  </div>
+  <p style="font-size:16px">Встроенные <span class="code-chip">LIKE</span> и <span class="code-chip">lower()</span> в SQLite работают с регистром только у латиницы: <span class="code-chip">'a' LIKE 'A'</span> — да, а с русскими буквами так не выйдет. Поэтому подключаем функцию из Python к соединению с базой: <span class="code-chip">create_function</span> в <span class="code-chip">connect()</span>.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="font-size:13px;line-height:1.42;padding:10px 18px">def py_lower(s):  # lower() из Python знает и русские буквы
+    return s.lower() if s is not None else None
+
+def connect():
+    con = sqlite3.connect(DB)  # нет файла — SQLite создаст его сам
+    con.row_factory = sqlite3.Row  # строки как словари: book["title"]
+    con.create_function("py_lower", 1, py_lower, deterministic=True)  # учим SQLite нашей функции
+    return con
+
+def search_books():
+    con = connect()  # в connect() подключена py_lower
+    rows = con.execute(
+        "SELECT * FROM books WHERE instr(py_lower(title), ?) &gt; 0 "
+        "OR instr(py_lower(author), ?) &gt; 0 ORDER BY title LIMIT 20",
+        (q, q),
+    ).fetchall()</div>
+  </div>
+  <div class="ek-note" style="margin-top:0;font-size:15px;padding:10px 18px"><span class="code-chip" style="padding:0 4px">instr(текст, кусок)</span> — место, где кусок встретился в тексте, или 0, если не встретился. Значит, <span class="code-chip" style="padding:0 4px">&gt; 0</span> — «нашёлся». <span class="code-chip" style="padding:0 4px">q</span> — ваш запрос: программа заранее переводит его в маленькие буквы через <span class="code-chip" style="padding:0 4px">.lower()</span>.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Правка 2 — самая длинная, около 9 минут вместе с разбором. Её промпт не помещается на один слайд, поэтому он из двух сообщений в тот же чат. Скажите вслух: на первое DeepSeek ответит «Жду», а весь library.py пришлёт на второе. Если он всё-таки прислал код, в library.py его не вставляем, а сразу отправляем вторую часть со слайда 24. Всё в этой части знакомо по урокам 14 и 16. Напомните: ключ школьный, он лежит в .env, а в коде его нет. Программа читает его через load_dotenv и os.getenv; load_dotenv без файла ошибки не даёт, поэтому своя проверка с понятным сообщением. JSON mode: в промпте слово JSON и пример формата, достаточный max_tokens — так требует документация DeepSeek. Размышления выключены, как во всех запросах курса. Теги — фиксированный список, как метки настроения урока 14: модель выбирает, а программа проверяет и выбрасывает всё, чего нет в TAGS. Строку DESCRIBE_PROMPT промпт велит собрать простым сложением: в ней есть фигурные скобки примера JSON, а .format принял бы их за свои места для подстановки, и программа упала бы при запуске. Правило «не знаешь — так и скажи» — защита от выдумок: про малоизвестную книгу модель легко сочинит правдоподобный пересказ. Расход: по нашей оценке на основе цен DeepSeek, одно описание стоит около 0,0003 доллара. Нейросеть-помощник может предложить старое имя deepseek-chat или client.responses: промпт называет deepseek-flash и chat.completions явно.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 2 · AI-описание, часть 1 из 2</div>
+    <h2>Ключ, теги и <span class="acc">запрос к DeepSeek</span></h2>
+  </div>
+    <div class="prompt-card prompt-card--copy" style="margin-top:0;padding:14px 22px 12px">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text" style="font-size:15px;line-height:1.42">AI-описания добавим двумя сообщениями. Это первое — детали, код пока не пиши.
+- import os, sys; from dotenv import load_dotenv; from openai import OpenAI. Сразу после BOOKS_JSON: load_dotenv(); KEY = os.getenv("DEEPSEEK_KEY"); если KEY пустой — print("Нет ключа DEEPSEEK_KEY: нужен файл .env в папке lesson-17") и sys.exit(1); client = OpenAI(api_key=KEY, base_url="https://api.deepseek.com")
+- TAGS = ["приключения", "про дружбу", "про семью", "про школу", "про животных", "волшебство", "космос", "загадки", "смешно", "грустно", "страшно", "про взросление"]
+- DESCRIBE_PROMPT собери сложением строк, без f-строки и без .format: «Ты — библиотекарь для школьников 12–15 лет. По названию, автору и году напиши описание книги в 2–3 предложения без спойлеров концовки и выбери от 1 до 3 тегов строго из списка: » + ", ".join(TAGS) + «. Если не знаешь эту книгу точно, не выдумывай: в description так и напиши — не знаю эту книгу, а tags оставь пустым списком. Ответь в формате JSON: {"description": "описание", "tags": ["тег из списка"]}». Кусок с примером JSON возьми в одинарные кавычки
+- ask_ai(book): messages — system с DESCRIBE_PROMPT и user f'{book["title"]} — {book["author"]}, {book["year"]}'. client.chat.completions.create (не client.responses) с model="deepseek-flash" (не меняй имя), response_format={"type": "json_object"}, max_tokens=500, extra_body={"thinking": {"type": "disabled"}}. content = response.choices[0].message.content or ""; пустой после strip — верни None; data = json.loads(content) в try, при json.JSONDecodeError — None; data не словарь или description пустой — None; tags не список — пустой список; оставь только теги из TAGS, не больше 3; верни (description, tags)
+Ответь одним словом: «Жду».</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Вторую часть ученики отправляют, когда DeepSeek ответил «Жду». Первая строка называет всё, что должно прийти из первой части. Если DeepSeek всё же потерял блок, программа упадёт с NameError и именем из первой части — ask_ai, TAGS или client. Пусть ученик напишет в тот же чат: «Добавь всё из первой части и верни весь файл». Если при запуске появилась ModuleNotFoundError про dotenv или openai, на этом компьютере нет библиотек урока 16 — команда установки есть на слайде 34. Новое здесь — UPDATE: программа меняет у одной книги два столбца, description и tags, и только у той, где id совпадает. Теги в базе хранятся одной строкой через запятую. Если описание уже есть, пункт 4 просто показывает карточку: это и способ посмотреть описание после перезапуска, и экономия ключа. Модель не узнала книгу — в базу запишется честное «не знаю эту книгу», и «описать ещё 5» в правке 3 не будет спрашивать о ней снова.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 2 · AI-описание, часть 2</div>
+    <h2>Описание — <span class="acc">в базу</span></h2>
+  </div>
+  <p>Вторая часть — в тот же чат: в ответ придёт весь <span class="code-chip">library.py</span>.</p>
+  <div class="prompt-card prompt-card--copy" style="margin-top:12px">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text">Вторая часть. Добавь в library.py всё из первой: импорты, ключ и client, TAGS, DESCRIBE_PROMPT и ask_ai. И ещё:
+- get_book(book_id): SELECT * FROM books WHERE id = ? → fetchone(), close, верни строку
+- print_card(book): печатай f'📖 {book["title"]} — {book["author"]}, {book["year"]} · {book["genre"]}'; если book["description"] не пустой — print("🤖 AI-описание:", book["description"]) и print("🏷 Теги:", book["tags"] or "—")
+- describe_book(book): result = ask_ai(book); если None — print(f'⚠ «{book["title"]}»: не получилось, попробуйте ещё раз') и верни False; иначе description, tags = result; UPDATE books SET description = ?, tags = ? WHERE id = ? с (description, ", ".join(tags), book["id"]), commit, close; print_card(get_book(book["id"])) и верни True
+- MENU = "1 все книги · 2 добавить · 3 найти · 4 описать · 0 выход". В цикле 4: book_id = input("Номер книги: ").strip(); book = get_book(int(book_id)), если book_id.isdigit(), иначе None. None — «Нет книги с таким номером»; если у книги уже есть description — просто print_card(book), AI не спрашивай; иначе print("⏳ Спрашиваю AI…") и describe_book(book)
+Остальной код не меняй. Верни весь файл.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пока DeepSeek печатает файл, разберите фрагмент. WHERE id = ? — самое важное слово в UPDATE: без него описание одной книги записалось бы всем книгам каталога. Теги приходят списком, а в базу уходят строкой через запятую — так их потом можно искать. Проверка ответа в ask_ai — приём урока 14: пустой ответ, сломанный JSON или не тот формат превращаются в None, и программа просит попробовать ещё раз, а не падает. Пустой ответ в JSON mode документация DeepSeek допускает даже на правильный запрос. Теги вне списка программа выбрасывает: модель могла придумать «магия» вместо «волшебство». Честный разговор с группой. Описание пишет нейросеть, а не библиотекарь, поэтому у него пометка 🤖. Про известные книги оно обычно похоже на правду, про малоизвестные модель может уверенно выдумать сюжет. Пусть ученики добавят через 2 книгу, которой нет, например выдуманное название, и попросят описание. Ответила «не знаю эту книгу» — правило сработало. Сочинила — вот почему пометка 🤖 и ДЗ «Где AI ошибся?».">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2>AI заполняет <span class="acc">столбцы таблицы</span></h2>
+  </div>
+  <p>Ответ модели — не текст для экрана, а данные: программа проверяет его, оставляет только теги из <span class="code-chip">TAGS</span> и записывает в два столбца командой <span class="code-chip">UPDATE</span>.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="font-size:13px;line-height:1.42;padding:10px 18px">def describe_book(book):
+    result = ask_ai(book)
+    if result is None:
+        print(f'⚠ «{book["title"]}»: не получилось, попробуйте ещё раз')
+        return False
+    description, tags = result
+    con = connect()
+    con.execute(
+        "UPDATE books SET description = ?, tags = ? WHERE id = ?",  # меняем только эту книгу
+        (description, ", ".join(tags), book["id"]),
+    )
+    con.commit()  # без commit описание пропадёт после перезапуска
+    con.close()
+    print_card(get_book(book["id"]))
+    return True</div>
+  </div>
+  <div class="ek-note ek-note--green" style="margin-top:12px">Проверьте: <span class="code-chip">4</span> → <span class="code-chip">1</span> — придут описание и теги. Закройте программу, запустите снова и опять <span class="code-chip">4</span> → <span class="code-chip">1</span>: карточка появится сразу, без «⏳ Спрашиваю AI…» — описание взято из базы.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Правка в тот же чат, около 6 минут с разбором. На этом этапе каталог из карточки готов: поиск, AI-описания и теги. describe_batch берёт книги, у которых нет описания, по порядку номеров, и не больше пяти за раз. Пять запросов уходят один за другим, поэтому ответ займёт заметное время — пусть ученики смотрят, как появляются карточки. Подборка по тегу — повод вспомнить LIKE: здесь он подходит, потому что тег мы берём из своего списка TAGS и он записан в базе в точности так же, большие и маленькие буквы совпадают. Если подборка пустая — описанных книг с этим тегом пока нет: пусть ученик ещё раз выберет 5 или возьмёт другой тег. Ни один тег в списке не входит в другой целиком, поэтому поиск по куску строки не перепутает теги.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 3 · подборка по тегу</div>
+    <h2>Описать ещё 5 и <span class="acc">найти по тегу</span></h2>
+  </div>
+  <p>Описывать книги по одной долго. Пусть программа опишет пять книг без описания за раз — не больше, чтобы беречь школьный ключ. А потом покажет подборку по тегу.</p>
+  <div class="prompt-card prompt-card--copy" style="margin-top:12px">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text">Добавь пакетные описания и подборку по тегу.
+- BATCH = 5 — больше описаний за раз не делаем, бережём школьный ключ
+- describe_batch(): SELECT * FROM books WHERE description IS NULL ORDER BY id LIMIT ? с параметром (BATCH,); close; если книг нет — «У всех книг уже есть описания»; иначе для каждой print(f'⏳ {book["title"]}…') и describe_book(book)
+- books_by_tag(): напечатай TAGS с номерами от 1 строками f"{i:&gt;2}. {tag}"; choice = input("Номер тега: ").strip(); если это не число от 1 до len(TAGS) — «Нет такого тега» и return; tag = TAGS[int(choice) - 1]; SELECT * FROM books WHERE tags LIKE ? ORDER BY title с параметром ("%" + tag + "%",); close; print(f"🏷 {tag}:") и print_books(rows)
+- MENU = "1 все книги · 2 добавить · 3 найти · 4 описать · 5 описать ещё 5 · 6 по тегу · 0 выход"; в цикле 5 — describe_batch(), 6 — books_by_tag()
+Остальной код не меняй. Верни весь файл.</div>
+  </div>
+  <div class="ek-note" style="margin-top:12px">Проверка: <span class="code-chip">5</span> два раза — у 10 книг появятся описания. Потом <span class="code-chip">6</span> и номер тега «про дружбу» — подборка книг с этим тегом.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="В столбце tags лежит строка вроде «волшебство, про дружбу, про школу». Шаблон с процентами по краям значит: тег стоит где угодно в строке. Почему здесь можно LIKE, а в правке 1 нельзя: регистр. LIKE различает большие и маленькие русские буквы, но тег мы берём из своего списка, и в базе он записан точно так же — регистр совпадает. А в правке 1 ученик печатает что угодно. Пользователь тег не печатает, а выбирает номер: так в запрос не попадёт ни опечатка, ни лишний символ. NULL — особое значение «пусто». У книг, которые ещё не описывали, в description лежит NULL, и IS NULL их находит. Написать = NULL нельзя: любое сравнение с NULL даёт NULL, а не «да», и такая строка в ответ не попадёт. После «не знаю эту книгу» description уже не NULL — такую книгу describe_batch больше не возьмёт. Здесь же LIMIT со знаком вопроса: число 5 тоже передаём как значение.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2><span class="code-chip">LIKE</span> и <span class="acc">знак процента</span></h2>
+  </div>
+  <p>Книги без описания выбирает <span class="code-chip">WHERE description IS NULL … LIMIT ?</span>: в поле, куда ещё ничего не записали, лежит <span class="code-chip">NULL</span> — «пусто». А подборку по тегу ищет <span class="code-chip">LIKE</span>.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body">    tag = TAGS[int(choice) - 1]  # тег — из нашего списка, а не из ввода
+    con = connect()
+    rows = con.execute(
+        "SELECT * FROM books WHERE tags LIKE ? ORDER BY title",
+        ("%" + tag + "%",),  # % — любые символы до и после тега
+    ).fetchall()
+    con.close()
+    print(f"🏷 {tag}:")
+    print_books(rows)</div>
+  </div>
+  <div class="ek-note" style="margin-top:12px">В <span class="code-chip">LIKE</span> знак <span class="code-chip">%</span> — любое количество любых символов, <span class="code-chip">_</span> — ровно один символ. Проценты добавляем к значению в Python, а не вписываем в SQL-строку: значение всё равно уходит через <span class="code-chip">?</span>.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Резервная правка, около 4 минут. Делают только те, кто закончил правку 3 раньше 48-й минуты; остальные — дома по желанию, по этому промпту в чате урока. Полоски из символов — приём урока 14: сколько книг, столько квадратиков. Главное — что считает база, а не цикл в Python: одна команда SQL — и готов подсчёт по всем жанрам. Если ученик пропустил эту правку и делает правку 5, промпт правки 5 всё равно сработает: он добавляет свои пункты в меню перед «0 выход».">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 4 · резерв</div>
+    <h2>Портрет каталога <span class="acc">одной командой</span></h2>
+  </div>
+  <p>Для тех, кто опережает. Считать будет база: <span class="code-chip">COUNT</span> считает строки, <span class="code-chip">GROUP BY</span> раскладывает их по группам.</p>
+  <div class="prompt-card prompt-card--copy" style="margin-top:12px">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text">Добавь статистику каталога.
+- show_stats(): одним соединением посчитай total = SELECT COUNT(*) FROM books; described = SELECT COUNT(*) FROM books WHERE description IS NOT NULL; genres = SELECT genre, COUNT(*) AS n FROM books GROUP BY genre ORDER BY n DESC; decades = SELECT year / 10 * 10 AS decade, COUNT(*) AS n FROM books GROUP BY decade ORDER BY decade; close
+- напечатай f"📊 Книг: {total}, с AI-описанием: {described}", потом «По жанрам:» и для каждой строки g печатай f'  {g["genre"]:&lt;12} {"█" * g["n"]} {g["n"]}', потом «По десятилетиям:» и для каждой d — f'  {d["decade"]}-е {"█" * d["n"]} {d["n"]}'
+- в MENU добавь «7 статистика» перед «0 выход», в цикле 7 — show_stats()
+Остальной код не меняй. Верни весь файл.</div>
+  </div>
+  <div class="ek-note" style="margin-top:12px">Проверка: <span class="code-chip">7</span> — число книг, сколько из них с описанием, полоски по жанрам и по десятилетиям.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Прочитайте запрос вслух: выбери жанр и количество книг, сгруппируй по жанру, отсортируй по количеству от большего к меньшему. Для десятилетий база делит год на 10 и умножает обратно: у целых чисел дробная часть отбрасывается, поэтому 1997 превращается в 1990. Сравните с уроком 14: там счётчики by_mood мы собирали словарём в цикле, а здесь подсчёт целиком делает база. Если ученик добавил книгу и оставил жанр пустым, такие книги соберутся в отдельную строку без названия жанра — это не ошибка.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2><span class="code-chip">COUNT</span> и <span class="acc"><span class="code-chip">GROUP BY</span></span></h2>
+  </div>
+  <p><span class="code-chip">GROUP BY genre</span> собирает книги одного жанра в группу, <span class="code-chip">COUNT(*)</span> считает книги в каждой группе, <span class="code-chip">AS n</span> даёт числу имя. Год в десятилетие превращает арифметика: <span class="code-chip">1997 / 10 * 10</span> → <span class="code-chip">1990</span>.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body">    genres = con.execute(
+        "SELECT genre, COUNT(*) AS n FROM books GROUP BY genre ORDER BY n DESC"
+    ).fetchall()
+    decades = con.execute(
+        "SELECT year / 10 * 10 AS decade, COUNT(*) AS n FROM books "
+        "GROUP BY decade ORDER BY decade"
+    ).fetchall()
+    con.close()
+    print(f"📊 Книг: {total}, с AI-описанием: {described}")
+    print("По жанрам:")
+    for g in genres:
+        print(f'  {g["genre"]:&lt;12} {"█" * g["n"]} {g["n"]}')</div>
+  </div>
+  <div class="ek-note" style="margin-top:12px"><span class="code-chip">ORDER BY n DESC</span> — по убыванию: самый частый жанр первым. Без <span class="code-chip">DESC</span> — по возрастанию.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Резервная правка, около 5 минут; кто не успел — дома по желанию, по этому промпту в чате урока. Скажите вслух: удаление нельзя отменить, поэтому программа сначала спросит «да/нет», а перед тем как удалить или изменить книгу, сделает копию базы. Удаляем свою книгу, например Harry Potter со слайда 16, а не книгу из раздаточного списка. Подтверждение — приём урока 13: опасное действие выполняется только после явного «да», всё остальное — отмена. Копия базы — обычная копия файла: shutil.copy делает её до DELETE или UPDATE, а все соединения к этому моменту закрыты. Копия одна и перезаписывается при каждом удалении или правке: она хранит состояние перед последним изменением. Правка года и жанра — два готовых запроса UPDATE: ученик выбирает, что менять, словом, а сама команда SQL заранее записана в программе. Из ввода в базу уходит только значение — через знак вопроса. Если удалить книгу с самым большим номером, следующая добавленная книга может получить тот же номер: база берёт самый большой номер в таблице и прибавляет единицу. Это не ошибка.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Правка 5 · резерв</div>
+      <h2>Удалить и изменить — <span class="acc">с копией базы</span></h2>
+    </div>
+    <div class="prompt-card prompt-card--copy" style="margin-top:10px">
+      <span class="pc-tag">→ В тот же чат</span>
+      <div class="pc-text" style="font-size:15px;line-height:1.4">Добавь удаление и правку книги — с подтверждением и копией базы.
+- import shutil; BACKUP = HERE / "books_backup.db"; backup(): shutil.copy(DB, BACKUP) и print("💾 Копия базы: books_backup.db")
+- ask_book(): book_id = input("Номер книги: ").strip(); book = get_book(int(book_id)), если book_id.isdigit(), иначе None; если None — «Нет книги с таким номером»; верни book
+- delete_book(): book = ask_book(); None — return; answer = input(f'Удалить «{book["title"]}»? (да/нет) ').strip().lower(); не «да» — «Отменено» и return; backup(); DELETE FROM books WHERE id = ? с (book["id"],), commit, close, «🗑 Удалено»
+- edit_book(): book = ask_book(); None — return; field = input("Что изменить — год или жанр? ").strip().lower(). «год»: value = input(f'Новый год (сейчас {book["year"]}): ').strip(); не isdigit() — «Год — это число» и return; value = int(value); sql = "UPDATE books SET year = ? WHERE id = ?". «жанр»: value = input(f'Новый жанр (сейчас {book["genre"]}): ').strip(); пустой — return; sql = "UPDATE books SET genre = ? WHERE id = ?". Другое — «Можно изменить только год или жанр» и return. Потом backup(); con.execute(sql, (value, book["id"])), commit, close; «✏️ Сохранено» и print_card(get_book(book["id"]))
+- в MENU добавь «8 удалить · 9 изменить» перед «0 выход», в цикле 8 — delete_book(), 9 — edit_book()
+Остальной код не меняй. Верни весь файл.</div>
+    </div>
+    <div class="ek-note" style="margin-top:8px">Проверка: <span class="code-chip">8</span> → номер добавленной вами книги → «нет» — «Отменено»; ещё раз → «да» — «🗑 Удалено». Закройте программу и запустите снова: книги нет, а рядом с <span class="code-chip">library.py</span> лежит <span class="code-chip">books_backup.db</span>.</div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пока DeepSeek печатает файл, разберите порядок. Сначала программа находит книгу и показывает её название: удалять по одному номеру вслепую опасно, а с названием сразу видно, та ли книга. Потом вопрос «да/нет»: любой другой ответ — отмена. Потом копия. И только потом DELETE с WHERE id = ?: без WHERE команда удалила бы весь каталог. Восстановление — без удаления файлов: переименовываем, а не стираем. Переименовывать books.db можно только после выхода из программы. Пусть ученики, которые сделали правку, удалят свою добавленную книгу и проверят перезапуском, что она не вернулась. Эта же копия понадобится в ДЗ 2, но она одна: следующее удаление или правка её перезапишет. Поэтому перед ДЗ 2 ученики сделают ещё и свою копию books_hw.db — слайд 37.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Разбор кода</div>
+      <h2>Сначала «да», <span class="acc">потом DELETE</span></h2>
+    </div>
+    <p>Три защиты подряд: книга должна существовать, пользователь говорит «да», программа делает копию. Только после этого — <span class="code-chip">DELETE</span> с <span class="code-chip">WHERE id = ?</span>.</p>
+    <div class="code-win" style="margin-top:10px">
+      <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+      <div class="code-body" style="font-size:14px;line-height:1.4;padding:10px 20px;max-height:none"><span class="kw">def</span> delete_book():
+    book = ask_book()
+    <span class="kw">if</span> book <span class="kw">is</span> <span class="kw">None</span>:
+        <span class="kw">return</span>
+    answer = input(f<span class="st">'Удалить «{book["title"]}»? (да/нет) '</span>).strip().lower()
+    <span class="kw">if</span> answer != <span class="st">"да"</span>:
+        print(<span class="st">"Отменено"</span>)
+        <span class="kw">return</span>
+    backup()  <span class="cm"># сначала копия базы</span>
+    con = connect()
+    con.execute(<span class="st">"DELETE FROM books WHERE id = ?"</span>, (book[<span class="st">"id"</span>],))  <span class="cm"># без WHERE удалились бы все книги</span>
+    con.commit()
+    con.close()
+    print(<span class="st">"🗑 Удалено"</span>)</div>
+    </div>
+    <div class="ek-note" style="margin-top:10px">Как вернуть копию: выйдите из программы через <span class="code-chip">0</span>, в проводнике VS Code переименуйте <span class="code-chip">books.db</span> в <span class="code-chip">books_broken.db</span>, а <span class="code-chip">books_backup.db</span> — в <span class="code-chip">books.db</span>. Запустите снова.</div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Вопрос на К1. Дайте 10–15 секунд, потом раскройте ответ. Подчеркните: дело не только в скорости. База берёт на себя поиск, сортировку и подсчёт — то, что для файла мы каждый раз программировали сами. Дополнительный вопрос: что будет, если забыть commit после INSERT? Книга пропадёт после закрытия программы.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Проверка · вопрос 1</div>
+      <h2>Изучите ситуацию и <span class="acc">ответьте</span></h2>
+    </div>
+    <div class="quiz-box" style="margin-top:10px">
+      <span class="q-num">Вопрос 1</span>
+      <p class="q-text">В каталоге 5000 книг. Вы добавляете одну книгу и ищете все книги Толстого. Что делает программа, если каталог лежит в <span class="code-chip">books.json</span>, и что — если в <span class="code-chip">books.db</span>?</p>
+      <div class="quiz-answer">
+        <button class="quiz-btn" type="button">Показать ответ</button>
+        <div class="quiz-reveal">
+          <p>С файлом программа всё делает сама: читает все 5000 книг, перебирает их в цикле в поисках Толстого, а чтобы добавить одну книгу — переписывает весь файл. С базой программа отправляет две команды: <span class="code-chip">INSERT</span> добавляет одну строку, а <span class="code-chip">SELECT … WHERE</span> возвращает только нужные книги — искать и отбирать их будет база. Писать поиск, сортировку и подсчёт руками не нужно, а после <span class="code-chip">commit</span> данные переживают перезапуск.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Вопрос на К3 — первый запрос, который ученики пишут сами, без вариантов ответа. Дайте 40 секунд: пишут от руки или в заметках, не в DeepSeek. Потом раскройте ответ, и пусть каждый сверит свой запрос. Разберите четыре типичные ошибки. Нет кавычек вокруг слова сказка — SQLite примет его за имя столбца, а такого столбца нет. Ошибка будет такой: no such column: сказка. OR вместо AND — придут все сказки и вдобавок все книги до 1950 года любого жанра: AND — оба условия сразу, OR — хотя бы одно. Лишний DESC — книги придут от новых к старым: ORDER BY без DESC сортирует по возрастанию, с DESC — по убыванию. Двойные кавычки вокруг слова сказка — ловушка из заметки к слайду 10: текст в SQL пишут в одинарных кавычках, а двойные — для имён столбцов. Если у кого-то ORDER BY стоит раньше WHERE — порядок частей как на шпаргалке: сначала WHERE, потом ORDER BY. Из 46 раздаточных книг такой запрос вернёт 7 сказок, первой — «Ветер в ивах» 1908 года: пусть желающие проверят это командой sql в ДЗ 2. Дополнительный вопрос, тоже письменно: книги Джоан Роулинг от новых к старым. Ответ: SELECT * FROM books WHERE author = 'Джоан Роулинг' ORDER BY year DESC.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Проверка · вопрос 2</div>
+      <h2>Напишите запрос <span class="acc">сами</span></h2>
+    </div>
+    <div class="quiz-box" style="margin-top:10px">
+      <span class="q-num">Вопрос 2</span>
+      <p class="q-text">Нужны все сказки, вышедшие до 1950 года, от старых к новым. Напишите запрос по шпаргалке со слайда 6 — на листке или в заметках. Таблица — <span class="code-chip">books</span>, жанр — в столбце <span class="code-chip">genre</span>, год — в <span class="code-chip">year</span>, а два условия сразу соединяет <span class="code-chip">AND</span>. Текст в SQL пишут в одинарных кавычках.</p>
+      <div class="quiz-answer">
+        <button class="quiz-btn" type="button">Показать ответ</button>
+        <div class="quiz-reveal">
+          <p><span class="code-chip">SELECT * FROM books WHERE genre = 'сказка' AND year &lt; 1950 ORDER BY year</span>. Оба условия сразу — <span class="code-chip">AND</span>. От старых к новым — <span class="code-chip">ORDER BY year</span> без <span class="code-chip">DESC</span>. Слово «сказка» — в одинарных кавычках. А в нашей программе значения передали бы через <span class="code-chip">?</span>: <span class="code-chip">WHERE genre = ? AND year &lt; ?</span>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пройдитесь сверху вниз. Регистр — главная ловушка урока: если DeepSeek заменил наш поиск на LIKE, латиница искаться будет, а русские слова с другой большой буквой — нет. Функция py_lower живёт в соединении, а не в базе: если её подключили в одном месте, а запрос выполняется через другое соединение, SQLite про неё не знает. Пустой ответ в JSON mode документация DeepSeek допускает даже на правильный запрос: программа ловит его и просит попробовать ещё раз. 401 и 402 по таблице ошибок DeepSeek — неверный ключ и закончившийся баланс: ученик ничего не чинит, ключ школьный. Если ключ где-то показался на экране, в чате или на скриншоте — тоже сообщите школе. ModuleNotFoundError про dotenv или openai бывает у тех, кто делал урок 16 на другом компьютере или переустанавливал Python: после установки запустите программу снова. Если команда pip не находится, выполните python -m pip install openai python-dotenv, а если не находится и python — py -m pip install openai python-dotenv. Если no such column — слайд 20. Непонятную ошибку целиком копируем в тот же чат DeepSeek.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Отладка</div>
+      <h2>Почему каталог <span class="acc">капризничает</span></h2>
+    </div>
+    <div class="kv">
+      <div class="kv-row"><div class="k">«гарри» не находит «Гарри»</div><div class="v">В поиске появились <span class="code-chip">LIKE</span> или встроенный <span class="code-chip">lower()</span>. Верните <span class="code-chip">py_lower</span> и <span class="code-chip">instr</span> из правки 1.</div></div>
+      <div class="kv-row"><div class="k">«мушкетер» не находит «мушкетёра»</div><div class="v">Не ошибка: ё и е для программы — разные буквы. Ищите с ё или по куску без неё: «мушкет».</div></div>
+      <div class="kv-row"><div class="k">Ошибка, где упомянута <span class="code-chip">py_lower</span></div><div class="v">Функция подключена не в <span class="code-chip">connect()</span>. Она должна подключаться к каждому соединению.</div></div>
+      <div class="kv-row"><div class="k">«⚠ … не получилось»</div><div class="v">В JSON mode DeepSeek изредка присылает пустой ответ. Выберите <span class="code-chip">4</span> ещё раз.</div></div>
+      <div class="kv-row"><div class="k">Описания пропали после перезапуска</div><div class="v">В <span class="code-chip">describe_book</span> нет <span class="code-chip">con.commit()</span> после <span class="code-chip">UPDATE</span>.</div></div>
+    </div>
+    <div class="ek-note" style="margin-top:10px"><span class="code-chip">NameError</span> после правки — DeepSeek вернул файл не целиком: попросите в том же чате «Верни весь файл, без пропусков». <span class="code-chip">ModuleNotFoundError</span> про <span class="code-chip">dotenv</span> или <span class="code-chip">openai</span> — выполните <span class="code-chip">pip install openai python-dotenv</span>. Ошибка 401 или 402 — сообщите школе.</div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пять привычек урока — дайте сфотографировать. Первые две — правила SQL, которые понадобятся во всём модуле: на уроках 19–22 база будет в каждом проекте. Третья — из урока 16: файл рядом со скриптом, иначе при запуске из другой папки появится второй, пустой books.db. Четвёртая: удалить в базе легко, а кнопки «отменить» нет. Пятая — про честность: описание пишет нейросеть, поэтому пометка 🤖 остаётся всегда. И напомните правило модуля: имён, адресов, телефонов и настоящих паролей в программы не вводим. books.db и .env никому не пересылаем и в интернет не выкладываем.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Запомните</div>
+      <h2>Привычки <span class="acc">работы с базой</span></h2>
+    </div>
+    <div class="kv">
+      <div class="kv-row"><div class="k">01 · Значения — только через <span class="code-chip">?</span></div><div class="v">Никаких f-строк в SQL: апостроф не сломает запрос, а чужой ввод не станет командой.</div></div>
+      <div class="kv-row"><div class="k">02 · Изменили — <span class="code-chip">commit</span></div><div class="v"><span class="code-chip">INSERT</span>, <span class="code-chip">UPDATE</span> и <span class="code-chip">DELETE</span> без <span class="code-chip">commit</span> пропадут после закрытия программы.</div></div>
+      <div class="kv-row"><div class="k">03 · База — рядом со скриптом</div><div class="v">Путь от <span class="code-chip">Path(__file__)</span>. Файл <span class="code-chip">.db</span> в VS Code не открываем и не правим руками.</div></div>
+      <div class="kv-row"><div class="k">04 · Перед удалением — копия</div><div class="v">И <span class="code-chip">WHERE</span> в каждом <span class="code-chip">UPDATE</span> и <span class="code-chip">DELETE</span>.</div></div>
+      <div class="kv-row"><div class="k">05 · AI-описание — с пометкой</div><div class="v">Это текст нейросети: проверяйте. Ключ — только в <span class="code-chip">.env</span>.</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Демо в парах, около 3 минут: сосед садится за компьютер автора, выбирает тег и открывает карточку найденной книги. Если подборка по тегу у соседа пустая — пусть возьмёт тег «волшебство» или «приключения»: они встречаются чаще. Пусть двое-трое покажут группе самое удачное и самое странное AI-описание. У кого чего-то нет — по чек-листу видно, что доделать дома. Проверьте у всех, что ключа в library.py нет: он только в .env.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Чек-лист</div>
+      <h2>Что должно быть к <span class="acc">55-й минуте</span></h2>
+    </div>
+    <div class="grid-2">
+      <div class="info-card">
+        <h3 style="color:var(--ek-green-deep)">Готово</h3>
+        <ul class="clean">
+          <li><span class="code-chip">python library.py</span> — «📚 Книг в каталоге:» 46 из файла плюс ваши, после перезапуска столько же</li>
+          <li><span class="code-chip">3</span> — «гарри» и «толст» находят книги</li>
+          <li><span class="code-chip">4</span> — описание 🤖 и теги, после перезапуска на месте</li>
+          <li><span class="code-chip">6</span> — подборка книг по тегу</li>
+          <li>Ключ только в <span class="code-chip">.env</span>, в <span class="code-chip">library.py</span> его нет</li>
+        </ul>
+      </div>
+      <div class="info-card">
+        <h3 style="color:var(--ek-violet-deep)">Дома, по желанию</h3>
+        <ul class="clean">
+          <li>Правка 4 со слайда 28: статистика</li>
+          <li>Правка 5 со слайда 30: удалить и изменить</li>
+        </ul>
+      </div>
+    </div>
+    <div class="ek-note ek-note--green">Демо: поменяйтесь местами с соседом. Он выбирает <span class="code-chip">6</span>, берёт любой тег и находит книгу в вашем каталоге, а потом открывает её карточку через <span class="code-chip">4</span>.</div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="ДЗ примерно на 30 минут. Моя полка — проверка честности AI: на своих книгах ученик сразу видит, где описание выдумано. В задании 2 ученик просит DeepSeek в чате урока добавить команду sql: ввод запроса, копия базы перед любым запросом, кроме SELECT (как backup в правке 5), execute и печать строк. Тем, у кого не получится сформулировать, пришлите в чат группы готовый промпт: «Добавь в меню команду sql. Спроси запрос через input с подсказкой SQL и двоеточием и убери пробелы по краям; пустой запрос — ничего не делай. Если запрос не начинается с SELECT (большие или маленькие буквы — не важно), сначала сделай копию базы: вызови backup(), а если такой функции нет — добавь её: shutil.copy из books.db в books_backup.db рядом со скриптом. Перед SELECT копию не делай. Потом открой con = connect() и выполни запрос одним вызовом con.execute; каждую строку результата напечатай как tuple(row); потом con.commit() и con.close(). Любую ошибку поймай и напечатай одной строкой, программа не должна падать. executescript не используй. Остальной код не меняй. Верни весь файл.» Почему копия только перед изменяющими запросами: копия программы одна, и SELECT после DELETE иначе записал бы поверх неё уже пустую базу. Без commit изменения не сохранятся при закрытии соединения, и опыт с DELETE ниже не получится. С tuple(row) печатаются сами значения строки. Просите именно execute, а не executescript: execute выполняет ровно одну команду, а executescript выполнит сразу все. Ручная копия books_hw.db из красной рамки — страховка на любой случай: копия программы хранит только состояние перед последним изменением, а если DeepSeek не добавил backup, её нет вовсе. Как сделать ручную копию: выйти из каталога через 0, в проводнике VS Code правый клик по books.db — Copy, потом Paste, и переименовать появившуюся копию в books_hw.db. Опыт с DELETE: пусть ученик введёт sql → DELETE FROM books, а потом sql → SELECT COUNT(*) FROM books — программа напечатает (0,). Копию программа сделала перед DELETE, а перед SELECT не делает, поэтому копия цела. Дальше — сразу выход через 0 и восстановление по слайду 31. Скажите честно, что будет, если этого не сделать. Каталог с пустой таблицей при запуске снова перенесёт книги и напишет «📥 Перенёс книги из books.json: 46». Но это будут книги без описаний и тегов и без тех, что ученик добавил сам, — копию всё равно нужно вернуть. Если после DELETE были ещё изменяющие запросы или пункты 8 и 9, копия программы уже перезаписана. Тогда возвращаем books_hw.db тем же способом: books.db переименовать в books_broken.db, а books_hw.db — в books.db. Пропадёт только то, что сделано после ручной копии. Опыт с DELETE — мостик к уроку 18, а сам books.db понадобится в его каркасе. Банк заданий: tasks.json урока 16 переезжает в таблицу tasks со столбцами предмет, тема, вопрос, ответ — тем же приёмом, что books.json сегодня. Базы tasks.db и «Фильмотека» понадобятся на уроке 18. Разбор — на слайде 3 урока 18: SQL писать трудно — кавычки, запятые, имена столбцов. Мостик: пусть SQL пишет нейросеть, а программа решает, что ей разрешено, — только читать.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Домашнее задание · около 30 минут</div>
+      <h2>Каталог <span class="acc">своими руками</span></h2>
+    </div>
+    <p style="font-size:16px">Задания 1 и 2 делайте в чате урока — там уже весь <span class="code-chip">library.py</span>. Нет чата — откройте новый чат DeepSeek, вставьте свой <span class="code-chip">library.py</span> и опишите задачу.</p>
+    <div class="grid-3">
+      <div class="info-card">
+        <h3>Моя полка</h3>
+        <p style="font-size:15px">Добавьте 5 книг, которые читали сами, получите для них AI-описания и найдите их по тегу. Где AI ошибся в описании?</p>
+      </div>
+      <div class="info-card">
+        <h3>SQL своими руками</h3>
+        <p style="font-size:15px">Попросите DeepSeek добавить команду <span class="code-chip">sql</span>: один запрос через <span class="code-chip">execute</span>, копия базы перед любым запросом, кроме <span class="code-chip">SELECT</span>, печать строк как <span class="code-chip">tuple(row)</span>, в конце <span class="code-chip">commit</span>. Сформулируйте словами 5 вопросов к каталогу и напишите к ним <span class="code-chip">SELECT</span> по шпаргалке со слайда 6.</p>
+      </div>
+      <div class="info-card">
+        <h3>Банк заданий в базе</h3>
+        <p style="font-size:15px">Перенесите <span class="code-chip">tasks.json</span> урока 16 в <span class="code-chip">tasks.db</span> и найдите задания по теме SQL-запросом. Нет <span class="code-chip">tasks.json</span> — сделайте «Фильмотеку»: маленькую базу своих фильмов или игр.</p>
+      </div>
+    </div>
+    <div class="ek-note ek-note--red" style="margin-top:10px">Перед заданием 2 выйдите из каталога и скопируйте <span class="code-chip">books.db</span> в <span class="code-chip">books_hw.db</span>: <span class="code-chip">books_backup.db</span> перезаписывается при каждом изменении. Пропали книги — сразу выйдите через <span class="code-chip">0</span> и верните копию, как на слайде 31. В программы не вводите имён и личных данных. Ключ — только в <span class="code-chip">.env</span>; утёк ключ, ошибка 401 или 402 — сообщите школе.</div>
+  </div>
+</section>
+
+<section class="slide slide--green"
+  data-notes="Закройте урок. Главная мысль: когда записей много, файла мало — база сама ищет, сортирует и считает, а программа формулирует вопрос на SQL. Напомните про знак вопроса и commit — с ними база будет в каждом проекте модуля. На уроке 18 SQL начнёт писать нейросеть по вопросу словами, а программа будет следить, чтобы этот SQL только читал данные.">
+<div class="sl-orbit">
+    <i class="sl-ring"></i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:75px;top:20px;width:150px;height:150px;transform:rotate(-10deg)"><use href="#ek-i-trophy"/></svg>
+    <i class="sl-letter" style="left:466px;top:13px;width:78px;height:78px;--fs:36px">S</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1040px;top:15px;width:130px;height:130px;transform:rotate(12deg)"><use href="#ek-i-heart"/></svg>
+    <i class="sl-letter" style="left:68px;top:268px;width:100px;height:100px;--fs:46px">Q</i>
+    <i class="sl-letter" style="left:1137px;top:327px;width:95px;height:95px;--fs:44px">L</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:102px;top:532px;width:125px;height:125px;transform:rotate(-15deg)"><use href="#ek-i-star"/></svg>
+    <i class="sl-letter" style="left:726px;top:613px;width:78px;height:78px;--fs:36px">D</i>
+    <i class="sl-letter" style="left:380px;top:625px;width:70px;height:70px;--fs:32px">B</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1045px;top:540px;width:110px;height:110px;transform:rotate(8deg)"><use href="#ek-i-gem"/></svg>
+  </div>
+  <div class="cover-center">
+    <div class="bubble">
+      <h1>До встречи<br>на уроке 18!</h1>
+      <p>Сегодня вы собрали первую базу данных: каталог книг с поиском, AI-описаниями и тегами. На уроке 18 каталог начнёт отвечать на вопросы, заданные обычными словами.</p>
+    </div>
+  </div>
+</section>
+</main>
+
+<div class="notes" id="notes">
+  <div class="notes__header">Заметки преподавателя &middot; N — скрыть</div>
+  <div class="notes__body" id="notesBody">—</div>
+</div>
+
+<div class="hint"><kbd>←</kbd><kbd>→</kbd> слайды &middot; <kbd>N</kbd> заметки &middot; <kbd>F</kbd> весь экран</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="ek-i-trophy" viewBox="0 0 100 100"><path fill="currentColor" d="M24 16h52v12h8c6 0 10 4 10 10 0 15-11 25-23 27-3 5-8 9-14 10v8h14c4 0 7 3 7 7v4H22v-4c0-4 3-7 7-7h14v-8c-6-1-11-5-14-10C17 63 6 53 6 38c0-6 4-10 10-10h8V16zM24 36h-7c-2 0-4 2-4 4 0 8 5 15 12 18-1-5-1-10-1-16v-6zM76 36v6c0 6 0 11-1 16 7-3 12-10 12-18 0-2-2-4-4-4h-7z"/></symbol>
+<symbol id="ek-i-heart" viewBox="0 0 100 100"><path fill="currentColor" d="M50 88C28 72 10 56 10 38 10 24 21 14 34 14c6 0 12 3 16 8 4-5 10-8 16-8 13 0 24 10 24 24 0 18-18 34-40 50z"/></symbol>
+<symbol id="ek-i-star" viewBox="0 0 100 100"><path fill="currentColor" d="M50 8l12 27 29 3-22 20 6 29-25-15-25 15 6-29L9 38l29-3z"/></symbol>
+<symbol id="ek-i-gem" viewBox="0 0 100 100"><path fill="currentColor" d="M30 12h40l18 24-38 52L12 36zM36 20l-12 16h20zM64 20l-8 16h20zM50 22l-9 14h18zM26 44l20 30-8-30zM62 44l-8 30 20-30zM46 44h8l-4 26z"/></symbol>
+</defs></svg>
+
+<script>
+/* ============ Автомасштаб сцены ============ */
+(function(){
+  'use strict';
+  var stage = document.getElementById('deck');
+  function fit(){
+    var w = window.innerWidth, h = window.innerHeight;
+    if (!w || !h) return;
+    var s = Math.min(w / 1320, h / 780);
+    if (document.fullscreenElement) s = Math.min(w / 1280, h / 720);
+    stage.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+    stage.style.borderRadius = document.fullscreenElement ? '0' : '18px';
+  }
+  window.addEventListener('resize', fit);
+  document.addEventListener('fullscreenchange', fit);
+  fit();
+})();
+
+/* ============ Навигация по слайдам ============ */
+(function(){
+  'use strict';
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var total = slides.length;
+  var idx = 0;
+  document.getElementById('total').textContent = total;
+
+  var progressEl = document.getElementById('progress');
+  var currentEl = document.getElementById('current');
+  var notesPanel = document.getElementById('notes');
+  var notesBody = document.getElementById('notesBody');
+
+  slides.forEach(function(s, i){
+    if (s.classList.contains('slide--content')) s.setAttribute('data-page', i + 1);
+  });
+
+  function render(){
+    slides.forEach(function(s, i){
+      s.classList.remove('active', 'prev');
+      if (i === idx) s.classList.add('active');
+      else if (i < idx) s.classList.add('prev');
+    });
+    progressEl.style.width = ((idx + 1) / total * 100).toFixed(2) + '%';
+    currentEl.textContent = idx + 1;
+    notesBody.textContent = slides[idx].getAttribute('data-notes') || '—';
+  }
+
+  function go(n){ idx = Math.max(0, Math.min(total - 1, n)); render(); }
+  function next(){ go(idx + 1); }
+  function prev(){ go(idx - 1); }
+
+  document.addEventListener('keydown', function(e){
+    var active = document.activeElement;
+    if (active && (active.isContentEditable || active.tagName === 'TEXTAREA' || active.tagName === 'INPUT')) return;
+    switch (e.key){
+      case 'ArrowRight': case 'PageDown': case ' ':
+        e.preventDefault(); next(); break;
+      case 'ArrowLeft': case 'PageUp':
+        e.preventDefault(); prev(); break;
+      case 'Home': e.preventDefault(); go(0); break;
+      case 'End': e.preventDefault(); go(total - 1); break;
+      case 'f': case 'F': case 'а': case 'А':
+        e.preventDefault();
+        if (!document.fullscreenElement){ if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen(); }
+        else if (document.exitFullscreen) document.exitFullscreen();
+        break;
+      case 'n': case 'N': case 'т': case 'Т':
+        e.preventDefault(); notesPanel.classList.toggle('active'); break;
+      case 'Escape':
+        if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
+        notesPanel.classList.remove('active'); break;
+    }
+  });
+
+  var tx = 0, ty = 0;
+  document.addEventListener('touchstart', function(e){ tx = e.changedTouches[0].screenX; ty = e.changedTouches[0].screenY; }, { passive: true });
+  document.addEventListener('touchend', function(e){
+    var dx = e.changedTouches[0].screenX - tx, dy = e.changedTouches[0].screenY - ty;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)){ if (dx < 0) next(); else prev(); }
+  }, { passive: true });
+
+  document.addEventListener('click', function(e){
+    if (e.target.closest('a,button,input,textarea,code,pre,[contenteditable],.code-win,.term,.prompt-card,.quiz-box,.notes')) return;
+    var x = e.clientX, w = window.innerWidth;
+    if (x < w * 0.25) prev();
+    else if (x > w * 0.75) next();
+  });
+
+  render();
+})();
+
+/* ============ Квизы: показать ответ ============ */
+(function(){
+  'use strict';
+  Array.prototype.slice.call(document.querySelectorAll('.quiz-btn')).forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var box = btn.closest('.quiz-box');
+      var reveal = box && box.querySelector('.quiz-reveal');
+      if (!reveal) return;
+      var shown = reveal.classList.toggle('show');
+      btn.textContent = shown ? 'Скрыть ответ' : 'Показать ответ';
+    });
+  });
+})();
+</script>
+</body>
+</html>

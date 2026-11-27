@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Урок 19 — Трекер тренировок с графиками | Eduson Kids</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+/* ============ Дизайн-токены Eduson Kids ============ */
+:root{
+  --ek-violet:#8C7FF6; --ek-violet-soft:#A79EF9; --ek-violet-deep:#6F61E8; --ek-violet-bg:#F0EEFE;
+  --ek-green:#3DF79D; --ek-green-soft:#7BF9BD; --ek-green-mint:#C9F7E3; --ek-green-pale:#E7FDF2; --ek-green-deep:#0FBF6E;
+  --ek-ink:#17171C; --ek-gray:#8F8F98; --ek-gray-light:#EFEFF2; --ek-line:#E3E3EA;
+  --ek-red:#FF6B6B; --ek-red-soft:#FF8A8A; --ek-red-deep:#E04848; --ek-red-pale:#FFECEC;
+  --f-head:'Inter Tight','Inter','Segoe UI',system-ui,sans-serif;
+  --f-body:'Inter','Segoe UI',system-ui,sans-serif;
+  --f-mono:'JetBrains Mono','Cascadia Mono','Consolas',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--f-body);background:#E9E9F1;color:var(--ek-ink);-webkit-font-smoothing:antialiased}
+
+/* ============ Хром: прогресс, счётчик, подсказка ============ */
+.progress{position:fixed;top:0;left:0;right:0;height:4px;background:rgba(23,23,28,.08);z-index:100}
+.progress__fill{height:100%;width:0%;background:var(--ek-violet);transition:width 300ms ease}
+.counter{position:fixed;top:14px;right:18px;z-index:90;font:600 13px var(--f-body);color:var(--ek-gray);background:#fff;border:1px solid var(--ek-line);padding:6px 14px;border-radius:999px;font-variant-numeric:tabular-nums}
+.counter b{color:var(--ek-ink)}
+.hint{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:90;font:500 11px var(--f-body);color:var(--ek-gray);background:#fff;border:1px solid var(--ek-line);padding:6px 14px;border-radius:999px;letter-spacing:.03em}
+.hint kbd{font-family:var(--f-mono);background:var(--ek-gray-light);padding:1px 6px;border-radius:4px;font-size:10px;margin:0 2px;color:var(--ek-ink)}
+
+/* ============ Сцена 1280×720 ============ */
+.stage{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform:translate(-50%,-50%);border-radius:18px;overflow:hidden;box-shadow:0 30px 90px rgba(23,23,28,.18);background:#fff}
+.slide{position:absolute;inset:0;background:#fff;opacity:0;transform:translateY(26px);transition:opacity 280ms ease,transform 280ms ease;pointer-events:none;font-family:var(--f-head)}
+.slide.active{opacity:1;transform:none;pointer-events:auto}
+.slide.prev{transform:translateY(-26px)}
+.slide--violet{background:var(--ek-violet)}
+.slide--green{background:var(--ek-green)}
+
+/* Номер страницы на контентных слайдах */
+.slide--content::after{content:attr(data-page);position:absolute;right:54px;bottom:30px;font:800 30px/1 var(--f-head);color:var(--ek-ink);opacity:.5}
+
+/* ============ Декор «Орбита» ============ */
+.sl-orbit{position:absolute;inset:0;pointer-events:none}
+.slide--violet .sl-orbit{--decor:#A79EF9;--letter:#C4BEFA}
+.slide--green .sl-orbit{--decor:#7BF9BD;--letter:#C4FCE0}
+.sl-ring{position:absolute;left:50%;top:50%;width:1040px;height:660px;transform:translate(-50%,-50%);border:3px solid var(--decor);border-radius:50%;opacity:.9}
+.sl-ico{position:absolute;color:var(--decor)}
+.sl-letter{position:absolute;border-radius:50%;background:var(--decor);color:var(--letter);display:flex;align-items:center;justify-content:center;font:800 var(--fs,40px)/1 var(--f-head);font-style:normal}
+
+/* ============ Каверы: карточка-окно и спич-бабл ============ */
+.cover-center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2}
+.cover-card{position:relative;width:860px;background:#fff;border-radius:28px;box-shadow:0 30px 80px rgba(23,23,28,.18)}
+.card-top{display:flex;justify-content:space-between;align-items:center;padding:24px 30px 0}
+.win-dots{display:flex;gap:9px}
+.win-dots i{width:13px;height:13px;border-radius:50%;background:var(--ek-violet)}
+.win-close{position:relative;width:22px;height:22px}
+.win-close::before,.win-close::after{content:"";position:absolute;left:-1px;top:9px;width:24px;height:4px;border-radius:2px;background:var(--ek-violet)}
+.win-close::before{transform:rotate(45deg)}
+.win-close::after{transform:rotate(-45deg)}
+.cover-card .badge{position:absolute;left:50%;top:-30px;transform:translateX(-50%) rotate(-4deg)}
+.cover-card h1{padding:26px 64px 30px;text-align:center;font:800 50px/1.14 var(--f-head);letter-spacing:-.015em;color:var(--ek-ink)}
+.cover-card .cover-sub{padding:0 80px 34px;text-align:center;font:500 19px/1.5 var(--f-body);color:#3C3C45}
+.cover-card .cover-chips{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;padding:0 40px 40px}
+.bubble{position:relative;width:660px;background:#EFEFF1;border-radius:30px;padding:56px 70px;text-align:center}
+.bubble::after{content:"";position:absolute;right:56px;bottom:-24px;width:0;height:0;border-left:38px solid transparent;border-top:28px solid #EFEFF1}
+.bubble h1{font:800 42px/1.25 var(--f-head);letter-spacing:-.01em;color:var(--ek-ink)}
+.bubble p{margin-top:16px;font:500 18px/1.5 var(--f-body);color:#3C3C45}
+
+/* ============ Стикер-бейдж и чипы ============ */
+.badge{display:inline-block;background:var(--ek-green);color:var(--ek-ink);font:800 24px/1 var(--f-head);padding:13px 22px;border-radius:13px;transform:rotate(-3deg);box-shadow:0 10px 24px rgba(23,23,28,.10)}
+.badge--violet{background:var(--ek-violet);color:#fff}
+.badge--sm{font-size:16px;padding:9px 16px;border-radius:10px}
+.chip{display:inline-block;font:700 14px/1 var(--f-body);padding:8px 14px;border-radius:999px;background:var(--ek-violet-bg);color:var(--ek-violet-deep)}
+.chip--green{background:var(--ek-green-pale);color:var(--ek-green-deep)}
+.chip--gray{background:var(--ek-gray-light);color:#3C3C45}
+
+/* ============ Контентные слайды ============ */
+.sl-body{position:absolute;inset:0;padding:56px 80px 62px;display:flex;flex-direction:column;gap:16px;overflow:hidden}
+h2{font:800 38px/1.16 var(--f-head);letter-spacing:-.01em;color:var(--ek-ink)}
+.acc{color:var(--ek-violet-deep)}
+.sl-body>p, .col p{font:500 18px/1.5 var(--f-body);color:#3C3C45}
+.code-chip{font-family:var(--f-mono);font-weight:700;font-size:.88em;background:var(--ek-violet-bg);color:var(--ek-violet-deep);padding:2px 8px;border-radius:8px;white-space:nowrap}
+.hl{color:var(--ek-violet-deep);font-weight:700}
+.out-chip{font-family:var(--f-mono);font-weight:700;font-size:.88em;background:var(--ek-green-pale);color:#0B7A48;padding:2px 8px;border-radius:8px;white-space:nowrap}
+
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;align-items:stretch}
+
+.info-card{background:#F5F5F9;border-radius:18px;padding:18px 22px;font:500 16px/1.55 var(--f-body);color:#3C3C45}
+.info-card h3{font:800 19px/1.3 var(--f-head);color:var(--ek-ink);margin-bottom:8px}
+.ek-note{background:var(--ek-violet-bg);border-left:4px solid var(--ek-violet);border-radius:0 14px 14px 0;padding:14px 20px;font:600 17px/1.5 var(--f-body);color:#3C3560}
+.ek-note--green{background:var(--ek-green-pale);border-left-color:var(--ek-green-deep);color:#0B5B39}
+.ek-note--red{background:var(--ek-red-pale);border-left-color:var(--ek-red);color:#7A2E2E}
+
+ul.clean{list-style:none;display:flex;flex-direction:column;gap:10px}
+ul.clean li{display:flex;gap:14px;align-items:flex-start;font:500 17.5px/1.5 var(--f-body);color:#3C3C45}
+ul.clean li::before{content:'—';flex:0 0 auto;color:var(--ek-violet-deep);font-weight:800}
+
+ol.steps{list-style:none;counter-reset:step;display:flex;flex-direction:column;gap:12px}
+ol.steps li{counter-increment:step;display:flex;gap:16px;align-items:center;padding:14px 20px;background:#F5F5F9;border-radius:16px;font:500 17.5px/1.45 var(--f-body);color:#2E2E36}
+ol.steps li::before{content:counter(step);flex:0 0 40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:var(--ek-violet);font:800 18px var(--f-head);color:#fff}
+ol.steps li:last-child::before{background:var(--ek-green);color:var(--ek-ink)}
+ol.steps.steps--tight{gap:8px}
+ol.steps.steps--tight li{padding:9px 16px;font-size:15.5px;gap:12px}
+ol.steps.steps--tight li::before{flex-basis:32px;height:32px;font-size:14px}
+
+.q-label{font:700 13px/1 var(--f-head);letter-spacing:.08em;text-transform:uppercase;color:var(--ek-gray)}
+
+/* ============ План занятия (agenda) ============ */
+.agenda{display:flex;flex-direction:column;gap:8px}
+.agenda-row{display:flex;gap:16px;align-items:center;padding:10px 18px;background:#F5F5F9;border-radius:14px}
+.agenda-row .t{flex:0 0 84px;text-align:center;font:800 14px/1 var(--f-mono);color:var(--ek-ink);background:var(--ek-green);border-radius:999px;padding:8px 0}
+.agenda-row .tt{font:700 16.5px/1.3 var(--f-head);color:var(--ek-ink)}
+.agenda-row .dd{font:500 14px/1.4 var(--f-body);color:var(--ek-gray)}
+
+/* ============ Ключ-значение (привычки, шпаргалки) ============ */
+.kv{display:flex;flex-direction:column}
+.kv-row{display:grid;grid-template-columns:250px 1fr;gap:18px;align-items:start;padding:11px 4px;border-bottom:1.5px solid var(--ek-line)}
+.kv-row:last-child{border-bottom:none}
+.kv-row .k{font:800 14px/1.35 var(--f-head);letter-spacing:.05em;text-transform:uppercase;color:var(--ek-violet-deep);padding-top:2px}
+.kv-row .v{font:500 16.5px/1.5 var(--f-body);color:#3C3C45}
+
+/* ============ Окно кода (статичное) ============ */
+.code-win{background:#fff;border:2.5px solid var(--ek-ink);border-radius:16px;overflow:hidden;font-family:var(--f-mono);box-shadow:10px 10px 0 rgba(140,127,246,.14)}
+.code-head{display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:2px solid var(--ek-ink)}
+.code-head .win-dots i{width:11px;height:11px}
+.lang-badge{font:700 11px var(--f-mono);letter-spacing:.14em;color:var(--ek-gray)}
+.code-body{padding:14px 20px;font:500 14.5px/1.6 var(--f-mono);color:var(--ek-ink);white-space:pre;overflow:auto;max-height:400px;tab-size:4}
+.code-body .cm{color:var(--ek-gray)}
+.code-body .st{color:var(--ek-green-deep)}
+.code-body .kw{color:var(--ek-violet-deep);font-weight:700}
+
+/* ============ Терминал (тёмное окно) ============ */
+.term{background:var(--ek-ink);border-radius:16px;overflow:hidden;font-family:var(--f-mono);box-shadow:10px 10px 0 rgba(23,23,28,.12)}
+.term-head{display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,.14)}
+.term-head .win-dots i{width:11px;height:11px;background:var(--ek-green)}
+.term-head .lang-badge{color:rgba(255,255,255,.5)}
+.term-body{padding:14px 20px;font:500 14.5px/1.62 var(--f-mono);color:var(--ek-green);white-space:pre-wrap;word-break:break-word;overflow:auto;max-height:420px}
+.term-body .usr{color:#fff}
+.term-body .dim{color:rgba(255,255,255,.55)}
+
+/* ============ Промпт-карточка (диалог с DeepSeek) ============ */
+.prompt-card{position:relative;background:var(--ek-violet-bg);border:2.5px solid var(--ek-violet);border-radius:18px;padding:20px 26px 18px;box-shadow:10px 10px 0 rgba(140,127,246,.18)}
+.prompt-card .pc-tag{position:absolute;top:-16px;left:22px;background:var(--ek-violet);color:#fff;font:800 14px/1 var(--f-head);padding:9px 16px;border-radius:10px;transform:rotate(-2deg);box-shadow:0 8px 18px rgba(23,23,28,.12)}
+.prompt-card .pc-text{margin-top:6px;font:500 15px/1.62 var(--f-mono);color:#2E2A52;white-space:pre-wrap}
+.prompt-card .pc-text .hl{color:var(--ek-violet-deep)}
+.prompt-card--copy .pc-tag{background:var(--ek-green);color:var(--ek-ink)}
+
+/* ============ Сравнение (vs) ============ */
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:stretch}
+.vs-col{border-radius:18px;padding:20px 24px}
+.vs-col h4{font:800 15px/1 var(--f-head);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
+.vs-col p{font:500 16px/1.55 var(--f-body)}
+.vs-col .note{margin-top:12px;font:500 13.5px/1.4 var(--f-body);opacity:.75}
+.vs-col--plain{background:var(--ek-gray-light);color:#3C3C45}
+.vs-col--plain h4{color:var(--ek-gray)}
+.vs-col--win{background:var(--ek-green-pale);color:#124F35;border:2px solid var(--ek-green-soft)}
+.vs-col--win h4{color:var(--ek-green-deep)}
+
+/* ============ Квиз с раскрытием ответа ============ */
+.quiz-box{background:#F5F5F9;border:2.5px solid var(--ek-ink);border-radius:18px;padding:22px 26px;box-shadow:10px 10px 0 rgba(61,247,157,.25)}
+.quiz-box .q-num{display:inline-block;background:var(--ek-green);color:var(--ek-ink);font:800 13px/1 var(--f-head);letter-spacing:.08em;text-transform:uppercase;padding:8px 14px;border-radius:999px;margin-bottom:14px}
+.quiz-box .q-text{font:700 21px/1.42 var(--f-head);color:var(--ek-ink)}
+.quiz-answer{margin-top:16px}
+.quiz-btn{border:0;border-radius:12px;padding:12px 22px;font:800 15px/1 var(--f-head);cursor:pointer;background:var(--ek-violet);color:#fff;transition:background .15s}
+.quiz-btn:hover{background:var(--ek-violet-deep)}
+.quiz-reveal{display:none;margin-top:14px;background:var(--ek-green-pale);border-left:4px solid var(--ek-green-deep);border-radius:0 14px 14px 0;padding:14px 20px;font:500 16.5px/1.55 var(--f-body);color:#0B5B39}
+.quiz-reveal.show{display:block}
+.quiz-reveal p+p{margin-top:8px}
+
+/* Появление контента */
+.slide.active .info-card,.slide.active ul.clean li,.slide.active ol.steps li,.slide.active .grid-2>*,.slide.active .grid-3>*,.slide.active .agenda-row,.slide.active .kv-row{animation:reveal 450ms ease backwards}
+.slide.active .info-card:nth-child(2),.slide.active ul.clean li:nth-child(2),.slide.active ol.steps li:nth-child(2),.slide.active .grid-2>*:nth-child(2),.slide.active .grid-3>*:nth-child(2),.slide.active .agenda-row:nth-child(2),.slide.active .kv-row:nth-child(2){animation-delay:80ms}
+.slide.active ul.clean li:nth-child(3),.slide.active ol.steps li:nth-child(3),.slide.active .grid-3>*:nth-child(3),.slide.active .agenda-row:nth-child(3),.slide.active .kv-row:nth-child(3){animation-delay:160ms}
+.slide.active ol.steps li:nth-child(4),.slide.active .agenda-row:nth-child(4),.slide.active .kv-row:nth-child(4){animation-delay:240ms}
+.slide.active ol.steps li:nth-child(5),.slide.active .agenda-row:nth-child(5),.slide.active .kv-row:nth-child(5){animation-delay:320ms}
+.slide.active .agenda-row:nth-child(6),.slide.active ol.steps li:nth-child(6),.slide.active .kv-row:nth-child(6){animation-delay:400ms}
+.slide.active .agenda-row:nth-child(7),.slide.active ol.steps li:nth-child(7),.slide.active .kv-row:nth-child(7){animation-delay:480ms}
+@keyframes reveal{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@media (prefers-reduced-motion:reduce){.slide.active .info-card,.slide.active ul.clean li,.slide.active ol.steps li,.slide.active .grid-2>*,.slide.active .grid-3>*,.slide.active .agenda-row,.slide.active .kv-row{animation:none}}
+
+/* ============ Заметки преподавателя ============ */
+.notes{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--ek-line);box-shadow:0 -16px 40px rgba(23,23,28,.10);padding:20px 40px;z-index:95;max-height:40vh;overflow-y:auto;transform:translateY(100%);transition:transform 300ms ease}
+.notes.active{transform:translateY(0)}
+.notes__header{font:800 11px var(--f-head);letter-spacing:.2em;text-transform:uppercase;color:var(--ek-violet-deep);margin-bottom:8px}
+.notes__body{font:500 15px/1.55 var(--f-body);color:#3C3C45}
+
+:focus-visible{outline:3px solid var(--ek-violet-soft);outline-offset:2px;border-radius:6px}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(23,23,28,.15);border-radius:4px}
+</style>
+</head>
+<body>
+
+<div class="progress"><div class="progress__fill" id="progress"></div></div>
+<div class="counter"><b id="current">1</b> / <span id="total">38</span></div>
+
+<main class="stage" id="deck">
+<section class="slide slide--violet active"
+  data-notes="Пока группа подключается и слайды ещё не показаны — пробная демонстрация экрана у учеников на macOS, по очереди (слайд 2, пункт 7, «На уроке»). Поприветствуйте. Сегодня база данных переезжает в браузер. Каждый соберёт трекер тренировок на Streamlit: форма записывает тренировки в SQLite, таблица и графики Plotly показывают прогресс. Обязательный минимум к 50-й минуте — каркас и правки 1–3: форма и таблица, график минут по дням, период и метрики недели, правка и удаление записи. Правки 4 и 5 — цель с серией дней и AI-тренер — резерв. Кто не успеет, сделает их дома по желанию. Ставить на уроке почти ничего не нужно: plotly ученики поставили в ДЗ 18, а sqlite3 встроен в Python. Ключ DeepSeek понадобится только AI-тренеру в правке 5. Первыми данными трекера станут записи «Недели движения» из ДЗ.">
+<div class="sl-orbit">
+    <i class="sl-ring"></i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:75px;top:20px;width:150px;height:150px;transform:rotate(-10deg)"><use href="#ek-i-trophy"/></svg>
+    <i class="sl-letter" style="left:466px;top:13px;width:78px;height:78px;--fs:36px">S</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1040px;top:15px;width:130px;height:130px;transform:rotate(12deg)"><use href="#ek-i-heart"/></svg>
+    <i class="sl-letter" style="left:68px;top:268px;width:100px;height:100px;--fs:46px">Q</i>
+    <i class="sl-letter" style="left:1137px;top:327px;width:95px;height:95px;--fs:44px">L</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:102px;top:532px;width:125px;height:125px;transform:rotate(-15deg)"><use href="#ek-i-star"/></svg>
+    <i class="sl-letter" style="left:726px;top:613px;width:78px;height:78px;--fs:36px">P</i>
+    <i class="sl-letter" style="left:300px;top:590px;width:70px;height:70px;--fs:32px">Y</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1045px;top:540px;width:110px;height:110px;transform:rotate(8deg)"><use href="#ek-i-gem"/></svg>
+  </div>
+  <div class="cover-center">
+    <div class="cover-card">
+      <div class="badge">Урок №19</div>
+      <div class="card-top"><span class="win-dots"><i></i><i></i><i></i></span><span class="win-close"></span></div>
+      <h1>Трекер тренировок<br>с графиками</h1>
+      <p class="cover-sub">Соберём страницу на Streamlit: форма записывает тренировки в базу SQLite, а Plotly рисует, как растёт ваш прогресс.</p>
+      <div class="cover-chips"><span class="chip chip--green">Streamlit</span><span class="chip">SQLite</span><span class="chip chip--gray">Plotly</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Теории — минимум: к 9-й минуте каждый уже копирует промпт разминки. Контрольные точки: к 15-й минуте у всех в браузере столбцы warmup.py; к 28-й — tracker/app.py записал 3–5 тренировок, а после Ctrl+C и нового запуска они на месте; к 35-й — график минут по дням с демо-данными; к 42-й — метрики недели и фильтр периода; к 50-й — правка и удаление записи. Каждая правка — полная перегенерация app.py: к правке 3 файл вырастет примерно до 250 строк, а с комментариями DeepSeek — до 300. Закладывайте на перегенерацию 1–1,5 минуты и показывайте в это время разбор. Если группа отстаёт, сокращайте так. К 15-й минуте отставание больше 2 минут — разбор слайда 9 одной фразой: x и y — списки, labels — подписи осей. К 28-й каркас запущен не у всех — момент урока со слайда 19 покажите на своём экране. К 42-й правка 2 есть не у всех — переходите к правке 3 всей группой: она не зависит от правки 2. Период и метрики тогда делаются дома по промпту правки 2 из файла lesson19-dz.txt (пункт 4 ниже), а К4 на уроке закрыт частично. Если у ученика правка сломала файл и за 2 минуты не чинится, пришлите ему в чат группы запасную копию этапа (пункт 1 ниже). Пусть заменит ею содержимое tracker/app.py, а следующее сообщение в том же чате DeepSeek начнёт словами «Мой tracker/app.py теперь такой — дальше правь его, а не прошлую версию:», ниже вставит весь файл копии, а под ним — промпт следующей правки. Эту фразу пришлите ему в чат группы вместе с копией. Перед уроком обязательно: 1) прогоните всю цепочку промптов на своём ключе, вместе с правками 4 и 5, и сохраните копию после каждого этапа: warmup.py, app_base.py, app_1.py, app_2.py, app_3.py, app_4.py, app_5.py. Это запасные копии, ключа в них нет; 2) соберите папку vibe-coding/lesson-19-demo для слайда 13: в ней tracker/app.py — копия app_3.py. Нажмите в трекере «🧪 Демо-данные за месяц» и добавьте 3–4 свои записи за эту неделю; 3) накануне напомните группе через обычный канал связи школы с учениками: кто ещё не выполнил установку из ДЗ 18, пусть выполнит pip install streamlit plotly pandas у себя дома, а если появится ошибка — пришлёт её текст туда же до урока. Сами запустите на своём компьютере копию warmup.py командой streamlit run warmup.py. Открылся график — plotly на месте, и разминку можно показывать на своём экране. ModuleNotFoundError — поставьте до урока: pip install plotly. Если Windows покажет окно брандмауэра про Python — доступ к сети не разрешайте. По умолчанию брандмауэр блокирует входящие подключения, для которых нет разрешающего правила, и пусть так и остаётся: страницы урока каждый открывает только на своём компьютере, подробнее — в заметке слайда 16. До правки 5 трекер к нейросети не обращается и школьный ключ не тратит; 4) соберите файл lesson19-dz.txt: по ходу урока из него удобно копировать промпты, а на слайде 37 вы пришлёте его целиком — для дома. В нём по порядку: текст ДЗ со слайда 37 (текст, три карточки и красная рамка), команда запуска, строка для дома и все промпты урока — со слайдов 7, 15, 21, 24, 26, 28 и 30. У каждого промпта подпись без номера слайда: название и чат DeepSeek, например «Правка 3 · правка и удаление · в тот же чат». Команда запуска: «Трекер запускайте в терминале из папки lesson-19: streamlit run tracker/app.py». Строка для дома: «Промпты отправляйте по порядку в чат урока, начиная с первого, который не успели сделать. Уже сделанные правки пропускайте: если правку 3 сделали без правки 2, отправьте промпт правки 2, а правку 3 второй раз не отправляйте. Чата урока нет — откройте новый чат DeepSeek, вставьте весь свой tracker/app.py (до каркаса не дошли — warmup.py), а под ним — следующий промпт»; 5) каждый промпт присылайте в чат группы на его слайде: файла слайдов у учеников нет, а с демонстрации экрана текст не скопировать. Команды со слайдов 8, 10 и 16 и строку DB со слайда 20 тоже присылайте в чат группы — так их не наберут с опечаткой. Опоздавшему пришлите lesson19-dz.txt: в нём все промпты по порядку. В пробной встрече проверьте, что самый длинный промпт — каркас со слайда 15, около 2500 знаков, — приходит в чат группы целиком и дословно, с __file__, кавычками и эмодзи, а промпт AI-тренера со слайда 30 — с «ёлочками» и обратной косой чертой. Если чат группы обрезает длинные сообщения или меняет символы, сохраните каждый промпт отдельным файлом .txt с номером слайда в имени, например prompt-15.txt, и присылайте файл; 6) проверьте, что чат группы принимает файлы. Если не принимает, заранее положите запасные копии из пункта 1, lesson19-dz.txt и файлы промптов из пункта 5, если они понадобились, в своё облачное хранилище с доступом по ссылке для всех. Там, где сценарий велит прислать файл в чат группы, присылайте ссылку на него. Это запасной путь, основной — сам файл в чате группы. Проверьте каждую ссылку в окне инкогнито: файл должен скачиваться без входа и под своим именем; 7) разрешите участникам демонстрацию экрана: без этого ученик не покажет свой экран ни для помощи, ни на демо слайда 36. На уроке: пока группа подключается и ваша демонстрация ещё не включена, попросите тех, кто на macOS и ещё не показывал экран в этой видеосвязи, по очереди один раз включить и сразу выключить демонстрацию окна браузера. Первая демонстрация на macOS может потребовать системного разрешения на запись экрана — пусть это случится сейчас, а не посреди правки. Если после разрешения система попросит закрыть и снова открыть браузер или программу видеосвязи, пусть сделают это и снова войдут в звонок. Предупредите заранее: тогда на минуту они выйдут из звонка, это не поломка. Автора демо для слайда 36 выберите на правке 3 среди тех, у кого демонстрация точно включится: на Windows обычно подойдёт любой, на macOS — тот, кто сегодня уже включал её или показывал экран на прошлых уроках.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">План занятия</div>
+    <h2>Как пройдут <span class="acc">60 минут</span></h2>
+  </div>
+  <div class="agenda" style="margin-top:14px">
+    <div class="agenda-row"><span class="t">0–4</span><div><div class="tt">Разбор ДЗ</div><div class="dd">Честность ask.py, своя база и «Неделя движения».</div></div></div>
+    <div class="agenda-row"><span class="t">4–9</span><div><div class="tt">Страница, база и график</div><div class="dd">Как страница читает и пишет базу. Что умеет Plotly.</div></div></div>
+    <div class="agenda-row"><span class="t">9–15</span><div><div class="tt">Разминка warmup.py</div><div class="dd">Первый график Plotly в браузере.</div></div></div>
+    <div class="agenda-row"><span class="t">15–28</span><div><div class="tt">Цель и каркас tracker/app.py</div><div class="dd">Форма → tracker.db → таблица. Закрыли трекер — записи на месте.</div></div></div>
+    <div class="agenda-row"><span class="t">28–50</span><div><div class="tt">Правки через диалог</div><div class="dd">Обязательно: график → период и метрики → правка и удаление. Успеете — цель и серия, AI-тренер.</div></div></div>
+    <div class="agenda-row"><span class="t">50–55</span><div><div class="tt">Вопросы и отладка</div><div class="dd">Квизы, типичные ошибки и привычки.</div></div></div>
+    <div class="agenda-row"><span class="t">55–60</span><div><div class="tt">Демо и ДЗ</div><div class="dd">Одноклассник диктует тренировку — график меняется.</div></div></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="На весь блок 4 минуты. Скриншоты и файлы показывайте группе только с согласия автора. Проверка на честность — коротко: пусть один-два автора назовут ошибку модели и объяснят её. Типичные находки — два условия сразу, где модель перепутала AND и OR, и жанр другим словом: «Фэнтези» с большой буквы даёт уверенный ноль. Свои данные — короткая похвала: та же программа ответила про чужую для неё базу, потому что схему читает сама. Главное — Неделя движения. Спросите, кто записал 3–5 тренировок или прогулок: дата, вид, минуты. Попросите одного ученика ответить по своим записям, двигался ли он на этой неделе больше, чем на прошлой. По заметкам это трудно сказать сразу. Спросите, кто выполнил установку из ДЗ — pip install streamlit plotly pandas. Проверим её на разминке, а у кого не вышло — поставим там же одной командой. Мостик: сегодня записи переедут в трекер в браузере, а график покажет прогресс одним взглядом.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор ДЗ урока 18</div>
+    <h2>Цифры есть, <span class="acc">прогресса не видно</span></h2>
+  </div>
+  <p>Открываем 2–3 работы: ошибки модели, вторую базу и вашу «Неделю движения».</p>
+  <div class="grid-3" style="margin-top:20px">
+    <div class="info-card"><h3>Проверка на честность</h3>Какие две ошибки модели вы нашли? <span class="code-chip">AND</span> вместо <span class="code-chip">OR</span>, «Фэнтези» с большой буквы и уверенный 0? Ответ словами не лучше SQL, из которого он взят.</div>
+    <div class="info-card"><h3>Свои данные</h3><span class="code-chip">ask.py</span> ответил про <span class="code-chip">tasks.db</span> или «Фильмотеку», хотя про них в коде ни строчки. Схему программа прочитала сама.</div>
+    <div class="info-card"><h3>Неделя движения</h3>3–5 тренировок в заметках: дата, что делали, сколько минут. Сегодня они станут первыми записями трекера.</div>
+  </div>
+  <div class="ek-note" style="margin-top:20px">По столбикам цифр не видно, стало ли движения больше, чем неделю назад. А вносить записи каждый день через терминал никто не станет. Сегодня — трекер в браузере с формой и графиками.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ключевой слайд для К1. Две детали вам знакомы: страница на Streamlit — с урока 16, база SQLite — с урока 17. GROUP BY встречался в статистике урока 17, а кто её не делал — разберём на слайде 22. Новое — как соединить страницу с базой и как нарисовать график. Скажите с нажимом главное: трекер полезен, только если записывать тренировки каждый день, а для этого вносить запись должно быть легко. Поэтому форма, а не терминал. И поэтому график: одна картинка отвечает на вопрос, на который столбики цифр не отвечают. Ещё одно: трекер хранит только минуты, количество и самочувствие — ни веса, ни калорий. Подробнее — на слайде 11.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Идея урока</div>
+    <h2>Трекер <span class="acc">в браузере</span></h2>
+  </div>
+  <p>Сегодня база переезжает на страницу. Streamlit рисует форму и таблицу, SQLite хранит записи в файле, а <span class="hl">Plotly</span> рисует по ним график.</p>
+  <div class="vs" style="margin-top:20px">
+    <div class="vs-col vs-col--plain">
+      <h4>Заметки и терминал (было)</h4>
+      <p>Тренировки — в заметках телефона или на бумаге. <span class="code-chip">ask.py</span> отвечает столбиками цифр. Стало ли движения больше, по ним сразу не скажешь.</p>
+      <p class="note">Так было в ДЗ 18.</p>
+    </div>
+    <div class="vs-col vs-col--win">
+      <h4>Трекер в браузере (стало)</h4>
+      <p>Запись — за 10 секунд через форму. Все тренировки лежат в <span class="code-chip">tracker.db</span>. На странице сразу видно: столбцы по дням, минуты за неделю и разница с прошлой.</p>
+      <p class="note">Так соберём <span class="code-chip">tracker/app.py</span> сегодня.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ключевой слайд для К1. Проведите круг по шагам слайда: клик → скрипт сверху вниз → SELECT → страница. Одно исключение — поля внутри формы: пока не нажата кнопка отправки, они скрипт не перезапускают. Отдельная стрелка — запись: она бывает только по кнопке формы. Это главное правило урока: читать можно при каждом перезапуске, а писать в базу — только по кнопке. Иначе каждая смена фильтра добавит новую запись, и это квиз 1. Вспомните урок 16: история чата лежала в st.session_state и пропадала при обновлении страницы. Сегодня данные живут в файле tracker.db рядом с app.py, поэтому страница может закрыться, а записи останутся. st.rerun вы тоже знаете с урока 16: он перезапускает приложение, и после записи страница сразу показывает свежие данные. Соединение с базой открываем на одно действие и сразу закрываем — подробнее в каркасе.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Как это работает</div>
+    <h2>Страница <span class="acc">читает базу</span> при каждом клике</h2>
+  </div>
+  <p>С урока 16 вы знаете: нажали кнопку или выбрали другое значение в списке — Streamlit выполняет скрипт заново, сверху вниз. Значит, после каждого такого действия страница заново читает свежие строки из <span class="code-chip">tracker.db</span>.</p>
+  <ol class="steps steps--tight" style="margin-top:14px">
+    <li><div>Открыли страницу, нажали кнопку или сменили фильтр — скрипт идёт сверху вниз</div></li>
+    <li><div><span class="code-chip">SELECT</span> читает строки из <span class="code-chip">tracker.db</span> — на странице таблица и график</div></li>
+    <li><div>Нажали «Сохранить» в форме — <span class="code-chip">INSERT</span> и <span class="code-chip">commit</span>: запись в файле</div></li>
+    <li><div><span class="code-chip">st.rerun()</span> — скрипт снова сверху вниз, и новая запись уже на странице</div></li>
+  </ol>
+  <div class="ek-note" style="margin-top:14px"><span class="code-chip">st.session_state</span> живёт, пока вкладку не закрыли и не обновили. <span class="code-chip">tracker.db</span> — файл на диске: записи переживут и обновление страницы, и <span class="code-chip">Ctrl+C</span>, и выключение компьютера.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ключевой слайд для К3. Plotly — бесплатная библиотека с открытым кодом, регистрация не нужна. Её часть plotly.express рисует типовые графики одной функцией: x — подписи по горизонтали, y — значения, labels — подписи осей по-русски. Сравните со столбиками из символов, которые программы печатали в терминале на уроке 14: график Plotly интерактивный. Наведите мышку на столбец — появится подсказка с днём и минутами. Внутри plotly.express превращает списки в таблицу pandas, а pandas уже стоит вместе со Streamlit. st.plotly_chart пишем без use_container_width: этот параметр устарел, а ширина по странице и так стоит по умолчанию. Код на слайде — пример, его не запускаем: полный файл даст разминка.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Новый инструмент</div>
+    <h2>Plotly: <span class="acc">живой график</span> из двух строк</h2>
+  </div>
+  <p><span class="code-chip">plotly.express</span> — короткое имя <span class="code-chip">px</span> — строит график одной функцией, а <span class="code-chip">st.plotly_chart</span> ставит его на страницу.</p>
+  <div class="code-win" style="margin-top:12px">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body"><span class="kw">import</span> plotly.express <span class="kw">as</span> px  <span class="cm"># px — быстрые графики Plotly</span>
+
+fig = px.bar(x=[<span class="st">"пн"</span>, <span class="st">"вт"</span>, <span class="st">"ср"</span>], y=[20, 0, 35],
+             labels={<span class="st">"x"</span>: <span class="st">"День"</span>, <span class="st">"y"</span>: <span class="st">"Минуты"</span>})
+st.plotly_chart(fig)  <span class="cm"># Streamlit показывает график на странице</span></div>
+  </div>
+  <div class="grid-3" style="margin-top:14px">
+    <div class="info-card"><h3>Столбцы <span class="code-chip">px.bar</span></h3>Минуты по дням: сразу видно, где был отдых.</div>
+    <div class="info-card"><h3>Линия <span class="code-chip">px.line</span></h3>Как растёт количество: отжимания, километры.</div>
+    <div class="info-card"><h3>Круг <span class="code-chip">px.pie</span></h3>Доли видов тренировок. Это задание ДЗ.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пришлите промпт в чат группы: ученики копируют его оттуда целиком в новый чат DeepSeek. Скажите вслух: этот чат — на весь урок. Каркас и все правки пойдут сюда же, чтобы DeepSeek видел, как мы рисуем графики, и писал так же. Промпт нарочно короткий: одна страница, один график, никакой базы. Если что-то не запустится, причина будет в установке, а не в большом коде. Про use_container_width промпт говорит прямо: нейросеть-помощник часто пишет этот параметр по старой привычке, а Streamlit предупреждает, что он устарел.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Промпт #1 · новый чат — на весь урок</div>
+    <h2>warmup.py: <span class="acc">первый график</span></h2>
+  </div>
+  <p>Маленькая страница с одним графиком. Заодно проверим, что <span class="code-chip">plotly</span> установлен, — до большого файла.</p>
+  <div class="prompt-card" style="margin-top:28px">
+    <span class="pc-tag">→ Новый чат DeepSeek</span>
+    <div class="pc-text">Ты — опытный Python-разработчик и наставник школьника. Напиши warmup.py — страницу на Streamlit с одним столбчатым графиком Plotly.
+- import plotly.express as px и import streamlit as st, больше ничего
+- days = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"]; minutes = [20, 0, 35, 15, 0, 60, 30] — минуты движения за 7 дней
+- st.title("📊 Моя неделя движения"); fig = px.bar(x=days, y=minutes, labels={"x": "День", "y": "Минуты"}, title="Минуты движения за 7 дней"); st.plotly_chart(fig) — без use_container_width, этот параметр устарел
+- Последняя строка: st.metric("Всего за неделю", f"{sum(minutes)} мин")
+Прокомментируй код для новичка. Ответь одним блоком кода.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пришлите в чат группы команду streamlit run warmup.py. Попросите написать в чат группы «+», когда откроется страница с графиком, и дождитесь всех. Окно на слайде — набросок: у Plotly настоящие цветные столбцы, а подсказка при наведении может выглядеть чуть иначе. Пусть каждый наведёт мышку на столбец — это и есть интерактивность. Кто успел, пусть заменит числа в списке minutes на свою «Неделю движения», сохранит файл и обновит страницу в браузере: график перерисуется. Порядок дней в списке — с понедельника. Терминал со streamlit run пока не закрывайте: перед каркасом остановим разминку на слайде 14. Если страница не открылась сама — адрес в терминале, обычно localhost с портом 8501. Если Windows покажет окно брандмауэра про Python, ученик ничего в нём не разрешает — «Разрешить доступ» не нажимает — и показывает вам экран или присылает скриншот окна в чат группы. Доступ к сети не разрешаем, подробнее — в заметке слайда 16.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Запуск и проверка</div>
+    <h2>Наведите мышку — <span class="acc">график живой</span></h2>
+  </div>
+  <div class="grid-2" style="margin-top:36px">
+    <ol class="steps">
+      <li><div>В <span class="code-chip">vibe-coding</span> создайте папку <span class="code-chip">lesson-19</span> и откройте её в VS Code</div></li>
+      <li><div>Создайте <span class="code-chip">warmup.py</span>, вставьте код из ответа и сохраните</div></li>
+      <li><div>В терминале выполните <span class="code-chip">streamlit run warmup.py</span> — откроется браузер</div></li>
+      <li><div>Наведите мышку на столбец «сб» — появится подсказка</div></li>
+    </ol>
+    <div class="term">
+      <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">БРАУЗЕР</span></div>
+      <div class="term-body" style="font-size:20px;line-height:1.5">📊 Моя неделя движения
+Минуты движения за 7 дней
+ 60 ┤                          ██
+ 45 ┤                          ██
+ 30 ┤           ██             ██   ██
+ 15 ┤ ██        ██   ██        ██   ██
+  0 └───────────────────────────────────
+      пн   вт   ср   чт   пт   сб   вс
+наведите на «сб» →  День=сб, Минуты=60
+Всего за неделю
+160 мин</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Проговорите по строкам. px.bar получает два списка: x — что подписать внизу, y — высота столбца. Списки должны быть одной длины: седьмой день — седьмое число. labels переименовывает оси: без него внизу было бы просто x, а сбоку y. title — заголовок над графиком. fig — сам график, объект Plotly, а st.plotly_chart показывает его на странице. Подсказка при наведении и цветные столбцы появляются сами — мы их не программировали. st.metric вы знаете с урока 16: крупное число с подписью. Обратите внимание на день без движения: ноль — это тоже столбец, только нулевой высоты, и день на оси остаётся. В трекере такие нули придётся добавлять самим — это правка 1 и квиз 2.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2>Списки → <span class="acc">график на странице</span></h2>
+  </div>
+  <p><span class="code-chip">x</span> и <span class="code-chip">y</span> — два списка одной длины: подписи и значения. Остальное Plotly делает сам.</p>
+  <div class="code-win" style="margin-top:12px">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="font-size:16px;line-height:1.45"><span class="kw">import</span> plotly.express <span class="kw">as</span> px
+<span class="kw">import</span> streamlit <span class="kw">as</span> st
+
+days = [<span class="st">"пн"</span>, <span class="st">"вт"</span>, <span class="st">"ср"</span>, <span class="st">"чт"</span>, <span class="st">"пт"</span>, <span class="st">"сб"</span>, <span class="st">"вс"</span>]
+minutes = [20, 0, 35, 15, 0, 60, 30]  <span class="cm"># минуты движения за 7 дней</span>
+
+st.title(<span class="st">"📊 Моя неделя движения"</span>)
+fig = px.bar(
+    x=days,
+    y=minutes,
+    labels={<span class="st">"x"</span>: <span class="st">"День"</span>, <span class="st">"y"</span>: <span class="st">"Минуты"</span>},  <span class="cm"># подписи осей по-русски</span>
+    title=<span class="st">"Минуты движения за 7 дней"</span>,
+)
+st.plotly_chart(fig)  <span class="cm"># без use_container_width: этот параметр устарел</span>
+st.metric(<span class="st">"Всего за неделю"</span>, f<span class="st">"{sum(minutes)} мин"</span>)</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Помогите всем, у кого не запустилось: пусть пришлют текст ошибки в чат группы или покажут экран. Нужную команду со слайда — pip install plotly или python -m streamlit run warmup.py — пришлите в чат группы. Дальше нужна та же папка lesson-19 и тот же чат DeepSeek. ModuleNotFoundError бывает у тех, кто не сделал установку из ДЗ или делал её на другом компьютере. После pip install plotly запустите разминку снова. Если не находится и pip — python -m pip install plotly. pandas для графиков отдельно ставить не нужно: он приходит вместе со Streamlit. Команда streamlit может не найтись, хотя сам модуль стоит, — тогда помогает python -m streamlit. Email Streamlit спрашивает только при самом первом запуске на компьютере. У тех, кто запускал репетитора урока 16, этого вопроса не будет. Если столбцы вышли чёрными, а ошибки нет, посмотрите в коде, как заданы цвета. Возможно, DeepSeek записал красный, зелёный и синий дробями от 0 до 1, например rgb(0.2, 0.4, 0.6). Plotly 7 такие цвета больше не поддерживает — попросите убрать цвета. Streamlit 1.67 требует Python 3.11 или новее. Это важно, только если ученик ставит Streamlit заново. Непонятную ошибку целиком копируем в тот же чат DeepSeek.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Типичные ситуации запуска</div>
+    <h2>Если warmup.py <span class="acc">не запустился</span></h2>
+  </div>
+  <div class="kv" style="margin-top:22px">
+    <div class="kv-row" style="grid-template-columns:330px 1fr;padding:22px 6px;gap:28px"><div class="k" style="text-transform:none;font-size:19px"><span class="code-chip">ModuleNotFoundError</span> про <span class="code-chip">plotly</span></div><div class="v" style="font-size:21px">Установка из ДЗ 18 не прошла. Выполните <span class="code-chip">pip install plotly</span> и запустите снова.</div></div>
+    <div class="kv-row" style="grid-template-columns:330px 1fr;padding:22px 6px;gap:28px"><div class="k" style="text-transform:none;font-size:19px">Терминал не знает команду <span class="code-chip">streamlit</span></div><div class="v" style="font-size:21px">Запустите так: <span class="code-chip">python -m streamlit run warmup.py</span>.</div></div>
+    <div class="kv-row" style="grid-template-columns:330px 1fr;padding:22px 6px;gap:28px"><div class="k" style="text-transform:none;font-size:19px">Предупреждение про <span class="code-chip">use_container_width</span></div><div class="v" style="font-size:21px">DeepSeek вписал устаревший параметр. Уберите его из <span class="code-chip">st.plotly_chart</span>.</div></div>
+    <div class="kv-row" style="grid-template-columns:330px 1fr;padding:22px 6px;gap:28px"><div class="k" style="text-transform:none;font-size:19px">Браузер не открылся сам</div><div class="v" style="font-size:21px">Откройте адрес из терминала, обычно <span class="code-chip">http://localhost:8501</span>.</div></div>
+    <div class="kv-row" style="grid-template-columns:330px 1fr;padding:22px 6px;gap:28px"><div class="k" style="text-transform:none;font-size:19px">Терминал спрашивает email</div><div class="v" style="font-size:21px">Это не регистрация. Оставьте поле пустым и нажмите <span class="code-chip">Enter</span>.</div></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пройдитесь по столбцам. Дату храним текстом в виде год-месяц-день, как 2026-11-24: такие строки сравниваются и сортируются как даты. Значит, условие «день от и до» работает обычным сравнением строк. В виде 24.11.2026 так бы не вышло: 01.12 оказалось бы раньше 24.11. Из формы Streamlit приходит дата, и программа сама превращает её в такую строку через isoformat. Количество — дробное число: для бега это километры, например 2.5, для отжиманий — повторы. Если для вида количество не считают — ноль. Самочувствие — от 1, тяжело, до 5, отлично. Этика урока: только минуты, количество и самочувствие, никакого веса и калорий. tracker.db — личные данные ученика: его никому не пересылают и никуда не выкладывают. Привычка та же, что в уроке 17: имён, адресов, телефонов и настоящих паролей в программы не вводим.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Что храним</div>
+    <h2>Одна тренировка — <span class="acc">одна строка</span></h2>
+  </div>
+  <p style="font-size:19px">В <span class="code-chip">tracker.db</span> будет одна таблица — <span class="code-chip">workouts</span>. Строка — тренировка, столбцы — её свойства.</p>
+  <div class="kv">
+    <div class="kv-row" style="padding:19px 4px;grid-template-columns:270px 1fr"><div class="k"><span class="code-chip" style="text-transform:none">id</span></div><div class="v" style="font-size:19.5px">Номер записи. Его даёт база, а нужен он для правки и удаления.</div></div>
+    <div class="kv-row" style="padding:19px 4px;grid-template-columns:270px 1fr"><div class="k"><span class="code-chip" style="text-transform:none">day</span></div><div class="v" style="font-size:19.5px">Дата строкой <span class="code-chip">2026-11-24</span>: год, месяц, день. Так база правильно сравнивает и сортирует даты.</div></div>
+    <div class="kv-row" style="padding:19px 4px;grid-template-columns:270px 1fr"><div class="k"><span class="code-chip" style="text-transform:none">kind</span></div><div class="v" style="font-size:19.5px">Вид тренировки из списка: бег, прогулка, скакалка, отжимания…</div></div>
+    <div class="kv-row" style="padding:19px 4px;grid-template-columns:270px 1fr"><div class="k"><span class="code-chip" style="text-transform:none">minutes</span>, <span class="code-chip" style="text-transform:none">amount</span></div><div class="v" style="font-size:19.5px">Минуты и количество: повторы или километры. Не считали — 0.</div></div>
+    <div class="kv-row" style="padding:19px 4px;grid-template-columns:270px 1fr"><div class="k"><span class="code-chip" style="text-transform:none">feeling</span>, <span class="code-chip" style="text-transform:none">note</span></div><div class="v" style="font-size:19.5px">Самочувствие от 1 до 5 и короткая заметка до 100 символов.</div></div>
+  </div>
+  <div class="ek-note ek-note--red" style="font-size:18px">Веса, калорий и сведений о здоровье в трекере нет. В заметку не пишем имён, адресов и названий секций: это ваш личный файл.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Прочитайте цель вслух. Обязательный минимум — каркас и правки 1–3: это и есть трекер из карточки, которым можно пользоваться каждый день. Правки 4 и 5 — для тех, кто опережает. Остальные могут сделать их дома по желанию. Слева теория, справа практика.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Цель · что будет в конце</div>
+    <h2><span class="acc">Цель</span> урока</h2>
+  </div>
+  <div class="ek-note">К 50-й минуте у каждого — <span class="code-chip">tracker/app.py</span>: форма → <span class="code-chip">tracker.db</span> → таблица и график минут по дням. Есть период и вид в сайдбаре, метрики недели, правка и удаление записи. Успеете — цель на неделю, серия дней и AI-тренер.</div>
+  <div class="grid-2">
+    <div class="info-card">
+      <h3>Узнаете</h3>
+      <ul class="clean">
+        <li>Как страница Streamlit читает и пишет базу</li>
+        <li>Как устроены формы ввода и правки</li>
+        <li>Как Plotly рисует график по данным из SQL</li>
+        <li>Почему пустые дни дополняют нулями</li>
+      </ul>
+    </div>
+    <div class="info-card">
+      <h3>Сделаете</h3>
+      <ul class="clean">
+        <li><span class="code-chip">warmup.py</span>: первый график Plotly</li>
+        <li><span class="code-chip">tracker/app.py</span>: форма и таблица</li>
+        <li>График, период и метрики недели</li>
+        <li>Правку и удаление записей</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Покажите версию после правки 3 из папки lesson-19-demo: streamlit run tracker/app.py. Добавьте при группе тренировку за сегодня и покажите, что изменились три места: метрики сверху, столбец сегодняшнего дня и таблица. Переключите период в сайдбаре на «Эта неделя», потом на «Всё время». Выберите запись внизу, поменяйте минуты и сохраните — график сразу другой. Окно на слайде — набросок. Числа и даты у вас свои: демо-данные случайные, а даты зависят от дня урока. Цель, серию и AI-тренера сейчас не показывайте: это резервные правки 4 и 5.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Демо результата</div>
+    <h2>Что <span class="acc">соберём</span> сегодня</h2>
+  </div>
+  <div class="term">
+    <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">БРАУЗЕР</span></div>
+    <div class="term-body">🏃 Трекер тренировок        сайдбар: Период 30 дней · Вид все · 🧪 · 🧹
+Минут на этой неделе    Тренировок    Любимый вид
+95   ↑ +35 мин          3             бег
+➕ Новая тренировка: Дата · Вид · Минуты · Количество · …   [ Сохранить ]
+📊 Минуты по дням · 30 дней
+▃ ▅   █ ▂ ▆   ▄ ▃ █   ▂ ▅ ▆   █ ▃ ▄ ▂   ▆ █ ▃   ▅ ▂ █ ▄ ▃
+наведите на столбец →  День=сб 21.11, Минуты=45
+📋 Записи      Дата │ Вид │ Минуты │ Количество │ Самочувствие │ Заметка
+✏️ Изменить или удалить:  №12 · 2026-11-21 · бег · 45 мин
+[ 💾 Сохранить ]  [ 🗑 Удалить ]   ☐ Да, удалить эту запись</div>
+  </div>
+  <p>Сверху — итоги недели, ниже — форма, график и таблица. Любую запись можно поправить. Всё хранится в <span class="code-chip">tracker.db</span>.</p>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Разминку останавливаем, чтобы не путать две страницы в браузере. Ctrl+C в терминале останавливает сервер Streamlit. Папка tracker отделяет трекер от разминки: в ней только код трекера и его база. Путь к базе программа строит от Path(__file__), как на уроках 16–18, поэтому tracker.db окажется в папке tracker, из какой бы папки ни запустили команду. .env лежит в lesson-19, на уровень выше app.py. До правки 5 он не нужен: трекер к нейросети не обращается. Ключ — пароль от счёта школы: только в .env, никогда в коде, в чате, на скриншотах и на демонстрации экрана. Когда ученик показывает экран, .env в VS Code закрыт. Сам tracker.db в VS Code не открываем: это не текстовый файл.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Подготовка</div>
+    <h2>У трекера <span class="acc">своя папка</span></h2>
+  </div>
+  <ol class="steps">
+    <li><div>Остановите разминку: <span class="code-chip">Ctrl+C</span> в терминале, где работает <span class="code-chip">streamlit run</span></div></li>
+    <li><div>В <span class="code-chip">lesson-19</span> создайте папку <span class="code-chip">tracker</span>, а в ней пустой файл <span class="code-chip">app.py</span></div></li>
+    <li><div>Скопируйте <span class="code-chip">.env</span> из <span class="code-chip">lesson-18</span> в <span class="code-chip">lesson-19</span>. Ключ понадобится только AI-тренеру в правке 5</div></li>
+    <li><div>Ставить ничего не нужно: <span class="code-chip">streamlit</span> и <span class="code-chip">plotly</span> уже стоят, <span class="code-chip">sqlite3</span> встроен в Python</div></li>
+  </ol>
+  <p><span class="code-chip">tracker.db</span> руками не создаём: программа создаст его сама при первом запуске, рядом с <span class="code-chip">app.py</span>.</p>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пришлите промпт в чат группы. Ученики вставляют его в тот же чат DeepSeek, где разминка. Если ученик потерял чат, пусть откроет новый, вставит туда свой warmup.py со словами «Вот мой warmup.py:» и сразу под ним этот промпт. Что в каркасе нового. Три маленькие функции работы с базой: connect открывает файл, query читает строки, change меняет базу и делает commit. Каждая открывает своё соединение, а closing закрывает его сам, даже если по дороге случилась ошибка. Общее соединение на всё приложение промпт прямо запрещает. DeepSeek любит класть его в st.cache_resource, но такой объект делят все вкладки сразу, и он должен быть потокобезопасным. А соединение sqlite3 по умолчанию разрешено только тому потоку, который его открыл. check_values — проверка до записи: дата не пустая и не из будущего, заметка не длиннее 100 символов. done запоминает сообщение и перезапускает страницу — зачем, на слайде 18. Минуты и самочувствие — целые числа, количество — дробное: так задают min_value, value и step. Дата уходит в базу строкой через isoformat. Таблицу показываем с русскими подписями столбцов, список словарей собираем циклом. use_container_width промпт запрещает: параметр устарел. Если DeepSeek добавил что-то от себя, например подсказку под формой, — не страшно, лишь бы запись в базу стояла только внутри if sent.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Промпт #2 · в тот же чат</div>
+    <h2>Каркас: <span class="acc">форма → база → таблица</span></h2>
+  </div>
+  <div class="prompt-card prompt-card--copy" style="margin-top:4px;padding:16px 22px 10px">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text" style="font-size:13.5px;line-height:1.36;column-count:2;column-gap:30px;font-variant-ligatures:none"><div>Теперь напиши tracker/app.py — трекер тренировок на Streamlit с базой SQLite. Пока без графиков.
+</div><span style="display:block;height:0;overflow:hidden">
+</span><div style="padding-left:16px;text-indent:-16px;margin-top:4px;break-inside:avoid">- import sqlite3; from contextlib import closing; from datetime import date; from pathlib import Path; import streamlit as st. DB = Path(__file__).resolve().parent / "tracker.db"; KINDS = ["бег", "прогулка", "велосипед", "скакалка", "отжимания", "приседания", "танцы", "другое"]
+</div><span style="display:block;height:0;overflow:hidden">
+</span><div style="padding-left:16px;text-indent:-16px;margin-top:4px;break-inside:avoid">- connect(): con = sqlite3.connect(DB), con.row_factory = sqlite3.Row. query(sql, params=()): with closing(connect()) as con — верни con.execute(sql, params).fetchall(). change(sql, params=()): with closing(connect()) as con — con.execute(sql, params) и con.commit(). Одно соединение — на одно действие, @st.cache_resource не используй
+</div><span style="display:block;height:0;overflow:hidden">
+</span><div style="padding-left:16px;text-indent:-16px;margin-top:4px;break-inside:avoid">- init_db(): change("CREATE TABLE IF NOT EXISTS workouts (id INTEGER PRIMARY KEY, day TEXT NOT NULL, kind TEXT NOT NULL, minutes INTEGER NOT NULL, amount REAL, feeling INTEGER, note TEXT)"). check_values(day, note): day is None или day &gt; date.today() — верни "Проверьте дату: она пустая или из будущего"; len(note) &gt; 100 — "Заметка длиннее 100 символов — сократите её"; иначе "". done(message): st.session_state.flash = message; st.rerun()
+</div><span style="display:block;height:0;overflow:hidden">
+</span><div style="padding-left:16px;text-indent:-16px;margin-top:4px;break-inside:avoid">- Страница: init_db(); st.title("🏃 Трекер тренировок"); если "flash" есть в st.session_state — st.success(st.session_state.flash) и del st.session_state["flash"]
+</div><span style="display:block;height:0;overflow:hidden">
+</span><div style="padding-left:16px;text-indent:-16px;margin-top:4px;break-inside:avoid">- with st.form("add_form"): st.subheader("➕ Новая тренировка"); day = st.date_input("Дата", value="today", format="DD.MM.YYYY"); kind = st.selectbox("Вид", KINDS); minutes = st.number_input("Минуты", min_value=1, max_value=600, value=30, step=5); amount = st.number_input("Количество: повторы или км", min_value=0.0, max_value=1000.0, value=0.0, step=1.0); feeling = st.number_input("Самочувствие от 1 до 5", min_value=1, max_value=5, value=4, step=1); note = st.text_input("Заметка"); sent = st.form_submit_button("Сохранить", type="primary")
+</div><span style="display:block;height:0;overflow:hidden">
+</span><div style="padding-left:16px;text-indent:-16px;margin-top:4px;break-inside:avoid">- После формы if sent — единственное место, где пишем в базу: error = check_values(day, note); есть ошибка — st.error(error); нет — change("INSERT INTO workouts (day, kind, minutes, amount, feeling, note) VALUES (?, ?, ?, ?, ?, ?)", (day.isoformat(), kind, int(minutes), float(amount), int(feeling), note.strip())) и done(f"✅ Записал: {kind}, {minutes} мин")
+</div><span style="display:block;height:0;overflow:hidden">
+</span><div style="padding-left:16px;text-indent:-16px;margin-top:4px;break-inside:avoid">- st.subheader("📋 Последние записи"); rows = query("SELECT * FROM workouts ORDER BY day DESC, id DESC LIMIT 20"); пусто — st.info("Записей пока нет: добавьте первую тренировку"); иначе собери циклом список словарей table с ключами "Дата", "Вид", "Минуты", "Количество", "Самочувствие", "Заметка" и покажи st.dataframe(table, hide_index=True) — без use_container_width</div><span style="display:block;height:0;overflow:hidden">
+</span><div style="break-inside:avoid;margin-top:4px">Значения в SQL — только через ?, без f-строк. Прокомментируй код для новичка. Ответь одним блоком кода.</div></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пришлите в чат группы команду streamlit run tracker/app.py. Попросите написать в чат группы, сколько записей внесли, и дождитесь всех. Нет «Недели движения» — пусть внесут любые 3 тренировки за последние дни: прогулка до школы тоже считается. Дату выбирают в календаре, а показывается она как день.месяц.год — так задали format. Проверка с завтрашней датой — важная часть К2: форма сначала проверяет значения и только потом пишет в базу. Пусть кто-нибудь попробует заметку длиннее 100 символов — тоже отказ. Минуты ограничены от 1 до 600 параметрами min_value и max_value. Команду запускаем из папки lesson-19, а не из tracker: так путь tracker/app.py у всех одинаковый. Адрес трекера — только из строки Local URL. Network URL никому не отправляем — ни в чат группы, ни друзьям. Адрес сервера в настройках Streamlit по умолчанию не задан, то есть трекер не привязан только к localhost. По сетевому адресу он может открыться на другом устройстве в домашней сети ученика — у родных, на телефоне, — если его пропустит брандмауэр Windows. А пароля у трекера нет, и с правки 3 там можно удалять записи. Одноклассникам этот адрес не поможет: он для домашней сети ученика, а они подключаются к уроку из своих домов. Трекер одноклассникам показываем только через демонстрацию экрана — слайд 36. По умолчанию брандмауэр блокирует входящие подключения, для которых нет разрешающего правила, — пусть так и остаётся: если Windows покажет окно брандмауэра про Python, ученик ничего в нём не разрешает — «Разрешить доступ» не нажимает — и показывает вам экран или присылает скриншот окна в чат группы. Если не запустилось — слайд 20.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Запуск каркаса</div>
+    <h2>Первые записи <span class="acc">из «Недели движения»</span></h2>
+  </div>
+  <ol class="steps" style="gap:14px;flex:1">
+    <li style="flex:1;max-height:96px;font-size:24px;padding:14px 28px"><div>Вставьте код из ответа в <span class="code-chip">tracker/app.py</span> и сохраните (<span class="code-chip">Ctrl+S</span>)</div></li>
+    <li style="flex:1;max-height:96px;font-size:24px;padding:14px 28px"><div>В терминале, в папке <span class="code-chip">lesson-19</span>, выполните <span class="code-chip">streamlit run tracker/app.py</span></div></li>
+    <li style="flex:1;max-height:96px;font-size:24px;padding:14px 28px"><div>Внесите 3–5 тренировок из «Недели движения»: дату выберите в календаре</div></li>
+    <li style="flex:1;max-height:96px;font-size:24px;padding:14px 28px"><div>Для проверки поставьте завтрашнюю дату и нажмите «Сохранить» — трекер откажет</div></li>
+  </ol>
+  <div class="ek-note" style="font-size:20px;padding:18px 24px;margin-bottom:44px">Терминал со <span class="code-chip">streamlit run</span> не закрывайте: трекер работает, пока работает эта команда.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Момент для К1 и К2: форма в браузере записала строку в базу, а таблица прочитала её из базы. Окно на слайде — набросок. Числа в таблице у вас могут выглядеть иначе, например 15 вместо 15.0: формат дробных чисел выбирает сама таблица Streamlit. Таблица показывает около десяти строк, остальные — прокруткой. Записей в ней не больше 20: так задано в SELECT с LIMIT. Сообщение «✅ Записал» появилось после перезапуска — как это устроено, на следующем слайде. Пусть ученики заметят: дата в таблице выглядит как 2026-11-24 — так она хранится в базе.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Первый результат</div>
+    <h2>Запись <span class="acc">прямо из формы</span></h2>
+  </div>
+  <div class="term">
+    <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">БРАУЗЕР</span></div>
+    <div class="term-body">🏃 Трекер тренировок
+✅ Записал: бег, 25 мин
+➕ Новая тренировка
+Дата 24.11.2026 · Вид бег · Минуты 25 · Количество 2.5
+Самочувствие 4 · Заметка после уроков · [ Сохранить ]
+📋 Последние записи
+Дата       │ Вид       │ Минуты │ Количество │ Самочувствие │ Заметка
+2026-11-24 │ бег       │ 25     │ 2.5        │ 4            │ после уроков
+2026-11-22 │ прогулка  │ 40     │ 0.0        │ 5            │
+2026-11-21 │ отжимания │ 10     │ 15.0       │ 3            │</div>
+  </div>
+  <p>Нажали «Сохранить» — строка ушла в <span class="code-chip">tracker.db</span>, страница перезапустилась и прочитала базу заново. Новая запись — первая в таблице: сортировка по дате, свежие сверху.</p>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Проговорите сверху вниз. change — знакомые с урока 17 четыре шага: открыть, выполнить, commit, закрыть. Закрывает closing — даже если команда упала с ошибкой, соединение не останется висеть. Значения — через знаки вопроса, как на уроке 17: заметка с апострофом не сломает запрос. Дата уходит строкой через isoformat. Если передать в базу сам объект даты, сработает устаревший адаптер, и на Python 3.12 и новее появится предупреждение. Ветка if sent — сердце К1 и К2. Кнопка отправки даёт True в том запуске, который начался с её нажатия, — как st.button на уроке 16. В остальных запусках sent равен False. Значит, на одно нажатие — одна запись. Если вынести INSERT из ветки, запись будет добавляться при каждом клике на странице — это квиз 1. Зачем done. После INSERT нужен перезапуск, чтобы всё, что стоит выше формы, тоже прочитало свежие данные. С правки 2 там появятся метрики недели. Но st.rerun начинает страницу заново, и сообщение, показанное перед ним, пропадает. Поэтому done кладёт текст в st.session_state, а показываем его в начале страницы, уже после перезапуска.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2>Пишем в базу <span class="acc">только по кнопке</span></h2>
+  </div>
+  <p><span class="code-chip">change</span> открывает соединение, выполняет команду, сохраняет изменение через <span class="code-chip">commit</span> и закрывает соединение. А вызывается <span class="code-chip">INSERT</span> только внутри <span class="code-chip">if sent:</span>.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="max-height:none;font-size:14.5px;line-height:1.34;padding:7px 20px;font-variant-ligatures:none"><span class="kw">def</span> change(sql, params=()):  <span class="cm"># изменить базу: INSERT, UPDATE, DELETE</span>
+    <span class="kw">with</span> closing(connect()) <span class="kw">as</span> con:  <span class="cm"># соединение закроется само, даже при ошибке</span>
+        con.execute(sql, params)
+        con.commit()  <span class="cm"># без commit изменение пропадёт</span>
+…
+<span class="kw">if</span> sent:  <span class="cm"># в базу пишем только по кнопке формы</span>
+    error = check_values(day, note)
+    <span class="kw">if</span> error:
+        st.error(error)
+    <span class="kw">else</span>:
+        change(
+            "INSERT INTO workouts (day, kind, minutes, amount, feeling, note) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (day.isoformat(), kind, int(minutes), float(amount), int(feeling), note.strip()),
+        )
+        done(f"✅ Записал: {kind}, {minutes} мин")</div>
+  </div>
+  <div class="ek-note"><span class="code-chip">done()</span> кладёт сообщение в <span class="code-chip">st.session_state</span> и вызывает <span class="code-chip">st.rerun()</span>. Сообщение показываем уже после перезапуска: <span class="code-chip">st.success</span> прямо перед <span class="code-chip">st.rerun()</span> не успел бы появиться.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ключевой момент для К1. Пусть каждый остановит трекер, запустит снова и найдёт свои записи. Для сравнения вспомните урок 16: история чата жила в st.session_state и пропадала при обновлении страницы. Здесь можно даже выключить компьютер — tracker.db останется на диске. Потом задайте вопрос со слайда и дайте 10 секунд. По таблице из пяти строк ответить трудно, а по таблице из сорока — невозможно. Вот зачем графики. Пройдитесь по плану правок: каждая закрывает одно слабое место. Обязательные — правки 1–3, правки 4 и 5 — для тех, кто опережает.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Момент урока</div>
+    <h2>Закрыли трекер — <span class="acc">записи на месте</span></h2>
+  </div>
+  <p>Остановите трекер: <span class="code-chip">Ctrl+C</span> в терминале. Запустите снова <span class="code-chip">streamlit run tracker/app.py</span> — все записи на месте: их хранит <span class="code-chip">tracker.db</span>, а не страница. А теперь вопрос: на этой неделе вы двигались больше, чем на прошлой?</p>
+  <div class="ek-note ek-note--red">Записи есть, а прогресса не видно: таблица отвечает «что было», но не «стало ли лучше».</div>
+  <ul class="clean">
+    <li>Правка 1 · график — минуты по дням и демо-данные за месяц</li>
+    <li>Правка 2 · период и метрики — эта неделя против прошлой</li>
+    <li>Правка 3 · правка и удаление — ошиблись в минутах, исправили</li>
+    <li>Правка 4 · цель и серия — резерв</li>
+    <li>Правка 5 · AI-тренер — резерв</li>
+  </ul>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пробегитесь по ситуациям. У кого не работает, пусть пришлёт текст ошибки в чат группы или покажет экран — разберите вместе. Если tracker.db появился не в той папке, пришлите в чат группы строку DB со слайда: ученик вставит её в сообщение DeepSeek. Разминка и трекер — частая путаница: если разминку не остановили, в браузере легко открыть не ту вкладку. Адрес трекера смотрите в терминале, где его запустили. Путь: если в коде просто имя tracker.db, база появится в той папке, откуда запустили команду, и при запуске из другой папки трекер начнёт с пустой базы. Дубли — главная ловушка Streamlit, разберём в квизе 1. Если дубли уже появились, правка 3 научит их удалять. Обычная st.button внутри st.form запрещена: у формы бывают только кнопки отправки. Таблицы нет, если DeepSeek забыл вызвать init_db: эта функция создаёт таблицу, и вызвать её нужно раньше, чем страница читает базу или пишет в неё. Предупреждение про use_container_width в терминале — как на слайде 10, только теперь у st.dataframe: уберите этот параметр, он устарел. Ошибка про столбец бывает, если ученик запускал раньше свой вариант с другими столбцами: CREATE TABLE IF NOT EXISTS старую таблицу не трогает. Файл не удаляем, а переименовываем — старые записи останутся в tracker_old.db. Если DeepSeek всё-таки сделал одно соединение на всё приложение, например через st.cache_resource, попросите вернуть connect на каждое действие, как в промпте. Непонятную ошибку целиком — в тот же чат DeepSeek.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Если каркас не запустился</div>
+    <h2>Типичные ситуации <span class="acc">с трекером</span></h2>
+  </div>
+  <div class="kv">
+    <div class="kv-row" style="padding:15px 4px"><div class="k" style="text-transform:none;font-size:17px">Открылась разминка, а не трекер</div><div class="v" style="font-size:19px">Разминка всё ещё работает. <span class="code-chip">Ctrl+C</span> в её терминале и снова <span class="code-chip">streamlit run tracker/app.py</span>.</div></div>
+    <div class="kv-row" style="padding:15px 4px"><div class="k" style="text-transform:none;font-size:17px"><span class="code-chip">tracker.db</span> появился не в папке <span class="code-chip">tracker</span></div><div class="v" style="font-size:19px">В коде путь без <span class="code-chip">Path(__file__)</span>. Попросите DeepSeek: <span class="code-chip">DB = Path(__file__).resolve().parent / "tracker.db"</span>.</div></div>
+    <div class="kv-row" style="padding:15px 4px"><div class="k" style="text-transform:none;font-size:17px">Одна тренировка записалась несколько раз</div><div class="v" style="font-size:19px"><span class="code-chip">INSERT</span> стоит не внутри <span class="code-chip">if sent:</span>. Попросите перенести его в ветку кнопки.</div></div>
+    <div class="kv-row" style="padding:15px 4px"><div class="k" style="text-transform:none;font-size:17px">Ошибка про <span class="code-chip">st.button</span> внутри формы</div><div class="v" style="font-size:19px">В форме нужна <span class="code-chip">st.form_submit_button</span>, обычную кнопку туда ставить нельзя.</div></div>
+    <div class="kv-row" style="padding:15px 4px"><div class="k" style="text-transform:none;font-size:17px">Ошибка про таблицу <span class="code-chip">workouts</span>, которой нет</div><div class="v" style="font-size:19px">В коде нет вызова <span class="code-chip">init_db()</span>, и таблица не создалась. Попросите DeepSeek вызвать <span class="code-chip">init_db()</span> перед <span class="code-chip">st.title</span>.</div></div>
+    <div class="kv-row" style="padding:15px 4px"><div class="k" style="text-transform:none;font-size:17px">Ошибка про столбец, которого нет в таблице</div><div class="v" style="font-size:19px">Таблицу создала другая версия кода. Остановите трекер, переименуйте <span class="code-chip">tracker.db</span> в <span class="code-chip">tracker_old.db</span> и запустите снова.</div></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пришлите промпт в чат группы. Правка — в тот же чат DeepSeek, около 7 минут вместе с разбором и проверкой. Это центральная правка для К3. Пока DeepSeek печатает файл, объясните три идеи. Первая: минуты по дням считает база через GROUP BY. Он встречался в статистике урока 17, а кто её не делал — разберём на следующем слайде. Вторая: дни без тренировок база не вернёт вовсе, поэтому Python проходит по всем дням подряд и ставит ноль. Третья: демо-данные. Своих записей у учеников пока три-пять, и на графике из трёх столбцов нечего разглядывать. Демо-записи помечены в заметке словом «демо», поэтому кнопка «🧹 Убрать демо» удаляет только их, а ваши записи остаются. Повторное нажатие «🧪» сначала убирает старое демо, так что дублей не будет. У отжиманий в демо количество понемногу растёт — это пригодится в правке 4. Подписи дней — «сб 21.11»: день недели и число. weekday у даты даёт номер дня недели, понедельник — ноль, поэтому список WEEKDAYS начинается с «пн».">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 1 · график</div>
+    <h2>Столбцы <span class="acc">«минуты по дням»</span></h2>
+  </div>
+  <p>База складывает минуты по дням, Python ставит нули в пустые дни, Plotly рисует столбцы.</p>
+  <div class="prompt-card prompt-card--copy">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text" style="font-size:14px;line-height:1.3;column-count:2;column-gap:28px;font-variant-ligatures:none;">Добавь график минут по дням и демо-данные.
+<span style="display:block;padding-left:16px;text-indent:-16px">- Импорты: прежние не удаляй, добавь import random и import plotly.express as px, а в from datetime import date допиши timedelta. WEEKDAYS = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"]; day_label(d) возвращает f"{WEEKDAYS[d.weekday()]} {d.strftime('%d.%m')}"
+</span><span style="display:block;padding-left:16px;text-indent:-16px">- minutes_by_day(start): rows = query("SELECT day, SUM(minutes) AS total FROM workouts WHERE day &gt;= ? GROUP BY day", (start.isoformat(),)); словарь totals: day → total. Циклом while пройди все дни от start до date.today() включительно: в список labels — day_label(d), в values — totals.get(d.isoformat(), 0), чтобы дни без записей стали нулями. Верни labels, values
+</span><span style="display:block;padding-left:16px;text-indent:-16px">- add_demo(): change("DELETE FROM workouts WHERE note = ?", ("демо",)); for i in range(30, 0, -1): если random.random() &lt; 0.3 — continue; d = date.today() - timedelta(days=i); kind = random.choice(["бег", "прогулка", "скакалка", "отжимания"]); minutes = random.choice([15, 20, 30, 40, 45, 60]); amount = 10 + (30 - i) // 2, если kind == "отжимания", иначе 0; INSERT в workouts, как в форме, с feeling = random.randint(3, 5) и note = "демо"
+</span><span style="display:block;padding-left:16px;text-indent:-16px">- Сразу после показа flash: with st.sidebar: кнопка «🧪 Демо-данные за месяц» → add_demo() и done("🧪 Добавил демо-записи за 30 дней"); кнопка «🧹 Убрать демо» → change("DELETE FROM workouts WHERE note = ?", ("демо",)) и done("🧹 Демо-записи удалены")
+</span><span style="display:block;padding-left:16px;text-indent:-16px">- Между формой и таблицей: st.subheader("📊 Минуты по дням"); labels, values = minutes_by_day(date.today() - timedelta(days=13)); fig = px.bar(x=labels, y=values, labels={"x": "День", "y": "Минуты"}); st.plotly_chart(fig, key="minutes_chart") — без use_container_width
+</span><span style="display:block;padding-left:16px">Остальной код не меняй. Верни весь файл.</span></div>
+  </div>
+  <div class="ek-note">После каждой правки замените всё содержимое <span class="code-chip">tracker/app.py</span> кодом из ответа, сохраните и обновите страницу в браузере. Проверка — после разбора.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Проговорите по строкам. SELECT с GROUP BY day складывает минуты одного дня: бег и отжимания в понедельник станут одной строкой. Условие day больше или равно start работает со строками-датами как с датами — для этого и хранили год-месяц-день. Словарь totals — шпаргалка «дата → минуты». Дальше цикл while шагает от start до сегодня по одному дню. timedelta(days=1) — это «один день», его можно прибавить к дате. Для каждого дня берём минуты из словаря, а если дня там нет, get возвращает ноль. Почему не date now в SQL: эта функция SQLite считает по всемирному времени. Ночью в Москве по Гринвичу ещё вчера, и последний столбец съехал бы на день. Поэтому «сегодня» во всём трекере даёт Python. Сам вызов px.bar — как в разминке, только списки собрала программа.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2>GROUP BY считает, <span class="acc">Python дополняет</span></h2>
+  </div>
+  <p>База возвращает строки только за дни, когда были записи. Цикл проходит все дни подряд и ставит 0, где строки нет, — иначе пустые дни пропали бы с графика.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="font-size:14px;line-height:1.36;font-variant-ligatures:none;">def minutes_by_day(start):
+    rows = query(
+        "SELECT day, SUM(minutes) AS total FROM workouts WHERE day &gt;= ? GROUP BY day",
+        (start.isoformat(),),
+    )
+    totals = {}  # «2026-11-21» → 45
+    for r in rows:
+        totals[r["day"]] = r["total"]
+    labels, values = [], []
+    d = start
+    while d &lt;= date.today():  # все дни подряд, даже пустые
+        labels.append(day_label(d))
+        values.append(totals.get(d.isoformat(), 0))  # нет записей — 0 минут
+        d += timedelta(days=1)
+    return labels, values</div>
+  </div>
+  <div class="ek-note">«Сегодня» берём из Python — <span class="code-chip">date.today()</span>. В SQL <span class="code-chip">date('now')</span> считает время по Гринвичу и ночью может выдать вчерашний день.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пусть каждый проделает все три шага. График показывает последние 14 дней, считая сегодня, хотя демо-записи — за 30. Весь месяц откроется в правке 2: там в сайдбаре появится период, по умолчанию «30 дней». График у всех свой: демо-данные случайные, а примерно каждый третий день — отдых, то есть пустое место на оси. Последний столбец — сегодня: демо до сегодняшнего дня не доходит, там только записи ученика. Добавили тренировку за сегодня — столбец вырос сразу, потому что после записи страница перезапустилась и прочитала базу заново. Подсказка при наведении показывает день и минуты. Важно для ДЗ: демо-записи нужно будет убрать, иначе «Неделя с трекером» исказится. Пока оставьте их — с ними интереснее правки 2 и 3. Если у кого-то подписи дней перемешались или выглядят как числа — сверьте day_label с промптом: в подписи должен быть день недели.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 1 · проверка</div>
+    <h2>Две недели тренировок <span class="acc">одной картинкой</span></h2>
+  </div>
+  <div class="term">
+    <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">БРАУЗЕР</span></div>
+    <div class="term-body" style="font-size:22px;line-height:1.55;">сайдбар:  [ 🧪 Демо-данные за месяц ]  [ 🧹 Убрать демо ]
+✅ 🧪 Добавил демо-записи за 30 дней
+📊 Минуты по дням
+ 60 ┤             ██                ██
+ 45 ┤       ██    ██       ██       ██
+ 30 ┤ ██    ██    ██    ██ ██       ██ ██
+ 15 ┤ ██    ██ ██ ██    ██ ██    ██ ██ ██    ██
+  0 └───────────────────────────────────────────
+      ср 11.11  ← 14 дней, считая сегодня →  вт 24.11
+наведите на столбец →  День=вс 15.11, Минуты=60</div>
+  </div>
+  <p style="font-size:21px">Нажмите «🧪 Демо-данные за месяц», наведите мышку на столбцы, потом внесите тренировку за сегодня — последний столбец вырастет. «🧹 Убрать демо» оставит только ваши записи.</p>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пришлите промпт в чат группы. Правка — в тот же чат DeepSeek, около 7 минут вместе с разбором. Это правка для К4: трекер, в который хочется заглядывать каждый день. Что важно сказать вслух. Неделя — с понедельника: так её понимают в школе и в календаре. Но сравнивать неполную неделю с целой прошлой нечестно: в понедельник у вас всегда был бы минус. Поэтому сравниваем с теми же днями прошлой недели: во вторник — понедельник и вторник. Фильтр в сайдбаре управляет графиком и таблицей. Метрики сверху от него не зависят: они всегда про эту неделю. Условие для SQL программа собирает из кусочков, но значения всё равно идут через знаки вопроса. Вид «все» просто не добавляет условие. Период «Эта неделя» в понедельник покажет один столбец — неделя только началась, это нормально.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 2 · период и метрики</div>
+    <h2>Эта неделя <span class="acc">против прошлой</span></h2>
+  </div>
+  <p>Неделя — с понедельника. Сравниваем с теми же днями прошлой недели: так честно в любой день.</p>
+  <div class="prompt-card prompt-card--copy">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text" style="font-size:14px;line-height:1.28;column-count:2;column-gap:28px;font-variant-ligatures:none;">Добавь фильтры в сайдбаре и метрики недели. Неделя начинается с понедельника.
+- PERIODS = ["Эта неделя", "30 дней", "Всё время"]. В начало блока with st.sidebar, до кнопок демо: period = st.selectbox("Период", PERIODS, index=1); kind_filter = st.selectbox("Вид", ["все"] + KINDS). Сразу после блока: start = period_start(period)
+- period_start(period): today = date.today(); "Эта неделя" — today - timedelta(days=today.weekday()); "30 дней" — today - timedelta(days=29); иначе first = query("SELECT MIN(day) AS first FROM workouts")[0]["first"] и верни date.fromisoformat(first), а если first пустой — today
+- where(start, kind): sql = " WHERE day &gt;= ?"; params = [start.isoformat()]; если kind != "все" — sql += " AND kind = ?" и params.append(kind); верни sql, params. minutes_by_day(start, kind) берёт условие из where. Таблица: заголовок «📋 Записи», rows = query("SELECT * FROM workouts" + sql + " ORDER BY day DESC, id DESC LIMIT 50", params) с тем же фильтром; пусто — st.info("За этот период записей нет")
+- minutes_between(a, b): SELECT SUM(minutes) AS total … WHERE day BETWEEN ? AND ? с (a.isoformat(), b.isoformat()); верни int(total or 0). week_stats(): today; monday = today - timedelta(days=today.weekday()); now = minutes_between(monday, today); before = minutes_between(monday - timedelta(days=7), today - timedelta(days=7)) — те же дни прошлой недели; count — SELECT COUNT(*) AS n за monday…today; top — SELECT kind, COUNT(*) AS n … GROUP BY kind ORDER BY n DESC LIMIT 1 за те же дни, fav = top[0]["kind"] или "—". Верни now, now - before, count, fav
+- После start, до формы: now, diff, count, fav = week_stats(); col1, col2, col3 = st.columns(3); col1.metric("Минут на этой неделе", now, delta=f"{diff:+d} мин", help="Неделя — с понедельника. Разница — с теми же днями прошлой недели"); col2.metric("Тренировок", count); col3.metric("Любимый вид", fav)
+- График: st.subheader(f"📊 Минуты по дням · {period}"), данные — minutes_by_day(start, kind_filter)
+Остальной код не меняй. Верни весь файл.</div>
+  </div>
+  <div class="ek-note">Проверка: переключите период на «Эта неделя» и «Всё время», вид — на «бег». График и таблица меняются, метрики сверху — всегда про эту неделю.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Проговорите по строкам. weekday даёт номер дня недели, понедельник — ноль. Отнимаем его от сегодняшней даты — получаем понедельник этой недели. BETWEEN берёт даты от и до включительно и работает с нашими строками-датами как с датами. Если записей за эти дни нет, SUM возвращает пустое значение None, а не ноль. Поэтому or 0: «ничего» превращается в ноль минут. Минус семь дней сдвигает оба края на неделю назад — так получаются те же дни прошлой недели. Разницу передаём в st.metric строкой со знаком: плюс — зелёная стрелка вверх, минус — красная вниз. help у метрики — значок-подсказка: наведите мышку, и Streamlit покажет, что такое «неделя» в этом трекере. Число у вас своё: оно зависит от демо-данных и ваших записей.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2>Разницу считает <span class="acc">программа</span></h2>
+  </div>
+  <p>Во вторник «эта неделя» — понедельник и вторник. Сравниваем их с понедельником и вторником прошлой недели. Например: <span class="out-chip">95 ↑ +35 мин</span> — на 35 минут больше, чем в те же дни неделю назад.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="font-size:14px;line-height:1.45;font-variant-ligatures:none;">def minutes_between(a, b):  # сумма минут с a по b включительно
+    row = query(
+        "SELECT SUM(minutes) AS total FROM workouts WHERE day BETWEEN ? AND ?",
+        (a.isoformat(), b.isoformat()),
+    )[0]
+    return int(row["total"] or 0)  # нет записей — SUM даёт None
+
+
+def week_stats():
+    today = date.today()
+    monday = today - timedelta(days=today.weekday())  # неделя — с понедельника
+    now = minutes_between(monday, today)
+    # те же дни прошлой недели: во вторник — пн и вт прошлой недели
+    before = minutes_between(monday - timedelta(days=7), today - timedelta(days=7))
+…
+    return now, now - before, count, fav</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пришлите промпт в чат группы. Правка — в тот же чат DeepSeek, около 8 минут вместе с разбором. Пока DeepSeek печатает файл, выберите автора демо для слайда 36 — среди тех, у кого готова правка 2 и демонстрация точно включится: на Windows обычно у любого, на macOS — у того, кто сегодня уже включал её или показывал экран на прошлых уроках (слайд 2, «На уроке»). Это вторая половина К2: форма не только для ввода, но и для правки. Правка не зависит от правки 2: если у кого-то нет метрик, он может сделать правку 3 и вернуться к периоду дома. Список записей — те же строки, что в таблице, с тем же фильтром. В подписи есть номер записи: так две одинаковые тренировки в один день не перепутаются. В списке selectbox показывает подпись из format_func, а возвращает номер записи. В форме правки две кнопки отправки: какую нажали, та и вернёт True. Удаление — с подтверждением, как удаление книги в уроке 17, только вместо вопроса «да/нет» — галочка внутри формы. Галочка стоит в той же форме, поэтому её значение уходит вместе с нажатием кнопки. Про key с номером записи — главный разбор на следующем слайде. UPDATE и DELETE — только с WHERE id и знаком вопроса: без WHERE команда поменяла бы все строки таблицы. Предупредите заранее: после «💾 Сохранить» или «🗑 Удалить» список «Какую запись поправить?» может вернуться к первой записи. Страница перезапустилась, а подпись записи или сам список изменились, и Streamlit собрал список заново. Это не ошибка: результат проверяйте по таблице и графику.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 3 · правка и удаление</div>
+    <h2>Ошиблись в минутах — <span class="acc">исправили</span></h2>
+  </div>
+  <p>Выбрали запись → форма с её значениями → «Сохранить» (<span class="code-chip">UPDATE</span>) или «Удалить» с галочкой (<span class="code-chip">DELETE</span>).</p>
+  <div class="prompt-card prompt-card--copy">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text" style="font-size:14px;line-height:1.36;column-count:2;column-gap:28px;font-variant-ligatures:none;">Добавь правку и удаление записей.
+- В самом конце страницы: st.subheader("✏️ Изменить или удалить"). Если rows — строки таблицы — пустой, больше ничего. Иначе словарь choices: для каждой r из rows choices[r["id"]] = f'№{r["id"]} · {r["day"]} · {r["kind"]} · {r["minutes"]} мин'; rec_id = st.selectbox("Какую запись поправить?", list(choices), format_func=choices.get); rec = query("SELECT * FROM workouts WHERE id = ?", (rec_id,))[0]
+- with st.form("edit_form"): поля как в форме добавления, но в переменные e_day, e_kind, e_minutes, e_amount, e_feeling, e_note и с текущими значениями: date.fromisoformat(rec["day"]); index=KINDS.index(rec["kind"]), а если вида нет в KINDS — 0; rec["minutes"]; float(rec["amount"] or 0); rec["feeling"] or 4; rec["note"] or "". У каждого поля key с номером записи: f"edit_day_{rec_id}", f"edit_kind_{rec_id}" и так далее — иначе после выбора другой записи в полях останутся старые значения. Потом sure = st.checkbox("Да, удалить эту запись", key=f"edit_sure_{rec_id}"); save = st.form_submit_button("💾 Сохранить", type="primary"); delete = st.form_submit_button("🗑 Удалить")
+- После формы: if save — check_values(e_day, e_note) и st.error, как при добавлении; без ошибки — change("UPDATE workouts SET day = ?, kind = ?, minutes = ?, amount = ?, feeling = ?, note = ? WHERE id = ?", (e_day.isoformat(), e_kind, int(e_minutes), float(e_amount), int(e_feeling), e_note.strip(), rec_id)) и done("💾 Запись обновлена"). if delete — без галочки st.warning("Сначала поставьте галочку «Да, удалить»"); с галочкой change("DELETE FROM workouts WHERE id = ?", (rec_id,)) и done("🗑 Запись удалена")
+Остальной код не меняй. Верни весь файл.</div>
+  </div>
+  <div class="ek-note">Проверка: выберите запись, поменяйте минуты и нажмите «💾 Сохранить» — график изменился. «🗑 Удалить» без галочки — предупреждение, с галочкой — запись исчезла.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Это главный слайд для К2 и самая коварная ловушка урока. Поле с key Streamlit запоминает по ключу. По документации, если у виджета есть key, новое значение по умолчанию не меняет его состояния. Представьте ключ edit_minutes без номера. Вы выбрали запись на 45 минут — в поле 45. Выбрали другую, на 20 минут, — а в поле по-прежнему 45: ключ тот же, и Streamlit показал запомненное. Нажмёте «Сохранить» — и второй записи достанутся чужие минуты. С номером записи в ключе у каждой записи свой набор полей: выбрали другую — поля новые, со значениями из базы. Если спросят, зачем тогда вообще key: поля без ключа тоже обновились бы. По документации, у поля без key новое значение по умолчанию сбрасывает его к этому новому значению. Но DeepSeek может поставить полям ключи и сам, и если ключ окажется один на все записи — получится ловушка. Поэтому промпт явно просит ключ с номером записи. А галочке «Да, удалить» номер в ключе нужен в любом случае. Её подпись и значение по умолчанию у всех записей одинаковые: без номера она после удаления так и осталась бы поставленной — уже у следующей записи. Покажите группе, если хотите: уберите номер из ключа edit_minutes, выберите по очереди две записи — и минуты в поле не сменятся.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2>Ключ с <span class="acc">номером записи</span></h2>
+  </div>
+  <p>У поля с <span class="code-chip">key</span> Streamlit помнит значение по ключу и новое <span class="code-chip">value</span> не подставляет. Если ключ один на все записи, после выбора другой записи в полях останутся старые минуты. С номером в ключе у каждой записи свои поля.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="font-size:14px;line-height:1.45;font-variant-ligatures:none;">    rec_id = st.selectbox("Какую запись поправить?", list(choices), format_func=choices.get)
+    rec = query("SELECT * FROM workouts WHERE id = ?", (rec_id,))[0]
+    with st.form("edit_form"):
+        # key с номером записи: выбрали другую запись — поля заполнятся заново
+…
+        e_minutes = st.number_input(
+            "Минуты", min_value=1, max_value=600, value=rec["minutes"], step=5,
+            key=f"edit_minutes_{rec_id}",
+        )
+…
+        sure = st.checkbox("Да, удалить эту запись", key=f"edit_sure_{rec_id}")
+        save = st.form_submit_button("💾 Сохранить", type="primary")
+        delete = st.form_submit_button("🗑 Удалить")</div>
+  </div>
+  <div class="ek-note">«🗑 Удалить» без галочки — только предупреждение. С галочкой — <span class="code-chip">DELETE FROM workouts WHERE id = ?</span>, и страница перезапускается.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пришлите промпт в чат группы. Резервная правка, около 5 минут. Её делают те, кто закончил правку 3 раньше 48-й минуты. Остальные — дома по желанию: промпт будет в файле lesson19-dz.txt, оттуда его отправляют в чат урока. Это правка для К3 и К4. Цель храним в отдельной маленькой таблице settings, а таблицу workouts не трогаем: так старые записи работают без переделок. INSERT OR REPLACE: если цели ещё нет — добавит строку, если есть — заменит её. Цель меняется только по кнопке своей формы — то же правило, что и для тренировок. Полоса прогресса принимает дробь от 0 до 1. Поэтому min ограничивает дробь единицей: перевыполнили цель — полоса просто полная. Серия считает дни подряд с записями, начиная с сегодня. Если сегодня ещё не занимались, считает со вчера: серия не обнуляется утром. Линия прогресса — px.line с точками, markers=True. У отжиманий в демо количество растёт, поэтому линия идёт вверх.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 4 · резерв</div>
+    <h2>Цель, серия и <span class="acc">линия прогресса</span></h2>
+  </div>
+  <p>Для тех, кто опережает: цель в таблице <span class="code-chip">settings</span>, серия дней подряд и линия Plotly для одного упражнения.</p>
+  <div class="prompt-card prompt-card--copy">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text" style="font-size:14px;line-height:1.3;column-count:2;column-gap:28px;font-variant-ligatures:none;">Добавь цель на неделю, серию дней и линию прогресса в упражнении.
+<span style="display:block;padding-left:16px;text-indent:-16px">- init_db() создаёт ещё таблицу: CREATE TABLE IF NOT EXISTS settings (name TEXT PRIMARY KEY, value INTEGER). get_goal(): rows = query("SELECT value FROM settings WHERE name = 'goal'"); верни rows[0]["value"], а если строк нет — 150
+</span><span style="display:block;padding-left:16px;text-indent:-16px">- streak(): days — множество day из SELECT DISTINCT day FROM workouts; d = date.today(); если d.isoformat() нет в days — d -= timedelta(days=1); n = 0; пока d.isoformat() есть в days — n += 1 и d -= timedelta(days=1); верни n
+</span><span style="display:block;padding-left:16px;text-indent:-16px">- В конце блока with st.sidebar: with st.form("goal_form"): new_goal = st.number_input("🎯 Цель: минут в неделю", min_value=30, max_value=3000, value=get_goal(), step=30); goal_sent = st.form_submit_button("Сохранить цель"). После этой формы, всё ещё в сайдбаре: if goal_sent — change("INSERT OR REPLACE INTO settings (name, value) VALUES ('goal', ?)", (int(new_goal),)) и done("🎯 Цель сохранена")
+</span><span style="display:block;padding-left:16px;text-indent:-16px">- Сразу под метриками: goal = get_goal(); st.progress(min(now / goal, 1.0), text=f"🎯 {now} из {goal} минут на этой неделе"); st.write(f"🔥 Серия: {streak()} дн. подряд")
+</span><span style="display:block;padding-left:16px;text-indent:-16px">- После графика минут: st.subheader("📈 Прогресс в упражнении"). Если kind_filter == "все" — st.info("Выберите вид в сайдбаре — покажу, как растёт количество"). Иначе sql, params = where(start, kind_filter); pts = query("SELECT day, SUM(amount) AS total FROM workouts" + sql + " AND amount &gt; 0 GROUP BY day ORDER BY day", params); пусто — st.info("У этого вида пока нет количества: впишите повторы или км"); иначе подписи — day_label(date.fromisoformat(r["day"])), значения — r["total"]; fig2 = px.line(x=подписи, y=значения, markers=True, labels={"x": "День", "y": "Количество"}); st.plotly_chart(fig2, key="progress_chart")
+</span><span style="display:block;padding-left:16px">Остальной код не меняй. Верни весь файл.</span></div>
+  </div>
+  <div class="ek-note">Проверка: поставьте цель 120 и сохраните. Выберите в сайдбаре вид «отжимания» — демо-линия идёт вверх.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Проговорите по строкам. SELECT DISTINCT day даёт каждую дату один раз, даже если в этот день было три тренировки. Множество set подходит, чтобы быстро спрашивать «есть ли такой день». Цикл while шагает назад на один день, пока день есть в множестве. Первый пропуск — и счёт окончен. Внизу — полоса цели: now — минуты этой недели из week_stats правки 2. Деление даёт долю, например 95 из 150 — это 0,63. min не даёт доле стать больше единицы. Серия с демо-данными бывает короткой: в демо примерно каждый третий день — отдых. Это хороший повод поговорить о том, что серия — не главное: важнее, что движения в целом больше.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2>Серия: шагаем назад <span class="acc">день за днём</span></h2>
+  </div>
+  <p>Берём все дни с записями, встаём на сегодня и идём назад, пока дни идут без пропусков. Например: <span class="out-chip">🔥 Серия: 4 дн. подряд</span></p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="font-size:16px;line-height:1.5;font-variant-ligatures:none;">def streak():  # сколько дней подряд были тренировки
+    days = set()
+    for r in query("SELECT DISTINCT day FROM workouts"):
+        days.add(r["day"])
+    d = date.today()
+    if d.isoformat() not in days:
+        d -= timedelta(days=1)  # сегодня ещё не занимались — считаем со вчера
+    n = 0
+    while d.isoformat() in days:  # шагаем назад, пока дни идут без пропусков
+        n += 1
+        d -= timedelta(days=1)
+    return n
+…
+goal = get_goal()
+st.progress(min(now / goal, 1.0), text=f"🎯 {now} из {goal} минут на этой неделе")</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пришлите промпт в чат группы. Резервная правка, около 5 минут. Кто не успел — дома по желанию: промпт будет в файле lesson19-dz.txt, оттуда его отправляют в чат урока. .env с ключом уже лежит в lesson-19 со слайда 14. Без ключа трекер работает как раньше, выключен только тренер. Три важные вещи. Первая — приватность: в нейросеть уходят только числа недели, без заметок. Заметки — личное, и тренеру они не нужны. Сводку страница показывает прямо над кнопкой: каждый видит, что именно отправится. Это привычка урока 18 «Покажите, откуда ответ». Вторая — предохранитель урока 16: не больше 10 обращений к AI за сессию. can_spend стоит справа от and, поэтому счётчик растёт только по нажатию кнопки. Третья — тренер не врач: в его правилах прямо запрещены советы о здоровье, питании и весе. Каждое нажатие — один запрос к DeepSeek за счёт школы. Ошибка 401 значит, что ключ неверный: проверьте, что .env скопирован из lesson-18 целиком. Ошибка 402 — на счёте школы закончились деньги, сообщите школе.">
+<div class="sl-body" style="gap:6px">
+    <div>
+      <div class="q-label">Правка 5 · резерв</div>
+      <h2>AI-тренер: <span class="acc">итоги недели</span></h2>
+    </div>
+    <p>По кнопке DeepSeek пишет итоги недели по сводке из базы — только числа, без заметок.</p>
+    <div class="prompt-card prompt-card--copy" style="margin-top:6px;padding:20px 24px 12px">
+      <span class="pc-tag">→ В тот же чат</span>
+      <div class="pc-text" style="font-size:14px;line-height:1.27;margin-top:5px;column-count:2;column-gap:36px;font-variant-ligatures:none"><span style="display:block">Добавь AI-тренера: по кнопке он пишет итоги недели. Ключ DEEPSEEK_KEY — в .env в папке lesson-19, на уровень выше app.py.
+</span><span style="display:block;padding-left:14px;text-indent:-14px;margin-top:5px">- Импорты: прежние не удаляй, добавь import os; from dotenv import load_dotenv; from openai import OpenAI. load_dotenv(Path(__file__).resolve().parent.parent / ".env"); KEY = os.getenv("DEEPSEEK_KEY"). Без ключа трекер работает как раньше: st.stop() не вызывай
+</span><span style="display:block;padding-left:14px;text-indent:-14px;margin-top:5px">- LIMIT = 10. COACH = «Ты — добрый тренер школьника. По сводке тренировок напиши 2–3 ободряющих предложения и одну простую идею на следующую неделю. Не давай советов о здоровье, питании, весе и лекарствах. Если самочувствие низкое, предложи отдохнуть и рассказать взрослым, если что-то болит.»
+</span><span style="display:block;padding-left:14px;text-indent:-14px;margin-top:5px">- Сразу после init_db(): если "calls" нет в st.session_state — 0. can_spend(): calls &gt;= LIMIT — st.warning("Лимит обращений к AI на эту сессию исчерпан") и False; иначе calls += 1 и True
+</span><span style="display:block;padding-left:14px;text-indent:-14px;margin-top:5px">- week_summary(): now, diff, count, fav = week_stats(); строки f"Минут с понедельника: {now} ({diff:+d} к тем же дням прошлой недели)", f"Тренировок: {count}", f"Любимый вид: {fav}"; по строке f"{kind}: {total} мин" на каждый вид за эти дни (GROUP BY kind); f"Среднее самочувствие: {feel:.1f} из 5", если AVG(feeling) не None. Верни через "\n". Заметки note в сводку не бери
+</span><span style="display:block;padding-left:14px;text-indent:-14px;margin-top:5px">- ask_coach(summary): client = OpenAI(api_key=KEY, base_url="https://api.deepseek.com"); client.chat.completions.create (не client.responses), model="deepseek-flash", messages: system — COACH, user — summary; max_tokens=500, extra_body={"thinking": {"type": "disabled"}}. Пустой ответ — "Тренер промолчал — нажмите ещё раз"
+</span><span style="display:block;padding-left:14px;text-indent:-14px;margin-top:5px">- В самом конце страницы: st.subheader("🤖 AI-тренер"); summary = week_summary(); st.text(summary). Нет KEY — st.info("AI-тренер выключен: нет ключа DEEPSEEK_KEY в .env"); иначе if st.button("🤖 Итоги недели") and can_spend(): st.session_state.coach = ask_coach(summary). Если "coach" есть в st.session_state — st.info(st.session_state.coach) и st.caption(f"Обращений к AI: {st.session_state.calls} из {LIMIT}")
+</span><span style="display:block;margin-top:5px">Остальной код не меняй. Верни весь файл.</span></div>
+    </div>
+    <div class="ek-note ek-note--red">Тренер не врач: советов о здоровье, питании и весе не даёт. Что-то болит — к взрослым и к врачу.</div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Проговорите по строкам. week_summary собирает сводку SQL-запросами — те же данные, что в метриках, плюс минуты по видам и среднее самочувствие. st.text показывает её как есть, без оформления. Если ключа нет, вместо кнопки — подсказка, а трекер работает дальше. Условие с кнопкой — как в репетиторе урока 16: сначала проверяем нажатие, потом can_spend. Если поставить их наоборот, счётчик рос бы от любого клика на странице. Ответ кладём в st.session_state. Иначе он исчез бы при следующем перезапуске — например, при смене периода, — и захотелось бы спросить заново, потратив ещё запрос. Счётчик живёт в сессии вкладки: обновили страницу — счёт с нуля. Это защита от случайного перерасхода, а не замок. Ответ у каждого свой: его пишет модель.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Разбор кода</div>
+      <h2>Видно, <span class="acc">что уходит в нейросеть</span></h2>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px;margin-top:6px">
+    <div class="code-win">
+      <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+      <div class="code-body" style="font-variant-ligatures:none">st.subheader(<span class="st">"🤖 AI-тренер"</span>)
+summary = week_summary()
+st.text(summary)  <span class="cm"># ровно это уйдёт в нейросеть: только числа, без заметок</span>
+<span class="kw">if</span> <span class="kw">not</span> KEY:
+    st.info(<span class="st">"AI-тренер выключен: нет ключа DEEPSEEK_KEY в .env"</span>)
+<span class="kw">elif</span> st.button(<span class="st">"🤖 Итоги недели"</span>) <span class="kw">and</span> can_spend():
+    st.session_state.coach = ask_coach(summary)
+<span class="kw">if</span> <span class="st">"coach"</span> <span class="kw">in</span> st.session_state:
+    st.info(st.session_state.coach)
+    st.caption(f<span class="st">"Обращений к AI: {st.session_state.calls} из {LIMIT}"</span>)</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:stretch">
+    <p style="font-size:19px;line-height:1.5;margin:0;align-self:center">Сводку страница показывает прямо над кнопкой — ровно этот текст получит тренер. Например: <span class="out-chip">Минут с понедельника: 95 (+35 к тем же дням прошлой недели)</span></p>
+    <div class="ek-note">Ответ тренера лежит в <span class="code-chip">st.session_state</span>: после любого клика он остаётся на странице, а новый запрос к AI уходит только по кнопке.</div>
+    </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Вопрос на К1 и К2. Дайте 20–30 секунд и попросите посчитать вслух. Разберите по шагам. Открыл страницу — первый запуск скрипта, INSERT записал сегодняшнюю дату, бег, 30 минут — то, что стоит в форме по умолчанию. Пока он заполнял поля, скрипт не перезапускался: поля формы ничего не отправляют до нажатия кнопки. Нажал «Сохранить» — второй запуск и вторая запись, уже его тренировка. Две смены периода — ещё два запуска и ещё две записи, хотя кнопку больше никто не нажимал. Итого четыре. Дополнительный вопрос: что будет при следующем открытии страницы? Пятая запись. Вывод: читать базу можно при каждом перезапуске, а писать — только по кнопке. Если дубли появились у кого-то на уроке — удаляем их правкой 3.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Проверка · вопрос 1</div>
+      <h2>Изучите ситуацию и <span class="acc">ответьте</span></h2>
+    </div>
+    <div class="quiz-box" style="margin-top:10px">
+      <span class="q-num">Вопрос 1</span>
+      <p class="q-text">Одноклассник перенёс <span class="code-chip">change("INSERT …")</span> из ветки <span class="code-chip">if sent:</span> прямо под форму, без условия. В <span class="code-chip">if sent:</span> остался только <span class="code-chip">st.success</span>. Он открыл трекер, заполнил форму, один раз нажал «Сохранить», а потом два раза сменил период в сайдбаре. Сколько новых записей появилось в базе и почему?</p>
+      <div class="quiz-answer">
+        <button class="quiz-btn" type="button">Показать ответ</button>
+        <div class="quiz-reveal">
+          <p>Четыре вместо одной. Streamlit выполняет скрипт сверху вниз при открытии страницы, по кнопке и при каждой смене периода. <span class="code-chip">INSERT</span> без условия срабатывает в каждом запуске: при открытии записал значения формы по умолчанию, по кнопке — тренировку, а потом ещё две лишние записи. В базу пишем только внутри <span class="code-chip">if sent:</span>: кнопка отправки даёт <span class="code-chip">True</span> только в запуске, который начался с её нажатия.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Вопрос на К3. Дайте 20 секунд. Первая ловушка — две записи понедельника: столбец один, высотой 40, а не два. Вторая — вторник: база не может вернуть строку за день, которого в таблице нет. GROUP BY группирует только то, что есть. Нули добавляет Python, и поэтому на оси остаётся вторник с пустым местом. Это честнее: пропуск — тоже информация. Свяжите с разминкой: там ноль во вторник стоял в списке сам, а в трекере его приходится добавлять программе.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Проверка · вопрос 2</div>
+      <h2>Прочитайте график <span class="acc">до того, как нарисуете</span></h2>
+    </div>
+    <div class="quiz-box" style="margin-top:10px">
+      <span class="q-num">Вопрос 2</span>
+      <p class="q-text">В трекере три записи: пн 23.11 — бег 30 мин, пн 23.11 — отжимания 10 мин, ср 25.11 — прогулка 20 мин. <span class="code-chip">SELECT day, SUM(minutes) AS total … GROUP BY day</span> вернул две строки. Сколько дней с пн по ср будет на графике и какой высоты столбцы? Что случилось бы без нулей в <span class="code-chip">minutes_by_day</span>?</p>
+      <div class="quiz-answer">
+        <button class="quiz-btn" type="button">Показать ответ</button>
+        <div class="quiz-reveal">
+          <p>Три дня: пн — 40, вт — 0, ср — 20. <span class="code-chip">GROUP BY day</span> сложил минуты понедельника в одну строку. Вторника в ответе базы нет: в этот день записей не было. <span class="code-chip">minutes_by_day</span> проходит все дни подряд и ставит 0, где строки нет. Без нулей вторник исчез бы с графика, понедельник и среда встали бы рядом, и пропуск не был бы виден.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пройдитесь сверху вниз. Пустой график — не поломка: у ученика просто мало записей, а демо-данные это исправляют. Старые значения в форме правки — ловушка со слайда 27: DeepSeek мог сократить ключ до одинакового для всех записей. Сообщение и перезапуск: st.rerun начинает страницу заново, поэтому всё показанное перед ним пропадает. Метрики стоят выше формы и без перезапуска покажут старые числа. NameError почти всегда значит, что DeepSeek заменил кусок файла фразой вроде «остальной код без изменений». Файл длинный — к правке 3 около 250 строк, с комментариями DeepSeek — до 300. Если правка сломала файл и за 2 минуты не чинится — запасная копия этапа, как на слайде 2. Непонятную ошибку целиком — в тот же чат DeepSeek.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Отладка</div>
+      <h2>Почему трекер <span class="acc">капризничает</span></h2>
+    </div>
+    <div class="kv" style="margin-top:8px">
+      <div class="kv-row" style="grid-template-columns:330px 1fr;padding:22px 4px;gap:28px"><div class="k" style="text-transform:none;letter-spacing:0;font-size:20px;line-height:1.3">График пустой или из одного столбца</div><div class="v" style="font-size:20px;line-height:1.5">Записей мало. Нажмите «🧪 Демо-данные за месяц» или выберите период «30 дней».</div></div>
+      <div class="kv-row" style="grid-template-columns:330px 1fr;padding:22px 4px;gap:28px"><div class="k" style="text-transform:none;letter-spacing:0;font-size:20px;line-height:1.3">Выбрали другую запись, а в форме старые значения</div><div class="v" style="font-size:20px;line-height:1.5">У полей формы правки один <span class="code-chip">key</span> на все записи, без номера. Сверьте с промптом правки 3.</div></div>
+      <div class="kv-row" style="grid-template-columns:330px 1fr;padding:22px 4px;gap:28px"><div class="k" style="text-transform:none;letter-spacing:0;font-size:20px;line-height:1.3">«✅ Записал» не появляется</div><div class="v" style="font-size:20px;line-height:1.5"><span class="code-chip">st.success</span> стоит перед <span class="code-chip">st.rerun()</span> и не успевает показаться. Сообщение — через <span class="code-chip">done()</span>.</div></div>
+      <div class="kv-row" style="grid-template-columns:330px 1fr;padding:22px 4px;gap:28px"><div class="k" style="text-transform:none;letter-spacing:0;font-size:20px;line-height:1.3">Метрики не изменились после «Сохранить»</div><div class="v" style="font-size:20px;line-height:1.5">После <span class="code-chip">change(...)</span> нет <span class="code-chip">done()</span>, а значит, и перезапуска страницы.</div></div>
+    </div>
+    <div class="ek-note"><span class="code-chip">NameError</span> после правки — DeepSeek вернул файл не целиком: попросите «Верни весь файл, без пропусков». Ошибка 401 или 402 у AI-тренера — сообщите школе.</div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пять привычек урока — дайте сделать скриншот слайда. Первые три пригодятся во всём модуле. Соединение на одно действие понадобится уже на уроке 20: сервис будет открывать своё соединение на каждый запрос. А на уроках 21 и 22 формы входа, постов и комментариев тоже пишут в базу только по кнопке, проверяют значения до записи и передают их через знаки вопроса. Четвёртая — знакомая с уроков 13 и 17: опасное действие требует подтверждения. Пятая — про личные данные: трекер хранит только то, что нужно для графика. И ключ — только в .env. Для любопытных: сам Streamlit по умолчанию отправляет обезличенную статистику использования. Отключить её можно в файле настроек config.toml, но для урока это не обязательно.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Запомните</div>
+      <h2>Привычки <span class="acc">работы со страницей и базой</span></h2>
+    </div>
+    <div class="grid-3" style="gap:22px;grid-template-columns:repeat(6,1fr)">
+      <div class="info-card" style="padding:24px 26px;font-size:19px;grid-column:span 2"><h3 style="font-size:23px;margin-bottom:12px">01 · Пишем только по кнопке</h3><p><span class="code-chip">INSERT</span>, <span class="code-chip">UPDATE</span>, <span class="code-chip">DELETE</span> — внутри <span class="code-chip">if sent:</span>, <span class="code-chip">if save:</span>, <span class="code-chip">if delete:</span>. Скрипт перезапускается от любого клика.</p></div>
+      <div class="info-card" style="padding:24px 26px;font-size:19px;grid-column:span 2"><h3 style="font-size:23px;margin-bottom:12px">02 · Соединение — на одно действие</h3><p>Открыли, выполнили, закрыли. Одно общее соединение на всё приложение не держим.</p></div>
+      <div class="info-card" style="padding:24px 26px;font-size:19px;grid-column:span 2"><h3 style="font-size:23px;margin-bottom:12px">03 · Проверяем до записи</h3><p>Дата не из будущего, заметка не длиннее 100 символов. Значения — только через <span class="code-chip">?</span>.</p></div>
+      <div class="info-card" style="padding:24px 26px;font-size:19px;grid-column:2 / span 2"><h3 style="font-size:23px;margin-bottom:12px">04 · Опасное — с подтверждением</h3><p>Удаление только с галочкой «Да, удалить».</p></div>
+      <div class="info-card" style="padding:24px 26px;font-size:19px;grid-column:4 / span 2"><h3 style="font-size:23px;margin-bottom:12px">05 · Свои данные — свои правила</h3><p>Без веса и калорий, без имён и адресов. <span class="code-chip">tracker.db</span> никому не пересылаем.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Демо по видеосвязи, около 3 минут, один-два автора. Автор — тот, кого вы выбрали на правке 3 среди тех, у кого демонстрация точно включится (слайд 2, «На уроке»). Не выбрали — спросите, у кого готовы правки 1–3 и кто готов показать: пусть ответит «+» в чат группы. Из учеников на macOS берите только того, кто сегодня уже включал демонстрацию или показывал экран на прошлых уроках. Остановите свою демонстрацию, чтобы автор смог включить свою, а после демо снова покажите слайды. Автор включает демонстрацию экрана и показывает окно браузера с трекером, а не весь экран: VS Code с .env на демонстрацию не попадает. Одноклассник или вы диктуете тренировку голосом или в чате группы: вид, минуты и день этой недели, не позже сегодняшнего. Автор сам вносит её формой. Все видят, как вырос столбец этого дня и как изменились минуты недели. Продиктовали завтрашний день — форма откажет, это тоже проверка К2. Потом автор находит эту запись в «✏️ Изменить или удалить», ставит галочку и удаляет её — так в демо участвует и правка 3, а статистика автора остаётся честной. Кто уже сделал правку 3, может внести ту же тренировку у себя и тоже удалить её. Не получается показать экран — пусть автор пришлёт в чат группы скриншоты графика до записи и после. По желанию автор открывает вторую вкладку с тем же адресом: вносит запись в одной вкладке, обновляет другую — запись видна и там, потому что данные живут в tracker.db, а не на странице. Network URL для демо не нужен, только Local URL — как на слайде 16. У кого чего-то нет — по чек-листу видно, что доделать дома: промпты всех правок будут в файле lesson19-dz.txt, его вы пришлёте на следующем слайде. Попросите каждого проверить у себя, что ключа в app.py нет: он только в .env.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Чек-лист</div>
+      <h2>Что должно быть к <span class="acc">55-й минуте</span></h2>
+    </div>
+    <div class="grid-2" style="align-items:stretch">
+      <div class="info-card" style="padding:22px 28px;font-size:19px">
+        <h3 style="font-size:26px;margin-bottom:14px;color:var(--ek-green-deep)">Готово</h3>
+        <ul class="clean" style="gap:16px;font-size:19px">
+          <li style="font-size:19px"><span><span class="code-chip">streamlit run tracker/app.py</span> — форма пишет в <span class="code-chip">tracker.db</span>, после перезапуска записи на месте</span></li>
+          <li style="font-size:19px"><span>График «Минуты по дням» и демо-данные за месяц</span></li>
+          <li style="font-size:19px"><span>Период, вид и метрики недели</span></li>
+          <li style="font-size:19px"><span>Правка и удаление записи с галочкой</span></li>
+          <li style="font-size:19px"><span>Ключ — только в <span class="code-chip">.env</span></span></li>
+        </ul>
+      </div>
+      <div class="info-card" style="padding:22px 28px;font-size:19px">
+        <h3 style="font-size:26px;margin-bottom:14px;color:var(--ek-violet-deep)">Дома</h3>
+        <ul class="clean" style="gap:16px;font-size:19px">
+          <li style="font-size:19px"><span>Нет метрик недели — правка 2. Без неё не заработают правки 4 и 5</span></li>
+          <li style="font-size:19px"><span>По желанию — правка 4: цель, серия и линия прогресса</span></li>
+          <li style="font-size:19px"><span>По желанию — правка 5: AI-тренер</span></li>
+          <li style="font-size:19px"><span>Промпты всех правок — в файле <span class="code-chip">lesson19-dz.txt</span></span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="ek-note ek-note--green" style="font-size:18px">Демо: покажите окно браузера с трекером. Одноклассник диктует тренировку — вид, минуты, день этой недели. Вы вносите её и смотрите на график и метрики. Потом удалите запись через «✏️ Изменить или удалить»: это ваша статистика.</div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Чат группы после звонка пропадёт, а файла слайдов у учеников нет, поэтому сейчас пришлите в чат группы файл lesson19-dz.txt из пункта 4 подготовки (слайд 2). В нём текст ДЗ с этого слайда вместе с командой установки из задания 3, команда запуска трекера и все промпты урока: по ним дома делают правки 4 и 5 и то, что не успели на уроке. Файлы в чат группы не проходят — пришлите ссылку из облака (пункт 6 подготовки). Попросите каждого до конца звонка сохранить файл в lesson-19 и написать в чат группы «+», когда сохранит. ДЗ примерно на 30 минут, но первое задание растянуто на неделю: по 1–2 минуты в день. Трекер запускают каждый день той же командой: streamlit run tracker/app.py из папки lesson-19 — эта команда есть в lesson19-dz.txt. По желанию ученик может попросить DeepSeek сделать ярлык для запуска двойным кликом, но как он устроен, зависит от системы: на Windows и macOS по-разному. Демо-записи убираем до начала недели, иначе график покажет чужие случайные минуты. Скриншот графика содержит только минуты по дням — на уроке 20 его можно прислать в чат группы. Базе бонус с ask.py не навредит: программа урока 18 открывает её только для чтения. Но ask.py отправляет найденные строки в DeepSeek, а с ними и заметки, если запрос их выберет. Поэтому спрашиваем про минуты и виды тренировок, а не про заметки: заметки — личное, как на слайде 30. Кто делал правку 5 урока 18, выберет tracker.db из списка. Остальные просят DeepSeek в чате урока 18 поменять имя базы. Свой график — навык диалога: круговая диаграмма px.pie строится по видам и минутам. Выгрузка: кнопка скачивания отдаёт текст или байты. Внутри st.form её поставить нельзя, как и обычную кнопку. Открываем CSV в VS Code: в Excel русские буквы иногда превращаются в непонятные символы. Установка FastAPI — заранее, чтобы на уроке 20 не ждать. Так её советует сама документация FastAPI: одна команда ставит FastAPI и вместе с ним Uvicorn, отдельно Uvicorn ставить не нужно. Команду копируем из lesson19-dz.txt как есть, вместе с кавычками. Свежему FastAPI нужен Python 3.11 или новее — как и Streamlit 1.67. Разбор — на слайде 3 урока 20. Мысль для мостика: CSV — снимок. Он устаревает сразу после скачивания, и передавать его приходится руками. Другие программы — бот урока 9, приложение на телефоне — хотят сами спрашивать свежие данные. Для этого у сервиса есть API, как у OpenWeather в уроке 8.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Домашнее задание · около 30 минут</div>
+      <h2>Неделя <span class="acc">с трекером</span></h2>
+    </div>
+    <p>Задания 2 и 3 — в чате урока: там уже весь <span class="code-chip">app.py</span>. Нет чата — откройте новый чат DeepSeek, вставьте свой <span class="code-chip">tracker/app.py</span> и опишите задачу.</p>
+    <div class="grid-3" style="gap:18px;grid-template-columns:repeat(3,1fr)">
+      <div class="info-card" style="padding:18px 24px">
+        <h3 style="font-size:24px;margin-bottom:10px">Неделя с трекером</h3>
+        <p style="font-size:19px;line-height:1.4">Сначала нажмите «🧹 Убрать демо». Потом каждый день — одна настоящая запись. На уроке 20 покажите скриншот графика. Бонус: скопируйте <span class="code-chip">tracker.db</span> в <span class="code-chip">lesson-18</span> и спросите <span class="code-chip">ask.py</span> словами про минуты и виды тренировок.</p>
+      </div>
+      <div class="info-card" style="padding:18px 24px">
+        <h3 style="font-size:24px;margin-bottom:10px">Свой график</h3>
+        <p style="font-size:19px;line-height:1.4">Круговая диаграмма по видам (<span class="code-chip">px.pie</span>) или «минуты по дням недели» — через диалог с DeepSeek. Опишите словами, что хотите увидеть.</p>
+      </div>
+      <div class="info-card" style="padding:18px 24px">
+        <h3 style="font-size:24px;margin-bottom:10px">Выгрузка</h3>
+        <p style="font-size:19px;line-height:1.4">Кнопка «📥 Скачать CSV» на <span class="code-chip">st.download_button</span> — не внутри формы. Откройте файл в VS Code. К уроку 20 установите FastAPI вместе с сервером Uvicorn: <span class="code-chip">pip install "fastapi[standard]"</span>.</p>
+      </div>
+    </div>
+    <div class="ek-note ek-note--red" style="font-size:18px"><span class="code-chip">tracker.db</span> — ваши личные данные: не пересылайте его. В заметки — без имён и адресов. Ключ — только в <span class="code-chip">.env</span>; ошибка 401 или 402 — сообщите школе.</div>
+  </div>
+</section>
+
+<section class="slide slide--green"
+  data-notes="Закройте урок. Главная мысль: страница читает базу при каждом перезапуске, а пишет в неё только по кнопке — после проверки значений и через знаки вопроса. И второе: график отвечает на вопрос, на который таблица не отвечает, — стало ли лучше. Напомните про ДЗ: убрать демо и неделю вносить настоящие записи. На уроке 20 каталог книг урока 17 откроется другим программам: они смогут сами спрашивать данные, а не ждать, пока кто-то пришлёт файл.">
+<div class="sl-orbit">
+    <i class="sl-ring"></i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:75px;top:20px;width:150px;height:150px;transform:rotate(-10deg)"><use href="#ek-i-trophy"/></svg>
+    <i class="sl-letter" style="left:466px;top:13px;width:78px;height:78px;--fs:36px">S</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1040px;top:15px;width:130px;height:130px;transform:rotate(12deg)"><use href="#ek-i-heart"/></svg>
+    <i class="sl-letter" style="left:68px;top:268px;width:100px;height:100px;--fs:46px">Q</i>
+    <i class="sl-letter" style="left:1137px;top:327px;width:95px;height:95px;--fs:44px">L</i>
+    <i class="sl-letter" style="left:300px;top:590px;width:70px;height:70px;--fs:32px">Y</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:102px;top:532px;width:125px;height:125px;transform:rotate(-15deg)"><use href="#ek-i-star"/></svg>
+    <i class="sl-letter" style="left:726px;top:613px;width:78px;height:78px;--fs:36px">P</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1045px;top:540px;width:110px;height:110px;transform:rotate(8deg)"><use href="#ek-i-gem"/></svg>
+  </div>
+  <div class="cover-center">
+    <div class="bubble">
+      <h1>До встречи<br>на уроке 20!</h1>
+      <p>Сегодня тренировки переехали в браузер: форма пишет в SQLite, а Plotly рисует прогресс. На уроке 20 сделаем свой сервис, к которому смогут обращаться другие программы.</p>
+    </div>
+  </div>
+</section>
+</main>
+
+<div class="notes" id="notes">
+  <div class="notes__header">Заметки преподавателя &middot; N — скрыть</div>
+  <div class="notes__body" id="notesBody">—</div>
+</div>
+
+<div class="hint"><kbd>←</kbd><kbd>→</kbd> слайды &middot; <kbd>N</kbd> заметки &middot; <kbd>F</kbd> весь экран</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="ek-i-trophy" viewBox="0 0 100 100"><path fill="currentColor" d="M24 16h52v12h8c6 0 10 4 10 10 0 15-11 25-23 27-3 5-8 9-14 10v8h14c4 0 7 3 7 7v4H22v-4c0-4 3-7 7-7h14v-8c-6-1-11-5-14-10C17 63 6 53 6 38c0-6 4-10 10-10h8V16zM24 36h-7c-2 0-4 2-4 4 0 8 5 15 12 18-1-5-1-10-1-16v-6zM76 36v6c0 6 0 11-1 16 7-3 12-10 12-18 0-2-2-4-4-4h-7z"/></symbol>
+<symbol id="ek-i-heart" viewBox="0 0 100 100"><path fill="currentColor" d="M50 88C28 72 10 56 10 38 10 24 21 14 34 14c6 0 12 3 16 8 4-5 10-8 16-8 13 0 24 10 24 24 0 18-18 34-40 50z"/></symbol>
+<symbol id="ek-i-star" viewBox="0 0 100 100"><path fill="currentColor" d="M50 8l12 27 29 3-22 20 6 29-25-15-25 15 6-29L9 38l29-3z"/></symbol>
+<symbol id="ek-i-gem" viewBox="0 0 100 100"><path fill="currentColor" d="M30 12h40l18 24-38 52L12 36zM36 20l-12 16h20zM64 20l-8 16h20zM50 22l-9 14h18zM26 44l20 30-8-30zM62 44l-8 30 20-30zM46 44h8l-4 26z"/></symbol>
+</defs></svg>
+
+<script>
+/* ============ Автомасштаб сцены ============ */
+(function(){
+  'use strict';
+  var stage = document.getElementById('deck');
+  function fit(){
+    var w = window.innerWidth, h = window.innerHeight;
+    if (!w || !h) return;
+    var s = Math.min(w / 1320, h / 780);
+    if (document.fullscreenElement) s = Math.min(w / 1280, h / 720);
+    stage.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+    stage.style.borderRadius = document.fullscreenElement ? '0' : '18px';
+  }
+  window.addEventListener('resize', fit);
+  document.addEventListener('fullscreenchange', fit);
+  fit();
+})();
+
+/* ============ Навигация по слайдам ============ */
+(function(){
+  'use strict';
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var total = slides.length;
+  var idx = 0;
+  document.getElementById('total').textContent = total;
+
+  var progressEl = document.getElementById('progress');
+  var currentEl = document.getElementById('current');
+  var notesPanel = document.getElementById('notes');
+  var notesBody = document.getElementById('notesBody');
+
+  slides.forEach(function(s, i){
+    if (s.classList.contains('slide--content')) s.setAttribute('data-page', i + 1);
+  });
+
+  function render(){
+    slides.forEach(function(s, i){
+      s.classList.remove('active', 'prev');
+      if (i === idx) s.classList.add('active');
+      else if (i < idx) s.classList.add('prev');
+    });
+    progressEl.style.width = ((idx + 1) / total * 100).toFixed(2) + '%';
+    currentEl.textContent = idx + 1;
+    notesBody.textContent = slides[idx].getAttribute('data-notes') || '—';
+  }
+
+  function go(n){ idx = Math.max(0, Math.min(total - 1, n)); render(); }
+  function next(){ go(idx + 1); }
+  function prev(){ go(idx - 1); }
+
+  document.addEventListener('keydown', function(e){
+    var active = document.activeElement;
+    if (active && (active.isContentEditable || active.tagName === 'TEXTAREA' || active.tagName === 'INPUT')) return;
+    switch (e.key){
+      case 'ArrowRight': case 'PageDown': case ' ':
+        e.preventDefault(); next(); break;
+      case 'ArrowLeft': case 'PageUp':
+        e.preventDefault(); prev(); break;
+      case 'Home': e.preventDefault(); go(0); break;
+      case 'End': e.preventDefault(); go(total - 1); break;
+      case 'f': case 'F': case 'а': case 'А':
+        e.preventDefault();
+        if (!document.fullscreenElement){ if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen(); }
+        else if (document.exitFullscreen) document.exitFullscreen();
+        break;
+      case 'n': case 'N': case 'т': case 'Т':
+        e.preventDefault(); notesPanel.classList.toggle('active'); break;
+      case 'Escape':
+        if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
+        notesPanel.classList.remove('active'); break;
+    }
+  });
+
+  var tx = 0, ty = 0;
+  document.addEventListener('touchstart', function(e){ tx = e.changedTouches[0].screenX; ty = e.changedTouches[0].screenY; }, { passive: true });
+  document.addEventListener('touchend', function(e){
+    var dx = e.changedTouches[0].screenX - tx, dy = e.changedTouches[0].screenY - ty;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)){ if (dx < 0) next(); else prev(); }
+  }, { passive: true });
+
+  document.addEventListener('click', function(e){
+    if (e.target.closest('a,button,input,textarea,code,pre,[contenteditable],.code-win,.term,.prompt-card,.quiz-box,.notes')) return;
+    var x = e.clientX, w = window.innerWidth;
+    if (x < w * 0.25) prev();
+    else if (x > w * 0.75) next();
+  });
+
+  render();
+})();
+
+/* ============ Квизы: показать ответ ============ */
+(function(){
+  'use strict';
+  Array.prototype.slice.call(document.querySelectorAll('.quiz-btn')).forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var box = btn.closest('.quiz-box');
+      var reveal = box && box.querySelector('.quiz-reveal');
+      if (!reveal) return;
+      var shown = reveal.classList.toggle('show');
+      btn.textContent = shown ? 'Скрыть ответ' : 'Показать ответ';
+    });
+  });
+})();
+</script>
+</body>
+</html>

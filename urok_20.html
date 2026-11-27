@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Урок 20 — Свой сервис для других программ | Eduson Kids</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+/* ============ Дизайн-токены Eduson Kids ============ */
+:root{
+  --ek-violet:#8C7FF6; --ek-violet-soft:#A79EF9; --ek-violet-deep:#6F61E8; --ek-violet-bg:#F0EEFE;
+  --ek-green:#3DF79D; --ek-green-soft:#7BF9BD; --ek-green-mint:#C9F7E3; --ek-green-pale:#E7FDF2; --ek-green-deep:#0FBF6E;
+  --ek-ink:#17171C; --ek-gray:#8F8F98; --ek-gray-light:#EFEFF2; --ek-line:#E3E3EA;
+  --ek-red:#FF6B6B; --ek-red-soft:#FF8A8A; --ek-red-deep:#E04848; --ek-red-pale:#FFECEC;
+  --f-head:'Inter Tight','Inter','Segoe UI',system-ui,sans-serif;
+  --f-body:'Inter','Segoe UI',system-ui,sans-serif;
+  --f-mono:'JetBrains Mono','Cascadia Mono','Consolas',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--f-body);background:#E9E9F1;color:var(--ek-ink);-webkit-font-smoothing:antialiased}
+
+/* ============ Хром: прогресс, счётчик, подсказка ============ */
+.progress{position:fixed;top:0;left:0;right:0;height:4px;background:rgba(23,23,28,.08);z-index:100}
+.progress__fill{height:100%;width:0%;background:var(--ek-violet);transition:width 300ms ease}
+.counter{position:fixed;top:14px;right:18px;z-index:90;font:600 13px var(--f-body);color:var(--ek-gray);background:#fff;border:1px solid var(--ek-line);padding:6px 14px;border-radius:999px;font-variant-numeric:tabular-nums}
+.counter b{color:var(--ek-ink)}
+.hint{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:90;font:500 11px var(--f-body);color:var(--ek-gray);background:#fff;border:1px solid var(--ek-line);padding:6px 14px;border-radius:999px;letter-spacing:.03em}
+.hint kbd{font-family:var(--f-mono);background:var(--ek-gray-light);padding:1px 6px;border-radius:4px;font-size:10px;margin:0 2px;color:var(--ek-ink)}
+
+/* ============ Сцена 1280×720 ============ */
+.stage{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform:translate(-50%,-50%);border-radius:18px;overflow:hidden;box-shadow:0 30px 90px rgba(23,23,28,.18);background:#fff}
+.slide{position:absolute;inset:0;background:#fff;opacity:0;transform:translateY(26px);transition:opacity 280ms ease,transform 280ms ease;pointer-events:none;font-family:var(--f-head)}
+.slide.active{opacity:1;transform:none;pointer-events:auto}
+.slide.prev{transform:translateY(-26px)}
+.slide--violet{background:var(--ek-violet)}
+.slide--green{background:var(--ek-green)}
+
+/* Номер страницы на контентных слайдах */
+.slide--content::after{content:attr(data-page);position:absolute;right:54px;bottom:30px;font:800 30px/1 var(--f-head);color:var(--ek-ink);opacity:.5}
+
+/* ============ Декор «Орбита» ============ */
+.sl-orbit{position:absolute;inset:0;pointer-events:none}
+.slide--violet .sl-orbit{--decor:#A79EF9;--letter:#C4BEFA}
+.slide--green .sl-orbit{--decor:#7BF9BD;--letter:#C4FCE0}
+.sl-ring{position:absolute;left:50%;top:50%;width:1040px;height:660px;transform:translate(-50%,-50%);border:3px solid var(--decor);border-radius:50%;opacity:.9}
+.sl-ico{position:absolute;color:var(--decor)}
+.sl-letter{position:absolute;border-radius:50%;background:var(--decor);color:var(--letter);display:flex;align-items:center;justify-content:center;font:800 var(--fs,40px)/1 var(--f-head);font-style:normal}
+
+/* ============ Каверы: карточка-окно и спич-бабл ============ */
+.cover-center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2}
+.cover-card{position:relative;width:860px;background:#fff;border-radius:28px;box-shadow:0 30px 80px rgba(23,23,28,.18)}
+.card-top{display:flex;justify-content:space-between;align-items:center;padding:24px 30px 0}
+.win-dots{display:flex;gap:9px}
+.win-dots i{width:13px;height:13px;border-radius:50%;background:var(--ek-violet)}
+.win-close{position:relative;width:22px;height:22px}
+.win-close::before,.win-close::after{content:"";position:absolute;left:-1px;top:9px;width:24px;height:4px;border-radius:2px;background:var(--ek-violet)}
+.win-close::before{transform:rotate(45deg)}
+.win-close::after{transform:rotate(-45deg)}
+.cover-card .badge{position:absolute;left:50%;top:-30px;transform:translateX(-50%) rotate(-4deg)}
+.cover-card h1{padding:26px 64px 30px;text-align:center;font:800 50px/1.14 var(--f-head);letter-spacing:-.015em;color:var(--ek-ink)}
+.cover-card .cover-sub{padding:0 80px 34px;text-align:center;font:500 19px/1.5 var(--f-body);color:#3C3C45}
+.cover-card .cover-chips{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;padding:0 40px 40px}
+.bubble{position:relative;width:660px;background:#EFEFF1;border-radius:30px;padding:56px 70px;text-align:center}
+.bubble::after{content:"";position:absolute;right:56px;bottom:-24px;width:0;height:0;border-left:38px solid transparent;border-top:28px solid #EFEFF1}
+.bubble h1{font:800 42px/1.25 var(--f-head);letter-spacing:-.01em;color:var(--ek-ink)}
+.bubble p{margin-top:16px;font:500 18px/1.5 var(--f-body);color:#3C3C45}
+
+/* ============ Стикер-бейдж и чипы ============ */
+.badge{display:inline-block;background:var(--ek-green);color:var(--ek-ink);font:800 24px/1 var(--f-head);padding:13px 22px;border-radius:13px;transform:rotate(-3deg);box-shadow:0 10px 24px rgba(23,23,28,.10)}
+.badge--violet{background:var(--ek-violet);color:#fff}
+.badge--sm{font-size:16px;padding:9px 16px;border-radius:10px}
+.chip{display:inline-block;font:700 14px/1 var(--f-body);padding:8px 14px;border-radius:999px;background:var(--ek-violet-bg);color:var(--ek-violet-deep)}
+.chip--green{background:var(--ek-green-pale);color:var(--ek-green-deep)}
+.chip--gray{background:var(--ek-gray-light);color:#3C3C45}
+
+/* ============ Контентные слайды ============ */
+.sl-body{position:absolute;inset:0;padding:56px 80px 62px;display:flex;flex-direction:column;gap:16px;overflow:hidden}
+h2{font:800 38px/1.16 var(--f-head);letter-spacing:-.01em;color:var(--ek-ink)}
+.acc{color:var(--ek-violet-deep)}
+.sl-body>p, .col p{font:500 18px/1.5 var(--f-body);color:#3C3C45}
+.code-chip{font-family:var(--f-mono);font-weight:700;font-size:.88em;background:var(--ek-violet-bg);color:var(--ek-violet-deep);padding:2px 8px;border-radius:8px;white-space:nowrap}
+.hl{color:var(--ek-violet-deep);font-weight:700}
+.out-chip{font-family:var(--f-mono);font-weight:700;font-size:.88em;background:var(--ek-green-pale);color:#0B7A48;padding:2px 8px;border-radius:8px;white-space:nowrap}
+
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;align-items:stretch}
+
+.info-card{background:#F5F5F9;border-radius:18px;padding:18px 22px;font:500 16px/1.55 var(--f-body);color:#3C3C45}
+.info-card h3{font:800 19px/1.3 var(--f-head);color:var(--ek-ink);margin-bottom:8px}
+.ek-note{background:var(--ek-violet-bg);border-left:4px solid var(--ek-violet);border-radius:0 14px 14px 0;padding:14px 20px;font:600 17px/1.5 var(--f-body);color:#3C3560}
+.ek-note--green{background:var(--ek-green-pale);border-left-color:var(--ek-green-deep);color:#0B5B39}
+.ek-note--red{background:var(--ek-red-pale);border-left-color:var(--ek-red);color:#7A2E2E}
+
+ul.clean{list-style:none;display:flex;flex-direction:column;gap:10px}
+ul.clean li{display:flex;gap:14px;align-items:flex-start;font:500 17.5px/1.5 var(--f-body);color:#3C3C45}
+ul.clean li::before{content:'—';flex:0 0 auto;color:var(--ek-violet-deep);font-weight:800}
+
+ol.steps{list-style:none;counter-reset:step;display:flex;flex-direction:column;gap:12px}
+ol.steps li{counter-increment:step;display:flex;gap:16px;align-items:center;padding:14px 20px;background:#F5F5F9;border-radius:16px;font:500 17.5px/1.45 var(--f-body);color:#2E2E36}
+ol.steps li::before{content:counter(step);flex:0 0 40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:var(--ek-violet);font:800 18px var(--f-head);color:#fff}
+ol.steps li:last-child::before{background:var(--ek-green);color:var(--ek-ink)}
+ol.steps.steps--tight{gap:8px}
+ol.steps.steps--tight li{padding:9px 16px;font-size:15.5px;gap:12px}
+ol.steps.steps--tight li::before{flex-basis:32px;height:32px;font-size:14px}
+
+.q-label{font:700 13px/1 var(--f-head);letter-spacing:.08em;text-transform:uppercase;color:var(--ek-gray)}
+
+/* ============ План занятия (agenda) ============ */
+.agenda{display:flex;flex-direction:column;gap:8px}
+.agenda-row{display:flex;gap:16px;align-items:center;padding:10px 18px;background:#F5F5F9;border-radius:14px}
+.agenda-row .t{flex:0 0 84px;text-align:center;font:800 14px/1 var(--f-mono);color:var(--ek-ink);background:var(--ek-green);border-radius:999px;padding:8px 0}
+.agenda-row .tt{font:700 16.5px/1.3 var(--f-head);color:var(--ek-ink)}
+.agenda-row .dd{font:500 14px/1.4 var(--f-body);color:var(--ek-gray)}
+
+/* ============ Ключ-значение (привычки, шпаргалки) ============ */
+.kv{display:flex;flex-direction:column}
+.kv-row{display:grid;grid-template-columns:250px 1fr;gap:18px;align-items:start;padding:11px 4px;border-bottom:1.5px solid var(--ek-line)}
+.kv-row:last-child{border-bottom:none}
+.kv-row .k{font:800 14px/1.35 var(--f-head);letter-spacing:.05em;text-transform:uppercase;color:var(--ek-violet-deep);padding-top:2px}
+.kv-row .v{font:500 16.5px/1.5 var(--f-body);color:#3C3C45}
+
+/* ============ Окно кода (статичное) ============ */
+.code-win{background:#fff;border:2.5px solid var(--ek-ink);border-radius:16px;overflow:hidden;font-family:var(--f-mono);box-shadow:10px 10px 0 rgba(140,127,246,.14)}
+.code-head{display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:2px solid var(--ek-ink)}
+.code-head .win-dots i{width:11px;height:11px}
+.lang-badge{font:700 11px var(--f-mono);letter-spacing:.14em;color:var(--ek-gray)}
+.code-body{padding:14px 20px;font:500 14.5px/1.6 var(--f-mono);color:var(--ek-ink);white-space:pre;overflow:auto;max-height:400px;tab-size:4}
+.code-body .cm{color:var(--ek-gray)}
+.code-body .st{color:var(--ek-green-deep)}
+.code-body .kw{color:var(--ek-violet-deep);font-weight:700}
+
+/* ============ Терминал (тёмное окно) ============ */
+.term{background:var(--ek-ink);border-radius:16px;overflow:hidden;font-family:var(--f-mono);box-shadow:10px 10px 0 rgba(23,23,28,.12)}
+.term-head{display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,.14)}
+.term-head .win-dots i{width:11px;height:11px;background:var(--ek-green)}
+.term-head .lang-badge{color:rgba(255,255,255,.5)}
+.term-body{padding:14px 20px;font:500 14.5px/1.62 var(--f-mono);color:var(--ek-green);white-space:pre-wrap;word-break:break-word;overflow:auto;max-height:420px}
+.term-body .usr{color:#fff}
+.term-body .dim{color:rgba(255,255,255,.55)}
+
+/* ============ Промпт-карточка (диалог с DeepSeek) ============ */
+.prompt-card{position:relative;background:var(--ek-violet-bg);border:2.5px solid var(--ek-violet);border-radius:18px;padding:20px 26px 18px;box-shadow:10px 10px 0 rgba(140,127,246,.18)}
+.prompt-card .pc-tag{position:absolute;top:-16px;left:22px;background:var(--ek-violet);color:#fff;font:800 14px/1 var(--f-head);padding:9px 16px;border-radius:10px;transform:rotate(-2deg);box-shadow:0 8px 18px rgba(23,23,28,.12)}
+.prompt-card .pc-text{margin-top:6px;font:500 15px/1.62 var(--f-mono);color:#2E2A52;white-space:pre-wrap}
+.prompt-card .pc-text .hl{color:var(--ek-violet-deep)}
+.prompt-card--copy .pc-tag{background:var(--ek-green);color:var(--ek-ink)}
+
+/* ============ Сравнение (vs) ============ */
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:stretch}
+.vs-col{border-radius:18px;padding:20px 24px}
+.vs-col h4{font:800 15px/1 var(--f-head);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
+.vs-col p{font:500 16px/1.55 var(--f-body)}
+.vs-col .note{margin-top:12px;font:500 13.5px/1.4 var(--f-body);opacity:.75}
+.vs-col--plain{background:var(--ek-gray-light);color:#3C3C45}
+.vs-col--plain h4{color:var(--ek-gray)}
+.vs-col--win{background:var(--ek-green-pale);color:#124F35;border:2px solid var(--ek-green-soft)}
+.vs-col--win h4{color:var(--ek-green-deep)}
+
+/* ============ Квиз с раскрытием ответа ============ */
+.quiz-box{background:#F5F5F9;border:2.5px solid var(--ek-ink);border-radius:18px;padding:22px 26px;box-shadow:10px 10px 0 rgba(61,247,157,.25)}
+.quiz-box .q-num{display:inline-block;background:var(--ek-green);color:var(--ek-ink);font:800 13px/1 var(--f-head);letter-spacing:.08em;text-transform:uppercase;padding:8px 14px;border-radius:999px;margin-bottom:14px}
+.quiz-box .q-text{font:700 21px/1.42 var(--f-head);color:var(--ek-ink)}
+.quiz-answer{margin-top:16px}
+.quiz-btn{border:0;border-radius:12px;padding:12px 22px;font:800 15px/1 var(--f-head);cursor:pointer;background:var(--ek-violet);color:#fff;transition:background .15s}
+.quiz-btn:hover{background:var(--ek-violet-deep)}
+.quiz-reveal{display:none;margin-top:14px;background:var(--ek-green-pale);border-left:4px solid var(--ek-green-deep);border-radius:0 14px 14px 0;padding:14px 20px;font:500 16.5px/1.55 var(--f-body);color:#0B5B39}
+.quiz-reveal.show{display:block}
+.quiz-reveal p+p{margin-top:8px}
+
+/* Появление контента */
+.slide.active .info-card,.slide.active ul.clean li,.slide.active ol.steps li,.slide.active .grid-2>*,.slide.active .grid-3>*,.slide.active .agenda-row,.slide.active .kv-row{animation:reveal 450ms ease backwards}
+.slide.active .info-card:nth-child(2),.slide.active ul.clean li:nth-child(2),.slide.active ol.steps li:nth-child(2),.slide.active .grid-2>*:nth-child(2),.slide.active .grid-3>*:nth-child(2),.slide.active .agenda-row:nth-child(2),.slide.active .kv-row:nth-child(2){animation-delay:80ms}
+.slide.active ul.clean li:nth-child(3),.slide.active ol.steps li:nth-child(3),.slide.active .grid-3>*:nth-child(3),.slide.active .agenda-row:nth-child(3),.slide.active .kv-row:nth-child(3){animation-delay:160ms}
+.slide.active ol.steps li:nth-child(4),.slide.active .agenda-row:nth-child(4),.slide.active .kv-row:nth-child(4){animation-delay:240ms}
+.slide.active ol.steps li:nth-child(5),.slide.active .agenda-row:nth-child(5),.slide.active .kv-row:nth-child(5){animation-delay:320ms}
+.slide.active .agenda-row:nth-child(6),.slide.active ol.steps li:nth-child(6),.slide.active .kv-row:nth-child(6){animation-delay:400ms}
+.slide.active .agenda-row:nth-child(7),.slide.active ol.steps li:nth-child(7),.slide.active .kv-row:nth-child(7){animation-delay:480ms}
+@keyframes reveal{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@media (prefers-reduced-motion:reduce){.slide.active .info-card,.slide.active ul.clean li,.slide.active ol.steps li,.slide.active .grid-2>*,.slide.active .grid-3>*,.slide.active .agenda-row,.slide.active .kv-row{animation:none}}
+
+/* ============ Заметки преподавателя ============ */
+.notes{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--ek-line);box-shadow:0 -16px 40px rgba(23,23,28,.10);padding:20px 40px;z-index:95;max-height:40vh;overflow-y:auto;transform:translateY(100%);transition:transform 300ms ease}
+.notes.active{transform:translateY(0)}
+.notes__header{font:800 11px var(--f-head);letter-spacing:.2em;text-transform:uppercase;color:var(--ek-violet-deep);margin-bottom:8px}
+.notes__body{font:500 15px/1.55 var(--f-body);color:#3C3C45}
+
+:focus-visible{outline:3px solid var(--ek-violet-soft);outline-offset:2px;border-radius:6px}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(23,23,28,.15);border-radius:4px}
+</style>
+</head>
+<body>
+
+<div class="progress"><div class="progress__fill" id="progress"></div></div>
+<div class="counter"><b id="current">1</b> / <span id="total">38</span></div>
+
+<main class="stage" id="deck">
+<section class="slide slide--violet active"
+  data-notes="Поприветствуйте. Сегодня каталог книг урока 17 становится сервисом, к которому обращаются другие программы. Каждый соберёт library_api.py на FastAPI: адреса для чтения, поиска, добавления и удаления книг, проверку данных и страницу документации, которую FastAPI делает сам. Потом напишет client.py — отдельную программу, которая пользуется этим сервисом. Обязательный минимум к 50-й минуте — каркас и правки 1–3: GET, поиск, POST с проверкой данных и DELETE. Правка 4 — client.py: если группа отстаёт, покажите правку на своём экране. Правка 5 — AI-описание книги — резерв. Ставить на уроке почти ничего не нужно: FastAPI вместе с сервером Uvicorn ученики поставили в ДЗ 19, requests стоит с урока 8. Ключ DeepSeek понадобится только правке 5.">
+<div class="sl-orbit">
+    <i class="sl-ring"></i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:75px;top:20px;width:150px;height:150px;transform:rotate(-10deg)"><use href="#ek-i-trophy"/></svg>
+    <i class="sl-letter" style="left:466px;top:13px;width:78px;height:78px;--fs:36px">R</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1040px;top:15px;width:130px;height:130px;transform:rotate(12deg)"><use href="#ek-i-heart"/></svg>
+    <i class="sl-letter" style="left:68px;top:268px;width:100px;height:100px;--fs:46px">E</i>
+    <i class="sl-letter" style="left:1137px;top:327px;width:95px;height:95px;--fs:44px">S</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:102px;top:532px;width:125px;height:125px;transform:rotate(-15deg)"><use href="#ek-i-star"/></svg>
+    <i class="sl-letter" style="left:726px;top:613px;width:78px;height:78px;--fs:36px">T</i>
+    <i class="sl-letter" style="left:300px;top:590px;width:70px;height:70px;--fs:32px">J</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1045px;top:540px;width:110px;height:110px;transform:rotate(8deg)"><use href="#ek-i-gem"/></svg>
+  </div>
+  <div class="cover-center">
+    <div class="cover-card">
+      <div class="badge">Урок №20</div>
+      <div class="card-top"><span class="win-dots"><i></i><i></i><i></i></span><span class="win-close"></span></div>
+      <h1>Свой сервис<br>для других программ</h1>
+      <p class="cover-sub">Откроем каталог книг урока 17 другим программам: свой REST API на FastAPI, проверка данных и документация, которую не нужно писать.</p>
+      <div class="cover-chips"><span class="chip chip--green">FastAPI</span><span class="chip">Pydantic</span><span class="chip chip--gray">Uvicorn</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Теории — минимум: к 9-й минуте каждый уже копирует промпт разминки из чата группы. Промпты, команды и файлы ученики получают только от вас в чате группы: файла слайдов у них нет, а со слайда в демонстрации экрана текст не скопировать (пункты 7 и 8 подготовки ниже). Контрольные точки: к 15-й минуте у всех в браузере ответ hello_api.py и открыта страница /docs; к 26-й — library_api.py показывает книги на /books, а /books/999 отвечает «Книга не найдена»; к 31-й — поиск «гарри» в Swagger; к 39-й — POST /books: код 201, а на годе 3000 — код 422; к 43-й — DELETE: 204, потом 404; к 50-й — client.py во втором терминале. Файл сервиса небольшой, к правке 3 — около 70 строк, поэтому перегенерация занимает меньше минуты: разбор показывайте, пока DeepSeek печатает. Если группа отстаёт, сокращайте так. К 15-й минуте /docs открылась не у всех — не ждите, Swagger покажете на своём экране на слайде 19. Демо слайда 13 — не дольше 2 минут. К 26-й минуте каркас показывает книги не у всех — разбор слайда 18 одной фразой: нет книги — raise, а не return. Swagger слайда 19 тогда покажите на своём экране, а /books/7 и /books/999 ученики откроют в браузере. К 39-й правка 2 есть не у всех — переходите к правке 3 всей группой: она не зависит от правки 2. Удалять тогда можно английского Гарри Поттера, которого добавили на уроке 17 для опыта с апострофом: его номер покажет GET /books с q=potter, обычно это 47. К 43-й не успеваете — правку 4 покажите на своём экране: запустите client.py из папки lesson-20-demo во втором терминале, а ученики сделают её дома по промпту из файла lesson20-dz.txt (пункт 7 ниже). К1 тогда закрыт показом. Если у ученика правка сломала файл и за 2 минуты не чинится, пришлите ему в чат группы запасную копию этапа, а следом — фразу «Мой library_api.py теперь такой — дальше правь его, а не прошлую версию:». Как заменить файл копией, не запуская её: ученик скачивает копию и копирует её в lesson-20 через проводник Windows или Finder, как books.db перед каркасом. Потом открывает её щелчком в проводнике VS Code, а не двойным щелчком в проводнике Windows или Finder, выделяет всё (Ctrl+A, на Mac — Cmd+A) и копирует. Затем открывает library_api.py, выделяет в нём всё, вставляет копию вместо старого кода и сохраняет (Ctrl+S, на Mac — Cmd+S). Следующее сообщение в том же чате DeepSeek он начинает этой фразой, ниже вставляет весь файл копии, а под ним — промпт следующей правки. Перед уроком обязательно: 1) прогоните всю цепочку промптов на своём ключе, вместе с правкой 5, и сохраните копию после каждого этапа: hello_api.py, api_base.py, api_1.py, api_2.py, api_3.py, client.py, api_5.py. Ключа в копиях нет. 2) За день до урока откройте /docs на своём компьютере. Страница документации берёт свой скрипт и оформление из интернета, с сайта cdn.jsdelivr.net. Если вместо документации белая страница, откройте /openapi.json: JSON на месте — сервер жив, а сайт с оформлением недоступен. Даже если у вас /docs открылась, у кого-то из учеников дома этот сайт может не открыться: например, его не пропускает провайдер, прокси или VPN. Поэтому заранее подготовьте вариант без интернета по разделу документации FastAPI «Custom Docs UI Static Assets»: три файла Swagger и ReDoc в папке static, в строке app = FastAPI — docs_url=None и redoc_url=None, подключение папки static и свои адреса /docs и /redoc. Это работа преподавателя. Откройте папку static, выделите в ней три файла — сами файлы, а не папку — и сожмите их в архив static.zip. Проверьте архив у себя: скопируйте его в пустую папку и распакуйте там, ничего не меняя в пути распаковки. Должна получиться папка static, а в ней три файла — и больше ничего. Получилось иначе — соберите архив заново и проверьте ещё раз. Запишите, каким действием вы распаковали архив: это действие вы подскажете ученику. Если у ученика другая система, чем у вас, распакуйте архив вместе с ним по демонстрации экрана. Подготовьте и файл docs_offline.txt с готовым сообщением для DeepSeek. Первые строки сообщения: «Добавь в library_api.py документацию, которая работает без интернета. Ниже код из документации FastAPI — перенеси его в файл как есть, папка static лежит рядом с library_api.py. Сохраняй этот код во всех следующих версиях файла. Остальной код не меняй. Верни весь файл.» Ниже — ваш кусок кода. Ученик, у которого /docs белая, присылает скриншот в чат группы, а вы в ответ присылаете туда же static.zip и docs_offline.txt. Он скачивает оба файла, копирует static.zip в lesson-20 через проводник Windows или Finder и распаковывает его там, ничего не меняя в пути распаковки, — тем действием, которое вы проверили у себя. Проверка — в проводнике VS Code: папка static лежит прямо в lesson-20, а в ней три файла Swagger и ReDoc. Видит что-то другое, например ещё одну папку внутри static, — пусть ничего не удаляет и покажет экран. Сообщение из docs_offline.txt он отправляет в тот же чат DeepSeek сразу после каркаса, на слайде 19. Руками кусок в library_api.py не вставляем: после каждой правки файл целиком заменяется ответом DeepSeek, а DeepSeek правит свою прошлую версию, где куска нет. Уже после правки 1 /docs снова стала бы белой. Запасные копии этапов из пункта 1 делайте без этого куска: у остальных учеников папки static нет. Если запасная копия понадобилась ученику с документацией без интернета, под файлом копии он вставляет не промпт следующей правки, а сообщение из docs_offline.txt, заменяет library_api.py ответом и только потом отправляет промпт следующей правки. Кусок уйдёт и в ДЗ 1: ученик покажет DeepSeek свой library_api.py, и в tracker_api.py, скорее всего, окажется тот же код документации без интернета, а ему нужна папка static рядом с файлом. Поэтому при объяснении ДЗ скажите: у кого на уроке была документация без интернета, скопируйте папку static из lesson-20 в lesson-19/tracker, как books.db перед каркасом. На разминке кусок не нужен: ученику с белой /docs покажите /docs hello_api.py на своём экране, а сам он откроет /openapi.json. Если /docs белая и у вас, для своего показа поставьте этот же кусок в копии из lesson-20-demo и в свою копию hello_api.py. Не успели подготовить вариант без интернета — ученику с белой /docs Swagger показываете на своём экране, а POST он проверяет через client.py: пришлите ему в чат группы промпт правки 4 сразу после правки 2, а DELETE покажите сами. 3) Компьютеры учеников заранее не проверяете: FastAPI каждый поставил дома в ДЗ 19, а у кого не вышло, тот поставит на разминке командой со слайда 10. У себя выполните команду установки со слайда 10 и запустите копию hello_api.py командой со слайда 8: открылся ответ — FastAPI на месте. 4) Соберите папку vibe-coding/lesson-20-demo для слайда 13: library_api.py — копия api_3.py, рядом client.py и копия books.db из lesson-17-demo. Это та же база, что была запасной на уроке 18: 46 книг из books.json, у части есть описания. Запустите сервис и откройте /books?q=potter. Нет английского Гарри Поттера со слайда 16 урока 17 — добавьте его через POST /books в Swagger: Harry Potter and the Philosopher's Stone, J. K. Rowling, 1997, фэнтези. Номер у него может оказаться не 47, поэтому на слайдах 2 и 26 его ищут через q=potter. 5) Остановите сервис и сохраните копию этой books.db отдельно — это запасная база: её вы пришлёте в чат группы тем, у кого нет своей с урока 17 или она сломана. Демо-базу после этого меняйте как угодно. 6) В той же папке проверьте client.py на своём компьютере при запущенном сервисе. Если он пишет, что сервис не ответил или нет связи, либо падает с ошибкой JSONDecodeError, хотя /books открывается в браузере, — вероятно, мешает системный прокси: что делать, сказано в строке слайда 34 и в заметке слайда 29. Та же строка поможет ученику, у которого дома прокси или VPN. 7) Соберите файл lesson20-dz.txt. По ходу урока вы копируете из него промпты в чат группы, а на слайде 37 пришлёте его целиком — для дома. В нём по порядку: текст ДЗ со слайда 37 — текст, три карточки и красная рамка; запасной путь при белой /docs и порядок установки bcrypt из заметки слайда 37; запуск трекера: в терминале, открытом в папке lesson-19, — cd tracker, потом fastapi dev tracker_api.py, а через POST вносить только настоящие тренировки; все промпты урока — со слайдов 7, 15, 21, 23, 26, 28 и 30, чтобы отставший доделал правки дома; у каждого подпись с названием этапа, например «Правка 4 · клиент»; строки NO_PROXY для второго терминала: PowerShell — $env:NO_PROXY='127.0.0.1,localhost', командная строка Windows — set NO_PROXY=127.0.0.1,localhost, macOS — export NO_PROXY=127.0.0.1,localhost — и пояснение к ним; фраза для запасной копии «Мой library_api.py теперь такой — дальше правь его, а не прошлую версию:»; последним — пункт «Если вы подключились позже», его состав — ниже, в правиле для опоздавших. Пояснение к строкам NO_PROXY: они нужны, если client.py раз за разом пишет «Нет связи» или «не ответил» либо падает с ошибкой JSONDecodeError, а http://127.0.0.1:8000/books в браузере открывается. Строку выполняют в том терминале, где запускают client.py, и там же снова запускают python client.py, а в новом терминале её повторяют. Какой терминал открыт в VS Code на Windows, видно по последней строке этого терминала, где стоит курсор и набирают команды. Если она начинается с PS и пути к папке, например PS C:\Users\...\lesson-20>, это PowerShell (его VS Code на Windows открывает по умолчанию). Если в ней только диск, папка и знак >, без PS, это командная строка Windows. Если строка выглядит иначе (её могли настроить по-своему), спрашивают в чате урока DeepSeek, как в терминале VS Code узнать, PowerShell это или командная строка. Если и после строки NO_PROXY client.py пишет то же, текст ошибки сохраняют целиком и показывают преподавателю в начале урока 21. Номеров слайдов в файле не пишите: дома ученик слайдов не видит. Каждый промпт присылайте в чат группы на его слайде, опоздавшим повторите промпт текущего этапа. Если опоздавший пропустил подготовку слайда 14 или прошлые этапы, одного промпта ему мало: нужна папка с базой, а каждая правка дописывает файл прошлого этапа. Пришлите ему lesson20-dz.txt, копию library_api.py прошлого этапа из пункта 1 (перед правками 4 и 5 это api_3.py: правка 4 library_api.py не меняет; к каркасу копия не нужна) и промпт этапа, который сейчас делает группа, и попросите сделать всё по последнему пункту файла. В этом пункте по шагам, на «вы»: открыть в VS Code папку lesson-20 в vibe-coding, нет её — создать; скопировать в неё через проводник Windows или Finder books.db из lesson-17 и .env из lesson-19 (не видно .env — пропустить) клавишами Ctrl+C и Ctrl+V, на Mac — Cmd+C и Cmd+V; мышью не перетаскивать, чтобы оригиналы остались в lesson-17 и lesson-19; создать в lesson-20 пустой library_api.py; если прислали копию — заменить ею код library_api.py (впишите сюда шаги замены копией из начала этой заметки — до сохранения файла включительно); в новом чате DeepSeek отправить фразу для запасной копии, под ней весь код копии, а под ним — присланный промпт, а без копии — только промпт; код из ответа вставить и сохранить: для правки 4 (промпт про client.py) — в новый файл client.py в lesson-20, для остальных — вместо всего кода library_api.py; если в каком-то терминале VS Code уже работает fastapi dev, остановить его там клавишами Ctrl+C (на Mac тоже Ctrl+C); выполнить в терминале VS Code fastapi dev library_api.py, а для правки 4 потом во втором терминале (кнопка + на панели терминала) — python client.py. Так же присылайте всё, что ученик вводит дословно: команду установки со слайда 10, JSON тестовой книги со слайда 24, строку NO_PROXY со слайдов 29 и 34 — кавычки, скобки и знак $ при перенаборе с экрана легко исказить. Где у чата группы предел длины сообщения, заранее неизвестно. Поэтому сохраните каждый промпт урока ещё и отдельным файлом .txt с названием этапа в имени, например pravka-5.txt. Ученик открывает такой файл, выделяет весь текст (Ctrl+A, на Mac — Cmd+A), копирует и вставляет в чат урока. В пробной встрече отправьте текстом самый длинный промпт — правку 5 со слайда 30 — и проверьте, что он пришёл в чат группы целиком. Пришёл — промпты можно присылать текстом. Обрезан или не успели проверить — все промпты длиннее 600 знаков, то есть каркас и правки 1, 2, 4 и 5, присылайте сразу файлами. Каждый раз, когда отправляете промпт текстом, проверьте в чате группы, что сообщение кончается последней строкой промпта. У правок 1, 2, 3 и 5 это «Остальной код не меняй. Верни весь файл.», у разминки и клиента — «Прокомментируй код для новичка. Ответь одним блоком кода.», а последняя строка каркаса кончается теми же словами. Конец другой — напишите группе, что сообщение обрезано и копировать его нельзя, и пришлите этот промпт файлом. 8) Проверьте, что чат группы принимает файлы: через него идут static.zip и docs_offline.txt, запасная books.db из пункта 5, копии этапов из пункта 1, файлы промптов из пункта 7 и lesson20-dz.txt. Если не принимает, заранее положите эти файлы в своё облачное хранилище и там, где сценарий велит прислать файл в чат группы, присылайте ссылку на нужный файл. Это запасной путь, основной — сам файл в чате. Каждую ссылку заранее откройте в окне браузера, где вы не вошли в свою учётную запись: файл должен скачиваться. Файлы присылайте, когда группа уже подключилась. lesson20-dz.txt нужен всем, поэтому повторите его тому, кто вошёл позже: на части платформ опоздавшие не видят сообщений, отправленных до их входа. 9) Разрешите участникам демонстрацию экрана: на ней держатся помощь с ошибками (слайды 2, 8, 10, 14, 20, 29 и 34) и демо слайда 36. Автора демо наметьте, пока группа делает правку 3: того, у кого уже работают правки 1 и 2. Попросите его один раз включить и выключить демонстрацию окна браузера: на macOS первая демонстрация может потребовать системного разрешения на запись экрана. На время этой проверки остановите свою демонстрацию, а потом снова покажите слайды. Сервер в уроке запускаем только командой fastapi dev: он слушает адрес 127.0.0.1, то есть только этот компьютер. До правки 5 сервис к нейросети не обращается и школьный ключ не тратит.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">План занятия</div>
+    <h2>Как пройдут <span class="acc">60 минут</span></h2>
+  </div>
+  <div class="agenda" style="margin-top:14px">
+    <div class="agenda-row"><span class="t">0–4</span><div><div class="tt">Разбор ДЗ</div><div class="dd">CSV из трекера и установка FastAPI.</div></div></div>
+    <div class="agenda-row"><span class="t">4–9</span><div><div class="tt">REST API и FastAPI</div><div class="dd">Окно для программ: метод, адрес, код и JSON.</div></div></div>
+    <div class="agenda-row"><span class="t">9–15</span><div><div class="tt">Разминка hello_api.py</div><div class="dd">Первый сервис и его документация /docs.</div></div></div>
+    <div class="agenda-row"><span class="t">15–26</span><div><div class="tt">Цель и каркас library_api.py</div><div class="dd">Книги урока 17 — в браузере как JSON.</div></div></div>
+    <div class="agenda-row"><span class="t">26–50</span><div><div class="tt">Правки через диалог</div><div class="dd">Обязательно: поиск → добавление → удаление. Затем client.py. Успеете — AI-описание.</div></div></div>
+    <div class="agenda-row"><span class="t">50–55</span><div><div class="tt">Вопросы и отладка</div><div class="dd">Квизы, типичные ошибки и привычки.</div></div></div>
+    <div class="agenda-row"><span class="t">55–60</span><div><div class="tt">Демо и ДЗ</div><div class="dd">Книгу диктует одноклассник, вносите вы.</div></div></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="На весь блок 4 минуты. Скриншоты и файлы показывайте группе только с согласия автора. Скриншот графика автор присылает в чат группы. Не получается — показывает демонстрацией только окна со скриншотом: на это время остановите свою демонстрацию, а потом снова покажите слайды. Неделя с трекером — коротко: кто вносил записи каждый день и убрал ли демо. Похвалите тех, у кого неделя без пропусков. Свой график — один-два рассказа: как описали задачу словами и сколько понадобилось сообщений. Главное — выгрузка. Спросите: вы скачали CSV в понедельник, а во вторник добавили тренировку — она есть в файле? Нет: CSV — снимок на момент скачивания. Чтобы другой человек увидел свежие данные, файл нужно скачать и переслать заново. А теперь представьте, что данные нужны не человеку, а программе — боту урока 9 или приложению на телефоне. Программе удобнее самой спросить сервис и сразу получить свежий ответ. Вспомните урок 8: OpenWeather не присылал вам файл с погодой — ваша программа отправляла запрос и получала JSON. Это и есть API. Спросите, кто выполнил установку FastAPI из ДЗ. Проверим её на разминке, а у кого не вышло — поставим там же одной командой. Мостик: сегодня свой API к каталогу книг урока 17, а дома — к трекеру.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор ДЗ урока 19</div>
+    <h2>CSV — <span class="acc">снимок</span>, а не окно</h2>
+  </div>
+  <p>Открываем 2–3 работы: неделю с трекером, свой график и выгрузку.</p>
+  <div class="grid-3" style="margin-top:20px">
+    <div class="info-card"><h3>Неделя с трекером</h3>Сколько дней подряд вы вносили настоящие записи? Демо убрали? Скриншот графика показывает только минуты по дням — его можно показать группе.</div>
+    <div class="info-card"><h3>Свой график</h3>Круг по видам или минуты по дням недели. Как вы описали задачу DeepSeek словами и с какой попытки получилось?</div>
+    <div class="info-card"><h3>Выгрузка</h3>Скачали CSV и открыли в VS Code. Внесли новую тренировку — а в файле её нет: CSV — снимок на момент скачивания.</div>
+  </div>
+  <div class="ek-note" style="margin-top:20px">Другим программам — боту, приложению на телефоне — нужен не снимок, а окно: спросил — получил свежие данные. Такое окно называется API. Сегодня сделаем своё — для каталога книг урока 17.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ключевой слайд для К1. API — сокращение от английского «интерфейс программирования приложений», но удобнее образ окна выдачи в библиотеке. К полкам вас не пускают, зато в окне по просьбе выдают книгу, принимают новую или списывают старую. Так и здесь: программа-клиент не знает, как устроена база и где лежит файл. Ей достаточно адреса и правил окна. Окно называют REST API, когда оно устроено вокруг ресурсов — у нас это книги, адрес /books, — а действие над ними задаёт метод запроса. Подробнее — на следующем слайде. Сегодня обе стороны на одном компьютере: сервис слушает только адрес 127.0.0.1, то есть «этот компьютер», и ни с другого устройства, ни из дома одноклассника к нему не достучаться. Почему так — на слайде 27 и в квизе 2.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Идея урока</div>
+    <h2>Свой API — <span class="acc">окно для программ</span></h2>
+  </div>
+  <p>На уроке 8 вы обращались к чужому окну — OpenWeather: отправили запрос, получили JSON и код ответа. Сегодня окно будет ваше: <span class="hl">REST API</span> каталога книг.</p>
+  <div class="vs" style="margin-top:20px">
+    <div class="vs-col vs-col--plain">
+      <h4>Меню в терминале (было)</h4>
+      <p>О каталоге урока 17 знает только <span class="code-chip">library.py</span>: книги видны через меню. Другой программе пришлось бы самой открывать <span class="code-chip">books.db</span> и знать, как устроена таблица.</p>
+      <p class="note">Так было на уроке 17.</p>
+    </div>
+    <div class="vs-col vs-col--win">
+      <h4>Сервис с API (стало)</h4>
+      <p>Любая программа на этом компьютере спрашивает <span class="code-chip">/books?q=гарри</span> и получает свежий JSON. Добавить и удалить книгу — тоже запросом.</p>
+      <p class="note">Так соберём <span class="code-chip">library_api.py</span> сегодня.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ключевой слайд для К1 и К3. Пройдитесь по строкам. Метод — глагол: GET — получить, POST — создать, DELETE — удалить. Адрес — существительное: /books — все книги, /books/7 — книга номер 7. Уточнения после вопросительного знака вам знакомы: на уроке 8 так же уходили параметры запроса к OpenWeather. POST вы уже отправляли: на уроках 8–10 вопрос уходил в DeepSeek POST-запросом с JSON в теле. Коды ответа: 200 и 404 знакомы по OpenWeather. 201 значит «создано» — так ответим на добавление книги. 204 — «готово, а показывать нечего»: у такого ответа нет тела, так ответим на удаление. 422 — им FastAPI отвечает, когда присланные данные не прошли проверку, и объясняет, какое поле не так. Подробно разберём на слайде 25.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Как это работает</div>
+    <h2>Запрос — <span class="acc">метод и адрес</span>, ответ — код и JSON</h2>
+  </div>
+  <p>Метод говорит, что сделать, адрес — с чем. Всё, что после <span class="code-chip">?</span>, — уточнения запроса.</p>
+  <div class="kv" style="margin-top:18px">
+    <div class="kv-row"><div class="k" style="text-transform:none"><span class="code-chip">GET /books</span></div><div class="v">Получить список книг. С уточнениями: <span class="code-chip">/books?q=гарри&amp;limit=5</span></div></div>
+    <div class="kv-row"><div class="k" style="text-transform:none"><span class="code-chip">GET /books/7</span></div><div class="v">Получить книгу №7</div></div>
+    <div class="kv-row"><div class="k" style="text-transform:none"><span class="code-chip">POST /books</span></div><div class="v">Создать книгу. Её данные — в теле запроса, в JSON</div></div>
+    <div class="kv-row"><div class="k" style="text-transform:none"><span class="code-chip">DELETE /books/7</span></div><div class="v">Удалить книгу №7</div></div>
+  </div>
+  <div class="ek-note" style="margin-top:18px">В ответе — код и обычно JSON. <span class="code-chip">200</span> — готово, <span class="code-chip">201</span> — создано, <span class="code-chip">204</span> — готово, а показывать нечего, <span class="code-chip">404</span> — не найдено, <span class="code-chip">422</span> — данные не прошли проверку.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ключевой слайд для К2. Классов и декораторов вы не проходили — и не нужно. app = FastAPI() просто создаёт сервис. Строчка с собакой над функцией — табличка на двери: «GET-запросы на адрес / — сюда». По документации FastAPI, такая строка говорит, что функция прямо под ней отвечает за запросы на этот адрес этим методом. Функция возвращает обычный словарь, а FastAPI сам превращает его в JSON. Три слова урока. FastAPI — библиотека, в которой пишем адреса. Uvicorn — сервер: он держит сервис включённым, слушает адрес 127.0.0.1 на порту 8000 и передаёт запросы FastAPI. Отдельно его ставить не нужно — он пришёл вместе с FastAPI по команде из ДЗ, а запускает его команда fastapi dev. Swagger UI — страница документации, которую FastAPI собирает сам. Всё это бесплатно и без регистрации: у FastAPI открытый код и лицензия MIT. Код на слайде — пример, его не запускаем: полный файл даст разминка.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Новый инструмент</div>
+    <h2>FastAPI: функция и <span class="acc">табличка над ней</span></h2>
+  </div>
+  <p>Метод и адрес пишем «табличкой» над обычной функцией — это <span class="hl">декоратор</span>. Функция возвращает словарь, а FastAPI превращает его в JSON.</p>
+  <div class="code-win" style="margin-top:10px">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="font-size:17px;line-height:1.4"><span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI
+
+app = FastAPI()  <span class="cm"># сам сервис</span>
+
+
+@app.get(<span class="st">"/"</span>)  <span class="cm"># табличка: GET-запросы на адрес / — к функции ниже</span>
+<span class="kw">def</span> root():
+    <span class="kw">return</span> {<span class="st">"message"</span>: <span class="st">"Привет!"</span>}  <span class="cm"># словарь → JSON</span></div>
+  </div>
+  <div class="grid-3" style="margin-top:12px">
+    <div class="info-card"><h3>FastAPI</h3>Библиотека для адресов: табличка, функция, ответ в JSON.</div>
+    <div class="info-card"><h3>Uvicorn</h3>Сервер: держит сервис включённым на <span class="code-chip">127.0.0.1:8000</span> и передаёт ему запросы.</div>
+    <div class="info-card"><h3>Swagger UI</h3>Документация на <span class="code-chip">/docs</span>. FastAPI собирает её сам.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пришлите промпт в чат группы: ученики копируют его оттуда целиком в новый чат DeepSeek. Скажите вслух: этот чат DeepSeek — на весь урок. Каркас и все правки пойдут сюда же, чтобы DeepSeek видел, как мы пишем адреса, и писал так же. Промпт нарочно короткий: два адреса, никакой базы. Если что-то не запустится, причина будет в установке, а не в большом коде. Две детали промпта. Обычные функции def, а не async def: документация FastAPI советует, если не уверены, писать обычный def, а модуль sqlite3, через который каркас работает с базой, не умеет ждать через await. И запуск в файл не добавляем: нейросеть-помощник любит дописать в конец uvicorn.run, а мы запускаем сервис командой — так у всех одинаково. {name} в адресе — меняющаяся часть: что напишете после /hello/, то и попадёт в функцию.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Промпт #1 · новый чат — на весь урок</div>
+    <h2><span class="code-chip">hello_api.py</span>: <span class="acc">первый сервис</span></h2>
+  </div>
+  <p>Два адреса и никакой базы. Заодно проверим, что FastAPI установлен, — до большого файла.</p>
+  <div class="prompt-card" style="margin-top:28px">
+    <span class="pc-tag">→ Новый чат DeepSeek</span>
+    <div class="pc-text">Ты — опытный Python-разработчик и наставник школьника. Напиши hello_api.py — самый маленький сервис на FastAPI.
+- from fastapi import FastAPI, больше ничего не импортируй. app = FastAPI(title="Привет, API", version="1.0")
+- @app.get("/") над обычной функцией def root() (не async def): верни {"message": "Привет!"}
+- @app.get("/hello/{name}") над def hello(name: str): верни {"message": f"Привет, {name}!"}
+- Запуск в файл не добавляй: uvicorn.run и if __name__ == "__main__" не нужны — я запущу сервис командой fastapi dev hello_api.py
+Прокомментируй код для новичка. Ответь одним блоком кода.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Дождитесь, пока у каждого в браузере появится ответ: пусть напишут в чат группы «Привет», когда его увидят. Адрес набираем целиком: с http:// и номером порта 8000 после двоеточия. Терминал на слайде — набросок: настоящий вывод fastapi dev длиннее и цветной, но строки с адресом сервиса и адресом документации в нём есть. Последняя строка подсказывает: Ctrl+C останавливает сервер. Пока команда работает, терминал занят — это нормально, сервис ждёт запросов. Если терминал предложит другую команду запуска, не выполняем её: в уроке только fastapi dev. fastapi dev слушает адрес 127.0.0.1, то есть только этот компьютер. Браузер показывает JSON по-разному — одной строкой или с оформлением, это зависит от браузера. Вместо Барсика можно написать любое слово или ник: свои настоящие имена в программы не вводим. Опыт на автоперезапуск: поменяйте в коде «Привет!» на «Здравствуйте!», сохраните файл и обновите страницу. Сервер подхватил правку сам — в режиме fastapi dev автоперезапуск включён. Если Windows покажет окно брандмауэра про Python, ученик сам ничего в нём не разрешает, а показывает его вам через демонстрацию экрана. Доступ к сети сервису не нужен, он слушает только этот компьютер: подскажите, как закрыть окно, ничего не разрешая.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Запуск и проверка</div>
+    <h2>Сервис <span class="acc">отвечает в браузере</span></h2>
+  </div>
+  <div class="grid-2" style="margin-top:28px">
+    <ol class="steps">
+      <li><div>В <span class="code-chip">vibe-coding</span> создайте папку <span class="code-chip">lesson-20</span> и откройте её в VS Code</div></li>
+      <li><div>Создайте <span class="code-chip">hello_api.py</span>, вставьте код из ответа и сохраните</div></li>
+      <li><div>В терминале выполните <span class="code-chip">fastapi dev hello_api.py</span></div></li>
+      <li><div>Откройте в браузере <span class="code-chip">http://127.0.0.1:8000/</span>, потом <span class="code-chip">http://127.0.0.1:8000/hello/Барсик</span></div></li>
+    </ol>
+    <div class="term">
+      <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">ТЕРМИНАЛ</span></div>
+      <div class="term-body" style="font-size:17px;line-height:1.5"><span class="usr">$ fastapi dev hello_api.py</span>
+…
+Server started at http://127.0.0.1:8000
+Documentation at http://127.0.0.1:8000/docs
+…
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)</div>
+    </div>
+  </div>
+  <p style="margin-top:24px">В браузере — ответы сервиса: <span class="out-chip">{"message":"Привет!"}</span> и <span class="out-chip">{"message":"Привет, Барсик!"}</span>.</p>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ключевой слайд для К4. Документацию никто не писал: FastAPI собрал её из табличек над функциями и из параметров. По документации FastAPI, для интерактивной документации хватает объявлений типов в параметрах функций, вроде name: str. Название и версия сверху — из строки FastAPI с title и version. Try it out открывает поля для ввода, Execute отправляет настоящий запрос вашему сервису. Ниже Swagger показывает адрес запроса, код ответа и тело ответа — то же, что получила бы любая программа. Подписи кнопок рисует сама Swagger UI, в другой версии они могут чуть отличаться. Окно на слайде — набросок. Ещё два адреса для любопытных: /redoc — та же документация в другом оформлении, а /openapi.json — описание всех адресов в JSON. Его читают уже не люди, а программы. Если вместо документации белая страница: Swagger берёт свой скрипт и оформление из интернета, с сайта cdn.jsdelivr.net. Откройте /openapi.json — если JSON есть, сервер в порядке, не загрузилось только оформление. Дальше — запасной путь из заметки слайда 2: ученик присылает скриншот белой страницы в чат группы, а вы в ответ — static.zip и docs_offline.txt. На разминке /docs ему покажите на своём экране, а документацию без интернета он поставит после каркаса, на слайде 19.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Автодокументация</div>
+    <h2><span class="code-chip">/docs</span>: документация, <span class="acc">которую никто не писал</span></h2>
+  </div>
+  <div class="grid-2" style="margin-top:28px">
+    <ol class="steps">
+      <li><div>Откройте <span class="code-chip">http://127.0.0.1:8000/docs</span> — там оба адреса сервиса</div></li>
+      <li><div>Нажмите на строку <span class="code-chip">GET /hello/{name}</span>, потом на кнопку <span class="code-chip">Try it out</span></div></li>
+      <li><div>Впишите в поле <span class="code-chip">name</span> слово <span class="code-chip">Барсик</span> и нажмите <span class="code-chip">Execute</span></div></li>
+      <li><div>Ниже появятся код ответа <span class="code-chip">200</span> и тело ответа</div></li>
+    </ol>
+    <div class="term">
+      <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">БРАУЗЕР</span></div>
+      <div class="term-body" style="font-size:17px;line-height:1.5">Привет, API  1.0
+GET  /
+GET  /hello/{name}
+     [ Try it out ]
+     name *   Барсик
+     [ Execute ]
+     Code 200
+     Response body   {"message": "Привет, Барсик!"}</div>
+    </div>
+  </div>
+  <p style="margin-top:24px">FastAPI собрал страницу сам — из табличек и параметров функций. То же описание адресов для программ лежит на <span class="code-chip">/openapi.json</span>.</p>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Почините у всех: дальше нужна та же папка lesson-20 и тот же чат DeepSeek. Ошибку ученик присылает текстом в чат группы или показывает экран. Если FastAPI не установлен, терминал сначала ответит, что не знает команду fastapi, а python -m fastapi dev hello_api.py — строкой No module named fastapi. Значит, ставим. Команду установки пришлите в чат группы: ученик копирует её оттуда как есть, вместе с кавычками, а не перенабирает с экрана. Квадратные скобки просят поставить FastAPI с набором standard, а в нём уже есть сервер Uvicorn. Если не находится и pip — python -m pip и дальше та же команда. Свежему FastAPI нужен Python 3.11 или новее — как и Streamlit 1.67, поэтому у тех, кто делал уроки 16–19, подходящий Python уже есть. Команда fastapi может не найтись и тогда, когда пакет стоит, — помогает python -m fastapi dev hello_api.py. Если и так не вышло — python -m uvicorn hello_api:app --reload: двоеточие отделяет имя файла без .py от имени переменной app. Если переменная с сервисом в файле названа иначе, uvicorn ответит Attribute «app» not found in module «hello_api» — поставьте после двоеточия имя из файла. Сообщения Path does not exist и Could not find… пишет сама команда fastapi. Path does not exist — в открытой папке нет файла с таким именем. Could not find a default file to run — в команде забыли имя файла. Could not find FastAPI app in module — файл нашёлся, но сервиса FastAPI(...) в нём нет: чаще всего код не вставили или не сохранили. Имя переменной команде fastapi не важно: сервис под другим именем она тоже находит. Ошибка про занятый порт значит, что на порту 8000 уже работает сервер. Но на Windows ошибки может и не быть: на проверке урока второй fastapi dev на занятом порту запустился молча, а на запросы отвечал первый сервер. Поэтому на каркасе забытую разминку ловим не по ошибке, а по заголовку «Привет, API» на /docs и ответу Not Found на /books — слайд 20. Если ни в одном терминале сервера нет, а порт занят или по адресу 127.0.0.1:8000 вместо ответа разминки открывается что-то чужое, порт держит другая программа. Тогда запустите разминку на другом порту: fastapi dev hello_api.py --port 8001 — и открывайте адреса с :8001 вместо :8000. Подробнее — в заметке слайда 20. Белая страница /docs — слайд 9. Непонятную ошибку целиком копируем в тот же чат DeepSeek.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Типичные ситуации запуска</div>
+    <h2>Если <span class="code-chip">hello_api.py</span> <span class="acc">не запустился</span></h2>
+  </div>
+  <div class="kv" style="margin-top:14px">
+    <div class="kv-row" style="grid-template-columns:330px 1fr;padding:12px 6px;gap:28px"><div class="k" style="text-transform:none;font-size:18px">Терминал не знает команду <span class="code-chip">fastapi</span></div><div class="v" style="font-size:19px">Запустите так: <span class="code-chip">python -m fastapi dev hello_api.py</span>.</div></div>
+    <div class="kv-row" style="grid-template-columns:330px 1fr;padding:12px 6px;gap:28px"><div class="k" style="text-transform:none;font-size:18px"><span class="code-chip">No module named fastapi</span></div><div class="v" style="font-size:19px">Установка из ДЗ 19 не прошла. Выполните <span class="code-chip">pip install "fastapi[standard]"</span> — вместе с кавычками — и запустите снова.</div></div>
+    <div class="kv-row" style="grid-template-columns:330px 1fr;padding:12px 6px;gap:28px"><div class="k" style="text-transform:none;font-size:18px"><span class="code-chip">Path does not exist</span> или <span class="code-chip">Could not find…</span></div><div class="v" style="font-size:19px">Терминал открыт не в папке <span class="code-chip">lesson-20</span>, имя файла в команде пропущено или с опечаткой, или код в файле не сохранён (<span class="code-chip">Ctrl+S</span>).</div></div>
+    <div class="kv-row" style="grid-template-columns:330px 1fr;padding:12px 6px;gap:28px"><div class="k" style="text-transform:none;font-size:18px">Ошибка про занятый порт, или на <span class="code-chip">127.0.0.1:8000</span> открывается что-то чужое</div><div class="v" style="font-size:19px">Там уже работает другой сервер. Найдите его терминал и нажмите <span class="code-chip">Ctrl+C</span>. Не нашли — покажите экран преподавателю.</div></div>
+    <div class="kv-row" style="grid-template-columns:330px 1fr;padding:12px 6px;gap:28px"><div class="k" style="text-transform:none;font-size:18px">Вместо <span class="code-chip">/docs</span> — белая страница</div><div class="v" style="font-size:19px">Откройте <span class="code-chip">/openapi.json</span>. Есть JSON — сервис жив, не загрузилось оформление из интернета. Пришлите скриншот в чат группы.</div></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ключевой слайд для К1 и К3: это карта, по которой строим сервис. Сравните с меню урока 17. «1 все книги» стало GET /books, «3 найти» — тем же адресом с ?q=, «2 добавить» — POST /books, удаление из резервной правки 5 урока 17 — DELETE. База та же, books.db, и SQL почти тот же. Новое — дверь: вместо меню и input — адреса, а вместо print — JSON. Заметьте: адрес /books один на два действия, GET и POST. Различает их метод. Фигурные скобки в адресе — место для номера книги. Тип int в функции значит, что FastAPI сам превратит этот кусок адреса в число и не пустит туда слово. Сегодня строим все четыре адреса: GET — в каркасе, поиск — в правке 1, POST — в правке 2, DELETE — в правке 3.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Что строим</div>
+    <h2>Четыре адреса <span class="acc">библиотеки</span></h2>
+  </div>
+  <p style="font-size:19px">Один ресурс — книги, <span class="code-chip">/books</span>. Разные методы — разные действия. Это карта нашего сервиса.</p>
+  <div class="kv">
+    <div class="kv-row" style="padding:16px 4px;grid-template-columns:360px 1fr"><div class="k"><span class="code-chip" style="text-transform:none">GET /books</span></div><div class="v" style="font-size:19px">Список книг. Поиск <span class="code-chip">?q=</span>, жанр <span class="code-chip">?genre=</span>, сколько книг — <span class="code-chip">?limit=</span> от 1 до 50 → <span class="code-chip">200</span></div></div>
+    <div class="kv-row" style="padding:16px 4px;grid-template-columns:360px 1fr"><div class="k"><span class="code-chip" style="text-transform:none">GET /books/{book_id}</span></div><div class="v" style="font-size:19px">Одна книга → <span class="code-chip">200</span>, нет такой — <span class="code-chip">404</span> «Книга не найдена»</div></div>
+    <div class="kv-row" style="padding:16px 4px;grid-template-columns:360px 1fr"><div class="k"><span class="code-chip" style="text-transform:none">POST /books</span></div><div class="v" style="font-size:19px">Новая книга из JSON-анкеты → <span class="code-chip">201</span> и книга с номером, ошибка в данных — <span class="code-chip">422</span></div></div>
+    <div class="kv-row" style="padding:16px 4px;grid-template-columns:360px 1fr"><div class="k"><span class="code-chip" style="text-transform:none">DELETE /books/{book_id}</span></div><div class="v" style="font-size:19px">Удалить книгу → <span class="code-chip">204</span>, нет такой — <span class="code-chip">404</span></div></div>
+  </div>
+  <div class="ek-note" style="font-size:18px"><span class="code-chip">{book_id}</span> — часть адреса, которая меняется: <span class="code-chip">/books/7</span>, <span class="code-chip">/books/42</span>. FastAPI сам отдаст её функции числом.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Прочитайте цель вслух. Обязательный минимум — каркас и правки 1–3: это и есть сервис из карточки с адресами GET, POST и DELETE и с документацией. Правка 4 — client.py — показывает, зачем сервис нужен: им пользуется другая программа. Если группа не успеет, покажите правку 4 на своём экране. Правка 5 — для тех, кто опережает. Слева теория, справа практика.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Цель · что будет в конце</div>
+    <h2><span class="acc">Цель</span> урока</h2>
+  </div>
+  <div class="ek-note">К 50-й минуте у каждого — <span class="code-chip">library_api.py</span>: книги урока 17 через запросы <span class="code-chip">GET</span>, <span class="code-chip">POST</span> и <span class="code-chip">DELETE</span>, поиск без учёта регистра, проверка новых книг и документация на <span class="code-chip">/docs</span>. Плюс <span class="code-chip">client.py</span> — программа, которая пользуется вашим сервисом. Успеете — AI-описание книги по адресу.</div>
+  <div class="grid-2">
+    <div class="info-card">
+      <h3>Узнаете</h3>
+      <ul class="clean">
+        <li>Что такое REST API: метод, адрес, код и JSON</li>
+        <li>Как FastAPI связывает адрес с функцией</li>
+        <li>Как Pydantic-анкета проверяет данные</li>
+        <li>Как читать ответ 422</li>
+      </ul>
+    </div>
+    <div class="info-card">
+      <h3>Сделаете</h3>
+      <ul class="clean">
+        <li><span class="code-chip">hello_api.py</span> и его документацию</li>
+        <li><span class="code-chip">library_api.py</span>: GET, POST и DELETE</li>
+        <li>Поиск, жанр и <span class="code-chip">limit</span></li>
+        <li><span class="code-chip">client.py</span> на <span class="code-chip">requests</span></li>
+      </ul>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Демо — не дольше 2 минут. Покажите версию после правки 4 из папки lesson-20-demo: fastapi dev library_api.py, затем страницу /docs. Раскройте GET /books и найдите «гарри». Потом POST /books: добавьте тестовую книгу — код 201 и номер. Поменяйте год на 3000 — код 422 и объяснение. Удаление и client.py здесь не запускайте: DELETE ученики сделают сами в правке 3, а client.py запустите всей группой на слайде 29. Окно на слайде — набросок, номер книги у вас свой, а год в сообщении — текущий. AI-описание не показывайте: это резервная правка 5.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Демо результата</div>
+    <h2>Что <span class="acc">соберём</span> сегодня</h2>
+  </div>
+  <div class="term">
+    <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">БРАУЗЕР</span></div>
+    <div class="term-body">Библиотека  1.0                    http://127.0.0.1:8000/docs
+GET     /books              ?q= · ?genre= · ?limit=
+POST    /books              тело: title · author · year · genre
+GET     /books/{book_id}
+DELETE  /books/{book_id}
+POST /books → Try it out → Execute
+Code 201   {"id": 48, "title": "Книга из Swagger", …}
+год 3000 → Code 422   "msg": "Input should be less than or equal to 2026"</div>
+  </div>
+  <p>Каждый адрес пробуется кнопкой прямо на странице. А программа <span class="code-chip">client.py</span> делает то же самое — без браузера.</p>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Разминку останавливаем обязательно: оба сервиса по умолчанию работают на порту 8000. Не надейтесь, что забытая разминка выдаст себя ошибкой про занятый порт: на Windows каркас может запуститься без ошибки, а отвечать будет по-прежнему разминка. После запуска каркаса проверьте заголовок /docs: там должно быть «Библиотека», а не «Привет, API». Признаки — на слайде 20. books.db копируем из lesson-17 — там каталог с вашими книгами, описаниями и тегами. Копируем через проводник Windows или Finder на macOS, как на уроке 18: откройте папку vibe-coding, в lesson-17 выделите books.db, скопируйте (Ctrl+C или Cmd+C), откройте lesson-20 и вставьте (Ctrl+V или Cmd+V). Так же — .env из lesson-19. В проводнике VS Code этого не сделать: в нём открыта только папка lesson-20. Не перетаскивайте файлы мышью — так легко перенести файл вместо копии, и в lesson-17 не останется оригинала базы. Если на macOS .env в Finder не виден, на этом не задерживайтесь: .env нужен только резервной правке 5, а каркас и правки 1–4 работают без него. Тем, кто дойдёт до правки 5, помогите перенести .env по демонстрации экрана: в Finder видно только имя файла, сам .env не открываем. Без .env сервис всё равно запустится, а адрес правки 5 ответит «AI выключен: нет ключа DEEPSEEK_KEY в .env». Если books.db с урока 17 нет или он сломан, пусть ученик напишет об этом в чат группы: пришлите ему запасной books.db из заметки слайда 2. Он скачивает файл и копирует его в lesson-20 через проводник или Finder, как на этом слайде. Имя должно быть ровно books.db. Правило модуля: перед удалением данных делаем копию базы. Здесь копия получается сама: в правке 3 мы будем удалять книги из lesson-20, а оригинал останется в lesson-17. Сам books.db в VS Code не открываем: это не текстовый файл. Путь к базе программа строит от Path(__file__), как на уроках 16–19, поэтому books.db должен лежать рядом с library_api.py. Ключ — пароль от счёта школы: только в .env, никогда — ни в коде, ни в чате группы, ни в чате DeepSeek, ни на скриншотах.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Подготовка</div>
+    <h2>Тот же каталог — <span class="acc">новая дверь</span></h2>
+  </div>
+  <ol class="steps steps--tight">
+    <li><div>Остановите разминку: <span class="code-chip">Ctrl+C</span> в терминале, где работает <span class="code-chip">fastapi dev</span></div></li>
+    <li><div>В проводнике Windows или Finder скопируйте в <span class="code-chip">lesson-20</span> файлы <span class="code-chip">books.db</span> из <span class="code-chip">lesson-17</span> и <span class="code-chip">.env</span> из <span class="code-chip">lesson-19</span>: <span class="code-chip">Ctrl+C</span> и <span class="code-chip">Ctrl+V</span> (на Mac — <span class="code-chip">Cmd</span>). Мышью не перетаскивайте</div></li>
+    <li><div>В VS Code создайте в <span class="code-chip">lesson-20</span> пустой <span class="code-chip">library_api.py</span></div></li>
+    <li><div>Ставить ничего не нужно: FastAPI уже стоит, <span class="code-chip">sqlite3</span> встроен в Python. Ключ из <span class="code-chip">.env</span> понадобится только в правке 5</div></li>
+  </ol>
+  <div class="ek-note ek-note--green">Оригинал <span class="code-chip">books.db</span> остаётся в <span class="code-chip">lesson-17</span>. Он и будет запасной копией базы перед удалением книг в правке 3.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пришлите промпт в чат группы. Ученики вставляют его в тот же чат DeepSeek, где разминка. Если ученик потерял чат DeepSeek, пусть откроет новый, вставит туда свой hello_api.py со словами «Вот мой hello_api.py:» и сразу под ним этот промпт. Что в каркасе важно. Базу не создаём: таблица books с книгами уже есть с урока 17. Функции — обычные def. Модуль sqlite3 не умеет ждать через await, а для таких библиотек документация FastAPI велит писать обычный def: тогда FastAPI запускает функцию отдельно и не задерживает остальные запросы. Соединение — своё в каждой функции: сервер может обслуживать несколько запросов сразу, а соединение sqlite3 по умолчанию нельзя использовать из другого потока выполнения. Ученикам хватит короткой формулировки: у каждого запроса своё соединение. find_book — помощник для всех адресов с номером книги. Не нашёл — raise HTTPException с кодом 404: функция-адрес дальше не выполняется, клиент получает код и текст. dict(row) превращает строку базы в обычный словарь, а словарь FastAPI отдаст как JSON. Если DeepSeek добавил что-то от себя, например CREATE TABLE, — попросите убрать: база уже есть.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Промпт #2 · в тот же чат</div>
+    <h2>Каркас: <span class="acc">книги по адресам</span></h2>
+  </div>
+  <div class="prompt-card prompt-card--copy" style="margin-top:4px;padding:18px 24px 14px">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text" style="font-size:16px;line-height:1.45;font-variant-ligatures:none">Теперь напиши library_api.py — REST API каталога книг на FastAPI над готовой базой books.db из урока 17: таблица books со столбцами id, title, author, year, genre, tags, description. Базу и таблицу не создавай, книги не добавляй — они уже есть.
+- import sqlite3; from pathlib import Path; from fastapi import FastAPI, HTTPException. DB = Path(__file__).resolve().parent / "books.db"; app = FastAPI(title="Библиотека", version="1.0")
+- connect(): con = sqlite3.connect(DB); con.row_factory = sqlite3.Row; верни con. Каждая функция сама открывает connect() и закрывает con.close() — одного общего соединения на весь сервис не делай
+- find_book(book_id): SELECT * FROM books WHERE id = ? с (book_id,) → fetchone(), close; нет строки — raise HTTPException(status_code=404, detail="Книга не найдена"); иначе верни dict(row)
+- @app.get("/books") над def list_books(): SELECT * FROM books ORDER BY id LIMIT 20 → fetchall(), close, верни [dict(r) for r in rows]
+- @app.get("/books/{book_id}") над def get_book(book_id: int): верни find_book(book_id)
+Все функции — обычные def, не async def. Значения в SQL — только через ?. Запуск в файл не добавляй. Прокомментируй код для новичка. Ответь одним блоком кода.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Дождитесь, пока у всех на /books появится список книг: пусть напишут в чат группы «книги», когда его увидят. Порядок — по номеру: первые 20 книг из books.json. /books/1 — одна книга. /books/999 — такой книги нет, и сервис ответил текстом «Книга не найдена». /books/abc — номер не число, и FastAPI ответил ошибкой сам, ещё до нашей функции. Адрес документации не изменился — /docs, только теперь там адреса библиотеки. Если не запустилось — слайд 20.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Запуск каркаса</div>
+    <h2>Книги урока 17 — <span class="acc">в браузере</span></h2>
+  </div>
+  <ol class="steps" style="gap:14px;flex:1">
+    <li style="flex:1;max-height:96px;font-size:24px;padding:14px 28px"><div>Вставьте код из ответа в <span class="code-chip">library_api.py</span> и сохраните (<span class="code-chip">Ctrl+S</span>)</div></li>
+    <li style="flex:1;max-height:96px;font-size:24px;padding:14px 28px"><div>В терминале, в папке <span class="code-chip">lesson-20</span>, выполните <span class="code-chip">fastapi dev library_api.py</span></div></li>
+    <li style="flex:1;max-height:96px;font-size:24px;padding:14px 28px"><div>Откройте <span class="code-chip">http://127.0.0.1:8000/books</span> — 20 книг списком в JSON</div></li>
+    <li style="flex:1;max-height:96px;font-size:24px;padding:14px 28px"><div>Откройте <span class="code-chip">/books/1</span>, потом <span class="code-chip">/books/999</span> и <span class="code-chip">/books/abc</span></div></li>
+  </ol>
+  <div class="ek-note" style="font-size:20px;padding:18px 24px;margin-bottom:44px">Терминал с <span class="code-chip">fastapi dev</span> не закрывайте: сервис работает, пока работает эта команда.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Момент для К3: первый адрес вашего сервиса работает. Окно на слайде — набросок: браузер покажет JSON одной строкой или с оформлением. Поля tags и description заполнены у тех книг, которые вы описали на уроке 17. У остальных там null — так JSON записывает пустое значение, в Python это None. Код ответа в браузере не виден, его покажет Swagger на слайде 19. Обратите внимание на ответ про abc: это список ошибок, и у каждой есть loc — где ошибка, и msg — что не так. Пугаться не нужно: читать такие ответы научимся на слайде 25.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Первый результат</div>
+    <h2>Три адреса — <span class="acc">три разных ответа</span></h2>
+  </div>
+  <div class="term">
+    <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">БРАУЗЕР</span></div>
+    <div class="term-body">127.0.0.1:8000/books/1
+{"id": 1, "title": "Гарри Поттер и философский камень",
+ "author": "Джоан Роулинг", "year": 1997, "genre": "фэнтези",
+ "tags": "…", "description": "…"}
+
+127.0.0.1:8000/books/999
+{"detail": "Книга не найдена"}
+
+127.0.0.1:8000/books/abc
+{"detail": [{"type": "int_parsing", "loc": ["path", "book_id"],
+  "msg": "Input should be a valid integer, unable to parse string as an integer", …}]}</div>
+  </div>
+  <p>Книга пришла со всеми столбцами базы. На <span class="code-chip">999</span> ответили мы сами — кодом 404. А <span class="code-chip">abc</span> до нашей функции даже не дошёл: FastAPI увидел, что номер — не число, и ответил кодом 422.</p>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Проговорите по строкам. find_book открывает своё соединение, ищет одну строку по номеру через знак вопроса, как на уроке 17, и сразу закрывает соединение. Если строки нет — raise HTTPException. Слово raise важно: по документации FastAPI это исключение не возвращают, а выбрасывают. raise останавливает и find_book, и адрес, который её вызвал, а FastAPI отвечает клиенту кодом 404 и текстом из detail. Поэтому одного помощника хватает на все адреса с номером книги. Если написать return вместо raise, клиент получит код 200 и странный JSON, как будто всё хорошо, — это слайд 20. book_id: int — тип прямо в заголовке функции. FastAPI берёт кусок адреса, превращает его в число, а если не получилось, отвечает 422 и до нашей функции не доходит. dict(row) превращает строку базы в словарь, а словарь FastAPI отдаёт как JSON.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2>Нет книги — <span class="acc">raise, а не return</span></h2>
+  </div>
+  <p><span class="code-chip">find_book</span> ищет книгу по номеру. Не нашёл — <span class="code-chip">raise HTTPException</span>: дальше функция-адрес не выполняется, а клиент получает код 404.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="max-height:none;font-size:15px;line-height:1.38;padding:8px 20px;font-variant-ligatures:none"><span class="kw">def</span> find_book(book_id):  <span class="cm"># книга по номеру — или ответ 404</span>
+    con = connect()
+    row = con.execute(<span class="st">"SELECT * FROM books WHERE id = ?"</span>, (book_id,)).fetchone()
+    con.close()
+    <span class="kw">if</span> row <span class="kw">is</span> <span class="kw">None</span>:
+        <span class="kw">raise</span> HTTPException(status_code=404, detail=<span class="st">"Книга не найдена"</span>)  <span class="cm"># raise, а не return</span>
+    <span class="kw">return</span> dict(row)  <span class="cm"># строка базы → словарь → JSON</span>
+…
+@app.get(<span class="st">"/books/{book_id}"</span>)  <span class="cm"># GET /books/7 — книга №7</span>
+<span class="kw">def</span> get_book(book_id: int):  <span class="cm"># int: FastAPI сам превратит «7» в число и проверит его</span>
+    <span class="kw">return</span> find_book(book_id)</div>
+  </div>
+  <div class="ek-note"><span class="code-chip">def</span>, а не <span class="code-chip">async def</span>: модуль <span class="code-chip">sqlite3</span> не умеет ждать через <span class="code-chip">await</span>. Обычную функцию FastAPI сам запустит так, чтобы она не задерживала другие запросы.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Ключевой момент для К4 после каркаса. Пусть каждый откроет /docs, раскроет GET /books/{book_id}, нажмёт Try it out, введёт 7 и нажмёт Execute, а потом проделает то же с 999. Swagger показывает то, чего не видно в браузере: код ответа — 200 и 404. Если у кого-то /docs не открылась — покажите на своём экране. Ученик, у которого /docs белая и папка static из чата группы уже лежит в lesson-20 (заметка слайда 2), сейчас отправляет в тот же чат DeepSeek сообщение из docs_offline.txt, заменяет всё содержимое library_api.py ответом и открывает /docs. Папку static не удаляем: она понадобится и в ДЗ 1 — слайд 37. Потом задайте вопрос со слайда: как найти Гарри Поттера через сервис? Никак: GET /books отдаёт первые 20 книг, и всё. Пройдитесь по плану правок: каждая открывает новое действие. Обязательные — правки 1–3, правка 4 — client.py, правка 5 — резерв.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Момент урока</div>
+    <h2>Сервис работает — <span class="acc">но только показывает</span></h2>
+  </div>
+  <p>Откройте <span class="code-chip">/docs</span>: там уже два адреса книг. Попробуйте <span class="code-chip">GET /books/{book_id}</span> с номерами <span class="code-chip">7</span> и <span class="code-chip">999</span> — Swagger покажет и книгу, и код <span class="code-chip">404</span>. А теперь найдите через сервис «гарри»… Нечем. И добавить книгу тоже нельзя.</p>
+  <div class="ek-note ek-note--red">Другая программа может читать каталог, но не может ни искать, ни добавлять, ни удалять.</div>
+  <ul class="clean">
+    <li>Правка 1 · поиск — <span class="code-chip">?q=</span>, <span class="code-chip">?genre=</span> и <span class="code-chip">?limit=</span> до 50</li>
+    <li>Правка 2 · добавление — <span class="code-chip">POST</span> с анкетой и ответ 422</li>
+    <li>Правка 3 · удаление — <span class="code-chip">DELETE</span>: 204 или 404</li>
+    <li>Правка 4 · клиент — <span class="code-chip">client.py</span> пользуется сервисом</li>
+    <li>Правка 5 · AI-описание — резерв</li>
+  </ul>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пробегитесь по ситуациям. Кому не помогло — пусть пришлёт в чат группы текст ошибки из терминала или покажет экран. no such table: если books.db не лежал рядом с library_api.py, sqlite3 при первом запросе создал пустой файл с этим именем, а таблицы в нём нет. В браузере — ошибка сервера, а подробности — в терминале, где работает fastapi dev: ошибки сервиса ищем там. Файл не удаляем, а переименовываем — правый клик, Rename. Could not find FastAPI app: команда fastapi не нашла в файле сервис FastAPI(...). Имя переменной ей не важно — сервис под другим именем она тоже находит. Значит, сервиса в файле нет совсем: откройте library_api.py — чаще всего код в него не вставили или не сохранили. Вставьте ответ DeepSeek целиком и нажмите Ctrl+S. Имя app важно только запасной команде python -m uvicorn library_api:app --reload: при другом имени она пишет Attribute «app» not found in module «library_api». Ошибка про занятый порт или заголовок «Привет, API» на /docs — значит, разминка ещё работает: у двух серверов один порт 8000. Тогда и /books отвечает Not Found: у разминки такого адреса нет. На ошибку в терминале не полагайтесь: на Windows второй fastapi dev на занятом порту может запуститься без ошибки, а отвечать будет по-прежнему разминка. Проверяйте по заголовку /docs: у каркаса там «Библиотека». Останавливаем оба сервера — Ctrl+C в обоих терминалах — и запускаем library_api.py заново: тогда порт достанется только ему. Если разминки нигде нет, а порт всё равно занят, его держит другая программа. Тогда запустите сервис на другом порту: fastapi dev library_api.py --port 8001 — и открывайте все адреса, и /docs тоже, с :8001 вместо :8000. В client.py в правке 4 тогда в строке API замените 8000 на 8001. return вместо raise — коварная ошибка: сервис не падает, но на несуществующую книгу отвечает кодом 200. Сервис не видит правок, если запущен не через fastapi dev, а, например, через uvicorn без --reload: тогда правки подхватываются только после перезапуска. Если DeepSeek сделал одно соединение на весь сервис, попросите открывать connect в каждой функции, как в промпте. Непонятную ошибку целиком — в тот же чат DeepSeek.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Если каркас не запустился</div>
+    <h2>Типичные ситуации <span class="acc">с сервисом</span></h2>
+  </div>
+  <div class="kv">
+    <div class="kv-row" style="padding:15px 4px"><div class="k" style="text-transform:none;font-size:17px">Ошибка сервера, а в терминале <span class="code-chip">no such table: books</span></div><div class="v" style="font-size:19px"><span class="code-chip">books.db</span> не лежал рядом, и появился пустой. Остановите сервер, переименуйте пустой файл в <span class="code-chip">books_empty.db</span> и снова скопируйте настоящий из <span class="code-chip">lesson-17</span> через проводник Windows или Finder.</div></div>
+    <div class="kv-row" style="padding:15px 4px"><div class="k" style="text-transform:none;font-size:17px"><span class="code-chip" style="white-space:normal">Could not find FastAPI app in module</span></div><div class="v" style="font-size:19px">В файле нет сервиса <span class="code-chip">FastAPI(...)</span>: чаще всего код не вставлен или не сохранён (<span class="code-chip">Ctrl+S</span>).</div></div>
+    <div class="kv-row" style="padding:15px 4px"><div class="k" style="text-transform:none;font-size:17px">Ошибка про занятый порт, или <span class="code-chip">/books</span> — <span class="code-chip">Not Found</span>, а в <span class="code-chip">/docs</span> — «Привет, API»</div><div class="v" style="font-size:19px">Разминка всё ещё работает. <span class="code-chip">Ctrl+C</span> в обоих терминалах и снова <span class="code-chip">fastapi dev library_api.py</span>.</div></div>
+    <div class="kv-row" style="padding:15px 4px"><div class="k" style="text-transform:none;font-size:17px">В Swagger на <span class="code-chip">/books/999</span> код 200, а не 404</div><div class="v" style="font-size:19px">В <span class="code-chip">find_book</span> написано <span class="code-chip">return HTTPException</span>, а нужно <span class="code-chip">raise</span>.</div></div>
+    <div class="kv-row" style="padding:15px 4px"><div class="k" style="text-transform:none;font-size:17px">Сервис не видит правок</div><div class="v" style="font-size:19px">Запущен не через <span class="code-chip">fastapi dev</span>. Остановите его и запустите командой <span class="code-chip">fastapi dev library_api.py</span>.</div></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пришлите промпт в чат группы. Правка — в тот же чат DeepSeek, около 5 минут вместе с разбором и проверкой. Это правка для К2: параметры из строки запроса. Пока DeepSeek печатает файл, объясните три идеи. Первая: параметры функции, которых нет в адресе, FastAPI берёт из строки после вопросительного знака. Значение по умолчанию None делает параметр необязательным: без q сервис просто не ищет. Вторая: поиск без учёта регистра по-русски — как на уроке 17. Встроенные LIKE и lower в SQLite работают с регистром только у латиницы, поэтому подключаем свою функцию py_lower. Она живёт в соединении, а не в файле базы, — значит, её подключает connect, к каждому соединению. Жанр сравниваем так же, поэтому «Фэнтези» с большой буквы тоже найдётся — помните уверенный ноль из ДЗ 18? Третья: правило «не больше 50». Можно было бы молча обрезать до 50, но промпт просит Query с ge и le. Тогда на limit=100 сервис ответит 422 и объяснит, что не так, — это честнее, чем тихо отдать 50 книг. Annotated — современная запись таких правил, её рекомендует документация FastAPI. Кто отправлял сообщение из docs_offline.txt (заметка слайда 2), после правки проверяет, что /docs по-прежнему открывается. Пропал кусок — пусть попросит DeepSeek вернуть код документации без интернета из того сообщения.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 1 · поиск</div>
+    <h2>Поиск <span class="acc">по куску слова</span> — и по-русски</h2>
+  </div>
+  <p>Правила те же, что в каталоге урока 17, только вопрос приходит в адресе: <span class="code-chip">/books?q=гарри&amp;genre=фэнтези&amp;limit=5</span>.</p>
+  <div class="prompt-card prompt-card--copy">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text" style="font-size:17px;line-height:1.35;font-variant-ligatures:none;">Добавь в GET /books поиск по части названия или автора без учёта регистра — и для русских букв, — фильтр по жанру и limit.
+<span style="display:block;padding-left:16px;text-indent:-16px;margin-top:3px">- Импорты: прежние не удаляй, добавь from typing import Annotated, а в импорт из fastapi допиши Query
+</span><span style="display:block;padding-left:16px;text-indent:-16px;margin-top:3px">- py_lower(s): верни s.lower(), если s не None, иначе None. В connect() после row_factory добавь con.create_function("py_lower", 1, py_lower, deterministic=True) — так функция будет в каждом соединении
+</span><span style="display:block;padding-left:16px;text-indent:-16px;margin-top:3px">- def list_books(q: str | None = None, genre: str | None = None, limit: Annotated[int, Query(ge=1, le=50)] = 20). sql = "SELECT * FROM books WHERE 1 = 1"; params = []. Если q — sql += " AND (instr(py_lower(title), ?) &gt; 0 OR instr(py_lower(author), ?) &gt; 0)" и params += [q.lower(), q.lower()]. Если genre — sql += " AND py_lower(genre) = ?" и params.append(genre.lower()). Потом sql += " ORDER BY id LIMIT ?" и params.append(limit); выполни, close, верни [dict(r) for r in rows]
+</span><span style="display:block;padding-left:16px;text-indent:-16px;margin-top:3px">- LIKE и встроенный lower() из SQLite не используй. limit больше 50 сам не обрезай: пусть FastAPI ответит ошибкой 422
+</span><span style="display:block;padding-left:0">Остальной код не меняй. Верни весь файл.</span></div>
+  </div>
+  <div class="ek-note">После каждой правки замените всё содержимое <span class="code-chip">library_api.py</span> кодом из ответа и сохраните — <span class="code-chip">fastapi dev</span> перезапустит сервер сам. Проверка — сразу после разбора кода.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Проговорите по строкам. Три параметра в заголовке функции — три уточнения в адресе. Строка SQL начинается с условия 1 = 1: оно всегда верно, и к нему удобно дописывать AND, сколько бы уточнений ни пришло. Каждое уточнение добавляет кусок условия и значение в список params — значения по-прежнему только через знаки вопроса. Для q знаков два, поэтому и значение кладём дважды: для названия и для автора. Последний знак вопроса — limit. Проверка: в Swagger у GET /books появились три поля — их FastAPI тоже взял из заголовка функции. «гарри» — две книги о Гарри Поттере, «толст» — три книги двух Толстых, Льва и Алексея. Жанр «фэнтези» — все книги этого жанра. А «мушкетер» через е — пусто: ё и е для программы разные буквы, как на уроке 17. limit=100 пробуем в адресной строке браузера: там запрос уходит на сервер ровно таким, как вы его написали. Ответ 422: в loc — query и limit, в msg — значение должно быть не больше 50.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2>Параметры функции — <span class="acc">уточнения в адресе</span></h2>
+  </div>
+  <p>Параметров <span class="code-chip">q</span>, <span class="code-chip">genre</span> и <span class="code-chip">limit</span> нет в адресе <span class="code-chip">/books</span> — значит, FastAPI берёт их из строки после <span class="code-chip">?</span>. Значение по умолчанию делает параметр необязательным.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="font-size:13px;line-height:1.3;font-variant-ligatures:none;">@app.get("/books")  # GET /books?q=…&amp;genre=…&amp;limit=… — поиск
+def list_books(
+    q: str | None = None,  # часть названия или автора: ?q=гарри
+    genre: str | None = None,  # жанр: ?genre=фэнтези
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,  # от 1 до 50, по умолчанию 20
+):
+    sql = "SELECT * FROM books WHERE 1 = 1"  # 1 = 1 всегда верно: к нему удобно дописывать AND
+    params = []
+    if q:
+        sql += " AND (instr(py_lower(title), ?) &gt; 0 OR instr(py_lower(author), ?) &gt; 0)"
+        params += [q.lower(), q.lower()]
+    if genre:
+        sql += " AND py_lower(genre) = ?"
+        params.append(genre.lower())
+    sql += " ORDER BY id LIMIT ?"
+    params.append(limit)
+…</div>
+  </div>
+  <div class="ek-note ek-note--green">Проверка: в <span class="code-chip">/docs</span> у <span class="code-chip">GET /books</span> — <span class="code-chip">Try it out</span>, в поле <span class="code-chip">q</span> — <span class="code-chip">гарри</span>, <span class="code-chip">Execute</span>: две книги о Гарри Поттере. А в адресной строке <span class="code-chip">http://127.0.0.1:8000/books?limit=100</span> — ответ 422: больше 50 нельзя.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пришлите промпт в чат группы. Правка — в тот же чат DeepSeek, около 8 минут вместе с проверкой и разбором ответа 422. Это центральная правка для К3 и К4. Pydantic уже стоит: он приходит вместе с FastAPI. Что важно сказать вслух. Класс BookIn — анкета новой книги: каждое поле — вопрос, тип — каким должен быть ответ, Field — дополнительное правило. Если параметр функции — такая анкета, FastAPI ищет данные в теле запроса: читает JSON, проверяет и только потом вызывает функцию. Жанры в списке — ровно те восемь, что в books.json урока 17. Год «не больше текущего» сервер считает один раз — при запуске. Если сервер проработает без перезапуска всю новогоднюю ночь, книги нового года он не примет, пока его не перезапустят. На уроке это нам не грозит. Промпт запрещает старый стиль Pydantic v1: .dict, @validator, class Config и orm_mode. Нейросеть-помощник по привычке пишет и так, а у нас Pydantic второй версии: в ней, например, .dict переименован в model_dump, а @validator устарел. status_code=201 стоит в табличке, а не в функции: так FastAPI ответит «создано». lastrowid — номер, который база дала новой книге, — знаком с урока 17.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 2 · добавление</div>
+    <h2>POST /books: <span class="acc">анкета с правилами</span></h2>
+  </div>
+  <p>Новую книгу присылают в теле запроса, в JSON. Прежде чем пустить её в базу, сервис проверит каждое поле по анкете.</p>
+  <div class="prompt-card prompt-card--copy">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text" style="font-size:17px;line-height:1.4;font-variant-ligatures:none;">Добавь адрес POST /books — добавление книги с проверкой данных через Pydantic v2.
+- Импорты: прежние не удаляй, добавь from datetime import date и from pydantic import BaseModel, Field, а в импорт из typing допиши Literal
+- Сразу после app = FastAPI(...): THIS_YEAR = date.today().year; GENRES = Literal["фэнтези", "сказка", "повесть", "приключения", "антиутопия", "детектив", "фантастика", "роман"]
+- class BookIn(BaseModel): title: str = Field(min_length=1, max_length=200); author: str = Field(min_length=1, max_length=100); year: int = Field(ge=1, le=THIS_YEAR); genre: GENRES. Только стиль Pydantic v2: без .dict(), @validator, class Config и orm_mode
+- @app.post("/books", status_code=201) над def add_book(book: BookIn): con = connect(); cur = con.execute("INSERT INTO books (title, author, year, genre) VALUES (?, ?, ?, ?)", (book.title, book.author, book.year, book.genre)); con.commit(); new_id = cur.lastrowid; con.close(); верни find_book(new_id)
+Остальной код не меняй. Верни весь файл.</div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Проговорите по строкам. GENRES — список разрешённых ответов: жанр не из него анкета не примет. min_length и max_length — длина строки в символах, ge и le — «больше или равно» и «меньше или равно» для чисел. Пустое название не пройдёт, год 3000 — тоже. Функция add_book получает уже проверенную книгу: book.title, book.year — поля анкеты. Значит, внутри функции проверять ничего не нужно: только записать книгу в базу через знаки вопроса и вернуть её целиком через find_book. Проверка в Swagger: у POST /books есть поле для тела запроса с примером, который Swagger составил сам по анкете. Пришлите строку JSON с книгой со слайда в чат группы: ученики копируют её оттуда, заменяют ею пример целиком и нажимают Execute. Код 201 и книга с номером — значит, она в базе. Проверьте через GET /books с q=swagger: книга находится. Это тестовая книга, её номер пригодится в правке 3.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода</div>
+    <h2>Pydantic-модель — <span class="acc">анкета для книги</span></h2>
+  </div>
+  <p>Каждое поле класса — вопрос анкеты, <span class="code-chip">Field</span> — правило ответа. FastAPI сам читает JSON из тела запроса, сверяет его с анкетой и только потом вызывает <span class="code-chip">add_book</span>.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="font-size:13px;line-height:1.32;font-variant-ligatures:none;">THIS_YEAR = date.today().year  # год на момент запуска сервера
+GENRES = Literal[
+    "фэнтези", "сказка", "повесть", "приключения",
+    "антиутопия", "детектив", "фантастика", "роман",
+]
+
+
+class BookIn(BaseModel):  # анкета новой книги: поле — вопрос, Field — правило ответа
+    title: str = Field(min_length=1, max_length=200)  # от 1 до 200 символов
+    author: str = Field(min_length=1, max_length=100)
+    year: int = Field(ge=1, le=THIS_YEAR)  # от 1 до текущего года
+    genre: GENRES  # только жанр из списка
+…
+@app.post("/books", status_code=201)  # 201 — «создано»
+def add_book(book: BookIn):  # данные не подошли — FastAPI сам ответит 422</div>
+  </div>
+  <div class="ek-note ek-note--green">Проверка: в <span class="code-chip">/docs</span> у <span class="code-chip">POST /books</span> — <span class="code-chip">Try it out</span>. Замените пример целиком на <span class="code-chip">{"title": "Книга из Swagger", "author": "Ученик", "year": 2025, "genre": "повесть"}</span> и нажмите <span class="code-chip">Execute</span> — код 201 и книга с номером.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Отдельный разбор для К4: ответ 422 сначала пугает, а он очень полезный. Читайте сверху вниз. detail — список, потому что ошибок может быть несколько: пришлите сразу пустое название и год 3000 — придут две. loc — адрес ошибки: первым идёт место — тело запроса, строка запроса или кусок адреса, — потом имя поля. msg — что не так: значение должно быть меньше или равно этому году. input — что вы прислали, сервис повторяет это. В ответе могут быть и другие ключи — на них можно не смотреть. Год в сообщении — текущий: сервер посчитал его при запуске. Пусть ученики попробуют ещё две ошибки. Жанр «ужасы» — сообщение начнётся с Input should be и перечислит разрешённые жанры. Пустое название — String should have at least 1 character. Главное: книга с ошибкой в базу не попала, а функция add_book даже не запускалась — проверку сделала анкета.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 2 · проверка</div>
+    <h2>Как читать <span class="acc">ответ 422</span></h2>
+  </div>
+  <p>Теперь в той же книге поставьте <span class="code-chip">"year": 3000</span> и снова нажмите <span class="code-chip">Execute</span>. Сервис не пустил книгу в базу и объяснил почему:</p>
+  <div class="grid-2">
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">JSON</span></div>
+    <div class="code-body" style="font-size:14px;line-height:1.5;font-variant-ligatures:none;">{"detail": [{
+  "type": "less_than_equal",
+  "loc": ["body", "year"],
+  "msg": "Input should be less than or equal to 2026",
+  "input": 3000,
+  …
+}]}</div>
+  </div>
+  <div class="kv">
+    <div class="kv-row" style="padding:10px 4px"><div class="k" style="text-transform:none;font-size:17px"><span class="code-chip">detail</span></div><div class="v" style="font-size:17px">Список всех ошибок: неверных полей бывает несколько</div></div>
+    <div class="kv-row" style="padding:10px 4px"><div class="k" style="text-transform:none;font-size:17px"><span class="code-chip">loc</span></div><div class="v" style="font-size:17px">Где: <span class="code-chip">body</span> — тело запроса, <span class="code-chip">year</span> — поле. Бывают ещё <span class="code-chip">query</span> и <span class="code-chip">path</span></div></div>
+    <div class="kv-row" style="padding:10px 4px"><div class="k" style="text-transform:none;font-size:17px"><span class="code-chip">msg</span></div><div class="v" style="font-size:17px">Что не так: год должен быть не больше текущего</div></div>
+    <div class="kv-row" style="padding:10px 4px"><div class="k" style="text-transform:none;font-size:17px"><span class="code-chip">input</span></div><div class="v" style="font-size:17px">Что вы прислали</div></div>
+  </div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пришлите промпт в чат группы. Правка — в тот же чат DeepSeek, около 4 минут вместе с проверкой. Это третий метод из К3. Удаляем только тестовую книгу из правки 2: её номер Swagger показал в ответе 201. Книги каталога не удаляйте. Оригинал books.db лежит в lesson-17, но если заменить им базу в lesson-20, пропадёт всё, что вы добавили в неё сегодня. Если тестовой книги нет, удалите английского Гарри Поттера с урока 17 — это тоже книга для опыта. Его номер покажет GET /books с q=potter, обычно это 47. Код 204 значит «удалено, показывать нечего», поэтому функция ничего не возвращает. Второе нажатие Execute — уже 404: книги нет. Проверьте и через GET /books/{book_id} с тем же номером — тоже 404. DELETE — только с WHERE id и знаком вопроса: без WHERE команда удалила бы все книги, это вы помните по ДЗ урока 17.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 3 · удаление</div>
+    <h2>DELETE: <span class="acc">204 или 404</span></h2>
+  </div>
+  <div class="prompt-card prompt-card--copy">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text" style="font-size:19px;line-height:1.45;font-variant-ligatures:none;">Добавь адрес DELETE /books/{book_id} — удаление книги.
+- @app.delete("/books/{book_id}", status_code=204) над def delete_book(book_id: int): сначала find_book(book_id) — если книги нет, он сам ответит 404; потом con = connect(); con.execute("DELETE FROM books WHERE id = ?", (book_id,)); con.commit(); con.close()
+- Ничего не возвращай: у ответа 204 нет тела
+Остальной код не меняй. Верни весь файл.</div>
+  </div>
+  <div class="ek-note">Проверка: в <span class="code-chip">/docs</span> у <span class="code-chip">DELETE /books/{book_id}</span> — <span class="code-chip">Try it out</span>, номер тестовой книги из правки 2, <span class="code-chip">Execute</span> — код 204. Ещё раз <span class="code-chip">Execute</span> — код 404 и «Книга не найдена».</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Сначала разбор, потом главный момент урока. find_book в первой строке — проверка: нет книги, и он сам ответит 404, до DELETE дело не дойдёт. Удаление — знакомые с урока 17 шаги: выполнить, commit, закрыть. return нет: у ответа 204 тела не бывает, FastAPI это знает и в описании адреса так и пишет. А теперь вопрос группе: кто сейчас может удалить книгу из вашего каталога? Ответ: кто угодно, кто знает адрес. Сервис не спросил ни имени, ни пароля. Любая программа на этом компьютере — Swagger, client.py или чужой скрипт — удалит любую книгу. Поэтому правило урока: только fastapi dev, который слушает адрес 127.0.0.1. Ни одноклассник из своего дома, ни другое устройство в вашей сети к сервису не достучатся. А если открыть такой сервис в интернет, книгу сможет удалить кто угодно, кто знает адрес. Защиту — вход по логину и паролю и «удалять может только автор» — сделаем на уроке 21. В ДЗ вы найдёте эту дыру сами.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Разбор кода · момент урока</div>
+    <h2>Удалить может <span class="acc">любой, кто знает адрес</span></h2>
+  </div>
+  <p>Сначала <span class="code-chip">find_book</span>: нет книги — он сам ответит 404, и до <span class="code-chip">DELETE</span> дело не дойдёт. Есть — удаляем и ничего не возвращаем: у ответа 204 нет тела.</p>
+  <div class="code-win">
+    <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+    <div class="code-body" style="font-size:17px;line-height:1.5;font-variant-ligatures:none;">@app.delete("/books/{book_id}", status_code=204)  # 204 — «удалено», тела у ответа нет
+def delete_book(book_id: int):
+    find_book(book_id)  # нет такой книги — find_book сам ответит 404
+    con = connect()
+    con.execute("DELETE FROM books WHERE id = ?", (book_id,))  # только эту книгу
+    con.commit()  # без commit удаление не сохранится
+    con.close()</div>
+  </div>
+  <div class="ek-note ek-note--red">Сервис не спросил, кто вы. Любая программа на этом компьютере — Swagger, <span class="code-chip">client.py</span>, чужой скрипт — удалит любую книгу. Поэтому сервер слушает только <span class="code-chip">127.0.0.1</span>, а вход по паролю сделаем на уроке 21.</div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пришлите промпт в чат группы. Правка — в тот же чат DeepSeek, около 7 минут вместе с запуском. Это правка для К1: зачем вообще нужен API. Это новый файл, library_api.py не трогаем. requests стоит с урока 8. Что важно в промпте. Адрес — с http:// в начале: без схемы requests адрес не поймёт. json=book — словарь уйдёт как JSON, и requests сам сообщит сервису, что это JSON. С data= он этого не сообщит, и сервис ответит 422. timeout=5: у requests по умолчанию ограничения времени нет, и без него программа может висеть минутами. С ним через 5 секунд будет понятное сообщение. Отказ сервиса client.py не прячет, а печатает: для 422 — поле и причину из loc и msg. Вторая книга нарочно с годом 3000: так видно, что проверку делает сервис, а не клиент.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 4 · другая программа</div>
+    <h2><span class="acc">client.py:</span> ваш сервис глазами программы</h2>
+  </div>
+  <p>Теперь вы по другую сторону окна — как на уроке 8 с OpenWeather. Это отдельный файл, а промпт — в тот же чат.</p>
+  <div class="prompt-card prompt-card--copy">
+    <span class="pc-tag">→ В тот же чат</span>
+    <div class="pc-text" style="font-size:17px;line-height:1.3;font-variant-ligatures:none;">Теперь напиши отдельную программу client.py: она пользуется нашим сервисом через requests, как мы пользовались OpenWeather. Сервис в это время работает в другом терминале, library_api.py не меняй.
+<span style="display:block;padding-left:16px;text-indent:-16px;margin-top:3px">- import requests, больше ничего. API = "http://127.0.0.1:8000". У каждого запроса timeout=5
+</span><span style="display:block;padding-left:16px;text-indent:-16px;margin-top:3px">- show_error(r): detail = r.json()["detail"]; если detail — список (так приходит 422), для каждой ошибки e напечатай f'  ⛔ {e["loc"][-1]}: {e["msg"]}'; иначе print("  ⛔", detail)
+</span><span style="display:block;padding-left:16px;text-indent:-16px;margin-top:3px">- add_book(book): r = requests.post(API + "/books", json=book, timeout=5) — именно json=, не data=; print("POST /books →", r.status_code); если код 201 — new = r.json() и print(f'  ✅ Книга №{new["id"]}: {new["title"]}'); иначе show_error(r)
+</span><span style="display:block;padding-left:16px;text-indent:-16px;margin-top:3px">- search(q): r = requests.get(API + "/books", params={"q": q, "limit": 5}, timeout=5); print(f"GET /books?q={q} →", r.status_code); для каждой книги b из r.json() — print(f'  {b["id"]:&gt;3}. {b["title"]} — {b["author"]}, {b["year"]}')
+</span><span style="display:block;padding-left:16px;text-indent:-16px;margin-top:3px">- main(): add_book({"title": "Книга от client.py", "author": "Ученик", "year": 2025, "genre": "повесть"}); add_book({"title": "Книга из будущего", "author": "Ученик", "year": 3000, "genre": "повесть"}); search("гарри")
+</span><span style="display:block;padding-left:16px;text-indent:-16px;margin-top:3px">- В конце файла: try: main(); except requests.exceptions.Timeout — print("⏳ Сервис не ответил за 5 секунд: откройте http://127.0.0.1:8000/books в браузере"); except requests.exceptions.ConnectionError — print("🔌 Нет связи с сервисом: запущен ли fastapi dev library_api.py в другом терминале?")
+</span><span style="display:block;padding-left:0">Прокомментируй код для новичка. Ответь одним блоком кода.</span></div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Самое частое затруднение — два терминала. Первый не закрываем: там работает сервис. Второй открываем кнопкой плюс на панели терминала VS Code, он откроется в той же папке lesson-20. Пусть каждый запустит client.py и найдёт в выводе три запроса: книга добавлена, книга из будущего отклонена, поиск нашёл Гарри Поттера. Кто увидел все три — пусть напишет в чат группы номер своей новой книги: у каждого он свой. Пришёл первый номер раньше 48-й минуты — сразу пришлите в чат группы промпт правки 5 для тех, кто закончил (как — в заметке слайда 30). Сразу за ним отправьте отдельным сообщением подпись: «Выше — правка 5, только для тех, у кого client.py показал все три запроса. Остальные продолжают свою правку». Отдельным — чтобы подпись не скопировали в DeepSeek вместе с промптом. Каждый запуск client.py добавляет ещё одну «Книгу от client.py» — лишние удалите через DELETE в Swagger. Ключевая мысль для К1: client.py ничего не знает о books.db и SQL. Он знает только адрес и правила. Так же к сервису могли бы обращаться бот или приложение на телефоне. Если client.py пишет «Нет связи с сервисом» — проверьте, что сервис в первом терминале работает. Если client.py запустили сразу после сохранения и он написал «Нет связи», а сервис работает, подождите пару секунд и запустите снова: сервис мог как раз перезапускаться после сохранения файла. Если сервис работает и http://127.0.0.1:8000/books открывается в браузере, а client.py раз за разом пишет «Нет связи» или «не ответил» либо падает с ошибкой JSONDecodeError (ответ пришёл не в JSON), — вероятно, мешает системный прокси или VPN. requests берёт настройки прокси из системы и не обязан обходить их для 127.0.0.1. Системные настройки прокси и VPN ученик не трогает. Достаточно переменной NO_PROXY во втором терминале. Пришлите ученику в чат группы строку для его терминала: в PowerShell — $env:NO_PROXY='127.0.0.1,localhost', в командной строке Windows — set NO_PROXY=127.0.0.1,localhost, на macOS — export NO_PROXY=127.0.0.1,localhost. Он копирует её во второй терминал целиком, не перенабирая, и в том же терминале снова запускает python client.py. Переменная действует только в этом терминале, пока его не закрыли. Не вышло — пусть пришлёт текст ошибки в чат группы или покажет экран.">
+<div class="sl-body">
+  <div>
+    <div class="q-label">Правка 4 · запуск</div>
+    <h2>Два терминала: <span class="acc">сервис и клиент</span></h2>
+  </div>
+  <div class="grid-2" style="margin-top:6px">
+    <div>
+      <ol class="steps steps--tight">
+        <li><div>Создайте <span class="code-chip">client.py</span> в <span class="code-chip">lesson-20</span>, вставьте код из ответа и сохраните</div></li>
+        <li><div>Первый терминал с <span class="code-chip">fastapi dev</span> не трогайте: сервис должен работать</div></li>
+        <li><div>Откройте второй терминал: кнопка <span class="code-chip">+</span> на панели терминала VS Code</div></li>
+        <li><div>Во втором терминале выполните <span class="code-chip">python client.py</span></div></li>
+      </ol>
+      <p style="font-size:20px;margin-top:14px">Другая программа добавила книгу, получила отказ и нашла книги — не зная ни SQL, ни где лежит <span class="code-chip">books.db</span>.</p>
+    </div>
+    <div class="term">
+      <div class="term-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">ТЕРМИНАЛ</span></div>
+      <div class="term-body" style="font-size:15px;line-height:1.5;font-variant-ligatures:none;"><span class="usr">$ python client.py</span>
+POST /books → 201
+  ✅ Книга №48: Книга от client.py
+POST /books → 422
+  ⛔ year: Input should be less than or equal to 2026
+GET /books?q=гарри → 200
+    1. Гарри Поттер и философский камень — Джоан Роулинг, 1997
+   15. Гарри Поттер и Тайная комната — Джоан Роулинг, 1998</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Резервная правка, около 5 минут. Её делают те, кто закончил правку 4 раньше 48-й минуты. Как только первый из них напишет в чат группы номер новой книги (заметка слайда 29), пришлите туда же этот промпт — текстом, только если в пробной встрече он пришёл в чат группы целиком, иначе файлом pravka-5.txt (пункт 7 подготовки, слайд 2), а сразу за ним — подпись для остальных из заметки слайда 29. Остальные — дома по желанию: промпт будет в файле lesson20-dz.txt, а отправлять его — в чат урока. .env с ключом уже лежит в lesson-20 со слайда 14. Без ключа сервис работает как раньше, выключен только этот адрес. Что важно. Метод POST, а не GET: договоримся, что GET только читает, а этот адрес меняет книгу и тратит деньги школы. Запрос к DeepSeek — как в каталоге урока 17: модель deepseek-flash, режим JSON, размышления выключены, теги только из списка. Список TAGS тот же, что на уроке 17, поэтому теги новых описаний совпадут со старыми. Предохранитель — как на уроке 16: не больше 10 обращений к AI за один запуск сервера. Счётчик живёт в памяти сервера: после каждой правки файла fastapi dev перезапускает сервер, и счёт начинается с нуля. Если описание у книги уже есть, AI не спрашиваем. Код 429 значит «слишком много запросов», 503 — «сейчас недоступно»: так наш сервис объясняет клиенту, почему AI не ответил. Объект для запросов к DeepSeek назвали ai, чтобы не путать с client.py. Проверка: в Swagger POST /books/{book_id}/describe с номером книги без описания — книга вернётся с описанием и тегами. Ещё раз — то же описание, а запроса к AI не было. Это самая длинная правка урока. DeepSeek может потерять часть кода из прошлых версий — импорт или класс BookIn — или запутаться в кавычках внутри DESCRIBE_PROMPT. Тогда в терминале fastapi dev появится NameError или SyntaxError. Ошибку целиком — в тот же чат DeepSeek со словами «Верни весь файл, без пропусков», как на слайде 34. За 2 минуты не вышло — пришлите в чат группы запасную копию api_5.py из заметки слайда 2.">
+<div class="sl-body" style="gap:4px">
+    <div>
+      <div class="q-label">Правка 5 · резерв</div>
+      <h2>AI-описание <span class="acc">по адресу</span></h2>
+    </div>
+    <p style="font-size:15px;line-height:1.3;margin:0">Для тех, кто опережает: адрес, по которому DeepSeek пишет описание и теги книги, как в каталоге урока 17. Ключ — школьный, в <span class="code-chip">.env</span>.</p>
+    <div class="prompt-card prompt-card--copy" style="margin-top:16px;padding:12px 22px 8px">
+      <span class="pc-tag">→ В тот же чат</span>
+      <div class="pc-text" style="font-size:15px;line-height:1.2;margin-top:2px;font-variant-ligatures:none"><span style="display:block">Добавь адрес POST /books/{book_id}/describe: DeepSeek пишет описание и теги книги, а сервис сохраняет их в базу. Ключ DEEPSEEK_KEY лежит в .env рядом с library_api.py.
+</span><span style="display:block;padding-left:14px;text-indent:-14px;margin-top:3px">- Импорты: прежние не удаляй, добавь import json, import os, from dotenv import load_dotenv, from openai import OpenAI. Сразу после app = FastAPI(...): load_dotenv(Path(__file__).resolve().parent / ".env"); KEY = os.getenv("DEEPSEEK_KEY"); ai = OpenAI(api_key=KEY, base_url="https://api.deepseek.com") if KEY else None — без ключа сервис работает, выключен только AI. AI_LIMIT = 10; ai_calls = 0
+</span><span style="display:block;padding-left:14px;text-indent:-14px;margin-top:3px">- TAGS = ["приключения", "про дружбу", "про семью", "про школу", "про животных", "волшебство", "космос", "загадки", "смешно", "грустно", "страшно", "про взросление"]. DESCRIBE_PROMPT собери сложением строк, без f-строки: «Ты — библиотекарь для школьников 12–15 лет. По названию, автору и году напиши описание книги в 2–3 предложения без спойлеров концовки и выбери от 1 до 3 тегов строго из списка: » + ", ".join(TAGS) + «. Если не знаешь эту книгу точно, не выдумывай: в description так и напиши — не знаю эту книгу, а tags оставь пустым списком. Ответь в формате JSON: {"description": "описание", "tags": ["тег из списка"]}». Кусок с примером JSON возьми в одинарные кавычки
+</span><span style="display:block;padding-left:14px;text-indent:-14px;margin-top:3px">- can_spend(): global ai_calls; если ai_calls &gt;= AI_LIMIT — верни False; иначе ai_calls += 1 и верни True
+</span><span style="display:block;padding-left:14px;text-indent:-14px;margin-top:3px">- ask_ai(book): ai.chat.completions.create (не client.responses), model="deepseek-flash", messages — system с DESCRIBE_PROMPT и user f'{book["title"]} — {book["author"]}, {book["year"]}', response_format={"type": "json_object"}, max_tokens=500, extra_body={"thinking": {"type": "disabled"}}. Пустой ответ, ошибка json.loads, не словарь или пустой description — верни None; tags не список — пустой список; оставь только теги из TAGS, не больше 3; верни (description, tags)
+</span><span style="display:block;padding-left:14px;text-indent:-14px;margin-top:3px">- @app.post("/books/{book_id}/describe") над def describe_book(book_id: int): book = find_book(book_id); если book["description"] не пустой — верни book, AI не спрашивай. ai is None — raise HTTPException(status_code=503, detail="AI выключен: нет ключа DEEPSEEK_KEY в .env"); not can_spend() — 429 и "Лимит обращений к AI на этот запуск исчерпан". result = ask_ai(book) в try; except Exception as e — print("Ошибка AI:", e) и result = None. None — 503 и "AI сейчас недоступен, попробуйте ещё раз". Иначе UPDATE books SET description = ?, tags = ? WHERE id = ? с (description, ", ".join(tags), book_id), commit, close и верни find_book(book_id)
+</span><span style="display:block;margin-top:4px">Остальной код не меняй. Верни весь файл.</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Проговорите по строкам. Сначала проверки, которые ничего не стоят: есть ли книга, нет ли уже описания, есть ли ключ. Потом предохранитель can_spend — и только после него запрос к DeepSeek. Если поменять порядок, лимит тратился бы и на книги, которым AI не нужен. Любая ошибка AI — нет сети, неверный ключ, кончились деньги — превращается в понятный ответ 503, а подробности печатаются в терминале сервера. Ошибка 401 там значит, что ключ неверный: проверьте, что .env скопирован целиком. 402 — на счёте школы закончились деньги, сообщите школе. Про незнакомую книгу модель по правилу должна честно написать «не знаю эту книгу» — проверьте на тестовой «Книге от client.py». Ответ у каждого свой: его пишет модель.">
+<div class="sl-body" style="gap:8px">
+    <div>
+      <div class="q-label">Разбор кода</div>
+      <h2>Сначала проверки, <span class="acc">потом деньги школы</span></h2>
+    </div>
+    <p style="font-size:16px;line-height:1.3;margin:0">Сначала всё, что ничего не стоит: есть ли книга, нет ли уже описания, есть ли ключ, не исчерпан ли лимит. И только потом — запрос к DeepSeek.</p>
+    <div class="code-win">
+      <div class="code-head"><span class="win-dots"><i></i><i></i><i></i></span><span class="lang-badge">PYTHON</span></div>
+      <div class="code-body" style="font-variant-ligatures:none;font-size:13.5px;line-height:1.3">@app.post(<span class="st">"/books/{book_id}/describe"</span>)  <span class="cm"># POST: адрес меняет книгу и тратит ключ школы</span>
+<span class="kw">def</span> describe_book(book_id: int):
+    book = find_book(book_id)  <span class="cm"># нет книги — 404</span>
+    <span class="kw">if</span> book[<span class="st">"description"</span>]:
+        <span class="kw">return</span> book  <span class="cm"># описание уже есть — AI не спрашиваем</span>
+    <span class="kw">if</span> ai <span class="kw">is</span> None:
+        <span class="kw">raise</span> HTTPException(status_code=503, detail=<span class="st">"AI выключен: нет ключа DEEPSEEK_KEY в .env"</span>)
+    <span class="kw">if</span> <span class="kw">not</span> can_spend():  <span class="cm"># предохранитель: не больше AI_LIMIT обращений за запуск</span>
+        <span class="kw">raise</span> HTTPException(status_code=429, detail=<span class="st">"Лимит обращений к AI на этот запуск исчерпан"</span>)
+    <span class="kw">try</span>:
+        result = ask_ai(book)
+    <span class="kw">except</span> Exception <span class="kw">as</span> e:  <span class="cm"># сеть, ключ, баланс — любая ошибка AI</span>
+        print(<span class="st">"Ошибка AI:"</span>, e)  <span class="cm"># подробности — в терминале сервера</span>
+        result = None
+    <span class="kw">if</span> result <span class="kw">is</span> None:
+        <span class="kw">raise</span> HTTPException(status_code=503, detail=<span class="st">"AI сейчас недоступен, попробуйте ещё раз"</span>)
+…</div>
+    </div>
+    <div class="ek-note" style="font-size:16px"><span class="code-chip">global ai_calls</span> в <span class="code-chip">can_spend()</span> говорит Python: меняем счётчик, который живёт вне функции, а не заводим новый внутри неё.</div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Вопрос на К1 и К3. Дайте 30 секунд и попросите назвать коды вслух. Разберите по шагам. Первый — обычное чтение: 200 и книга. Второй — анкета: пустое название короче одного символа. FastAPI ответил 422 и до add_book не дошёл, поэтому книга в базу не попала. Третий — удаление: 204, тела нет. Четвёртый — find_book не нашёл строку и сделал raise: 404 «Книга не найдена». Дополнительный вопрос: что придёт на DELETE /books/7 ещё раз? Тоже 404. Проверить можно в Swagger на своей тестовой книге.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Проверка · вопрос 1</div>
+      <h2>Угадайте <span class="acc">коды ответов</span></h2>
+    </div>
+    <div class="quiz-box" style="margin-top:10px">
+      <span class="q-num">Вопрос 1</span>
+      <p class="q-text" style="font-size:32px;line-height:1.45">В каталоге есть книга №7. Клиент по очереди отправил четыре запроса: ① <span class="code-chip">GET /books/7</span>; ② <span class="code-chip">POST /books</span> с телом <span class="code-chip" style="white-space:normal;overflow-wrap:anywhere;font-size:26px">{"title": "", "author": "Ученик", "year": 2025, "genre": "повесть"}</span>; ③ <span class="code-chip">DELETE /books/7</span>; ④ снова <span class="code-chip">GET /books/7</span>. Какой код придёт на каждый и почему?</p>
+      <div class="quiz-answer">
+        <button class="quiz-btn" type="button">Показать ответ</button>
+        <div class="quiz-reveal">
+          <p>① 200 и книга в JSON. ② 422: название — пустая строка, а анкета требует хотя бы 1 символ; в <span class="code-chip">loc</span> — <span class="code-chip">body</span> и <span class="code-chip">title</span>, в базу ничего не попало. ③ 204: книга удалена, тела у ответа нет. ④ 404 «Книга не найдена»: <span class="code-chip">find_book</span> не нашёл строку и сделал <span class="code-chip">raise</span>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Вопрос на безопасность и мостик к уроку 21. Дайте 20 секунд. По документации FastAPI, fastapi dev слушает 127.0.0.1 — компьютер общается только сам с собой. fastapi run слушает 0.0.0.0, и сервис доступен любому, кто может связаться с этим компьютером. Дома это телефоны, планшеты и компьютеры всей семьи. Если тот же ноутбук подключён к Wi-Fi в кафе или в другом общественном месте, связаться с ним могут и незнакомые люди в той же сети. А удалить книгу может каждый, кто достучался: DELETE не спрашивает ни имени, ни пароля. К тому же fastapi run выключает автоперезапуск: он для готовых сервисов, а не для разработки. Подчеркните: сама команда fastapi run не плохая, плохо — открыть всем сервис без защиты. На уроке и дома её не запускаем даже для проверки. Если спросят про друзей из других домов: им не поможет и fastapi run — их устройства не в вашей сети, а выставлять в интернет сервис без защиты мы не будем. Как пускать к сервису только своих — вход, пароли и права — тема урока 21.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Проверка · вопрос 2</div>
+      <h2>Почему <span class="acc">только fastapi dev</span></h2>
+    </div>
+    <div class="quiz-box" style="margin-top:10px">
+      <span class="q-num">Вопрос 2</span>
+      <p class="q-text" style="font-size:32px;line-height:1.45">Одноклассник хочет открыть свой каталог с телефона и запускает <span class="code-chip">fastapi run library_api.py</span> вместо <span class="code-chip">fastapi dev</span>. Чем это опасно именно для нашего сервиса?</p>
+      <div class="quiz-answer">
+        <button class="quiz-btn" type="button">Показать ответ</button>
+        <div class="quiz-reveal" style="font-size:23px;line-height:1.45">
+          <p><span class="code-chip" style="font-size:1em">fastapi dev</span> слушает только <span class="code-chip" style="font-size:1em">127.0.0.1</span> — к сервису обращается лишь этот компьютер. <span class="code-chip" style="font-size:1em">fastapi run</span> слушает <span class="code-chip" style="font-size:1em">0.0.0.0</span>: сервис открыт всем, кто может связаться с компьютером по сети, — всей домашней сети, а в кафе или другом общественном месте с Wi-Fi, возможно, и чужим людям. У <span class="code-chip" style="font-size:1em">DELETE</span> защиты нет — любой из них удалит книги, не назвавшись. Сначала нужны вход и права — это урок 21.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пройдитесь сверху вниз. json= против data=: с data= requests не сообщит сервису, что прислал JSON. Анкета JSON не получит, и сервис ответит 422 на любую книгу, даже правильную, — поэтому главный признак: 422 там, где ждали 201. Прокси: если сервис работает, а client.py раз за разом пишет «Нет связи» или «не ответил», — вероятно, мешает прокси или VPN: requests берёт настройки прокси из системы и не обязан обходить их для 127.0.0.1. Третий признак — client.py падает с JSONDecodeError: ответ пришёл не в JSON, и r.json() не смог его прочитать. Если /books при этом открывается в браузере, то вместо сервиса, вероятно, ответил прокси своей страницей ошибки. Решение то же. Переменная NO_PROXY велит requests идти к этим адресам напрямую. По справке Microsoft для PowerShell и справке Apple для Терминала macOS такая переменная действует только в текущем сеансе: в других терминалах её нет, а после закрытия терминала она пропадает. Поэтому client.py запускаем в том же терминале, а в новом команду повторяем. Системные настройки она не меняет. На macOS команда — export NO_PROXY=127.0.0.1,localhost. По руководству zsh, export передаёт переменную всем командам, которые запускаются дальше из этого терминала, поэтому python client.py её увидит. По справке Apple, с macOS 10.15 zsh — оболочка по умолчанию у всех новых учётных записей. Если учётную запись завели на более старой системе, оболочка может оказаться другой. Строку ученик не перенабирает, а копирует из чата группы целиком: она пишется одной строкой, без пробелов вокруг знака равенства, без кавычек. Если на Mac терминал ответил на команду ошибкой или client.py по-прежнему пишет «Нет связи», пусть ученик пришлёт текст ошибки в чат группы или покажет экран. Если проблема так и не решилась, пусть сохранит текст ошибки и покажет его вам в начале урока 21. В командной строке Windows вместо PowerShell — set NO_PROXY=127.0.0.1,localhost, как в заметке слайда 29. На уроке пришлите нужную строку в чат группы тому, кому она понадобилась; дома все три строки есть в файле lesson20-dz.txt. Если кто-то допишет в client.py удаление: у ответа 204 нет тела, и r.json() на нём упадёт с JSONDecodeError. Это уже не прокси: для DELETE печатаем только код. Поиск: если DeepSeek вернул LIKE или встроенный lower, «гарри» перестанет находить «Гарри». А если из connect пропал create_function, поиск ответит ошибкой сервера — подробности в терминале сервиса. Попросите вернуть строку с create_function из промпта правки 1. Ошибка про поток: соединение, открытое в одном запросе, нельзя брать в другом. Шаблон урока — своё соединение на каждый запрос. Старый стиль Pydantic: нейросеть-помощник иногда пишет .dict или @validator по старой привычке. Во второй версии .dict переименован в model_dump, а @validator устарел — просим переписать в стиле v2. NameError почти всегда значит, что DeepSeek заменил кусок файла фразой вроде «остальной код без изменений». Если правка сломала файл и за 2 минуты не чинится — пришлите в чат группы запасную копию этапа, как в заметке слайда 2. Непонятную ошибку целиком — в тот же чат DeepSeek.">
+<div class="sl-body" style="gap:8px">
+    <div>
+      <div class="q-label">Отладка</div>
+      <h2>Почему сервис <span class="acc">капризничает</span></h2>
+    </div>
+    <div class="kv" style="margin-top:2px">
+      <div class="kv-row" style="grid-template-columns:330px 1fr;padding:9px 4px;gap:28px"><div class="k" style="text-transform:none;letter-spacing:0;font-size:16px;line-height:1.25"><span class="code-chip">client.py</span>: 422 даже на правильной книге</div><div class="v" style="font-size:16px;line-height:1.3">Книга ушла не как JSON: в <span class="code-chip">requests.post</span> нужен <span class="code-chip">json=</span>, а не <span class="code-chip">data=</span>.</div></div>
+      <div class="kv-row" style="grid-template-columns:330px 1fr;padding:9px 4px;gap:28px"><div class="k" style="text-transform:none;letter-spacing:0;font-size:16px;line-height:1.25"><span class="code-chip">client.py</span>: «Нет связи», «не ответил» или <span class="code-chip">JSONDecodeError</span>, а <span class="code-chip">/books</span> в браузере открывается</div><div class="v" style="font-size:16px;line-height:1.3">Вероятно, мешает прокси или VPN. Во втором терминале выполните <span class="code-chip">$env:NO_PROXY='127.0.0.1,localhost'</span> (на macOS — <span class="code-chip">export NO_PROXY=127.0.0.1,localhost</span>) и снова <span class="code-chip">python client.py</span>. Действует только в этом терминале.</div></div>
+      <div class="kv-row" style="grid-template-columns:330px 1fr;padding:9px 4px;gap:28px"><div class="k" style="text-transform:none;letter-spacing:0;font-size:16px;line-height:1.25">«гарри» не находит «Гарри»</div><div class="v" style="font-size:16px;line-height:1.3">DeepSeek вернул <span class="code-chip">LIKE</span> или встроенный <span class="code-chip">lower()</span> из SQLite. Сверьте с промптом правки 1.</div></div>
+      <div class="kv-row" style="grid-template-columns:330px 1fr;padding:9px 4px;gap:28px"><div class="k" style="text-transform:none;letter-spacing:0;font-size:16px;line-height:1.25"><span class="code-chip">ProgrammingError</span> про поток (<span class="code-chip">thread</span>)</div><div class="v" style="font-size:16px;line-height:1.3">Одно соединение на весь сервис. Попросите открывать <span class="code-chip">connect()</span> в каждой функции.</div></div>
+      <div class="kv-row" style="grid-template-columns:330px 1fr;padding:9px 4px;gap:28px"><div class="k" style="text-transform:none;letter-spacing:0;font-size:16px;line-height:1.25">В коде <span class="code-chip">.dict()</span>, <span class="code-chip">@validator</span> или <span class="code-chip">class Config</span></div><div class="v" style="font-size:16px;line-height:1.3">Это старый стиль Pydantic v1. Попросите переписать в стиле v2: <span class="code-chip">model_dump()</span>, <span class="code-chip">Field</span>.</div></div>
+    </div>
+    <div class="ek-note" style="font-size:16px"><span class="code-chip">NameError</span> после правки — файл пришёл не целиком: «Верни весь файл, без пропусков». Ошибка 401 или 402 у AI — сообщите школе.</div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Пять привычек урока — дайте сделать скриншот слайда. Первая пригодится в соцсети урока 22: одно действие — одна функция над базой. Вторая — главная мысль правки 2: данным со стороны не доверяем и проверяем их до записи, как форма трекера на уроке 19 и как SQL от модели на уроке 18. Третья знакома с уроков 17 и 19. Четвёртая — про безопасность: пока у сервиса нет входа, он слушает только этот компьютер. Пятая — про клиент: сеть может молчать, и программа должна сказать об этом, а не зависнуть. И ключ — только в .env.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Запомните</div>
+      <h2>Привычки <span class="acc">автора сервиса</span></h2>
+    </div>
+    <div class="kv" style="margin-top:8px">
+      <div class="kv-row" style="grid-template-columns:420px 1fr;padding:20px 4px;gap:28px"><div class="k" style="text-transform:none;letter-spacing:0;font-size:21px;line-height:1.3">01 · Одно действие — один адрес</div><div class="v" style="font-size:20px;line-height:1.45">Метод, адрес и функция. GET только читает: всё, что меняет книги или тратит ключ, — POST или DELETE.</div></div>
+      <div class="kv-row" style="grid-template-columns:420px 1fr;padding:20px 4px;gap:28px"><div class="k" style="text-transform:none;letter-spacing:0;font-size:21px;line-height:1.3">02 · Проверяет сервис, а не клиент</div><div class="v" style="font-size:20px;line-height:1.45">Анкета Pydantic не пускает неверные данные в базу. Ответ 422 читаем: <span class="code-chip">loc</span> → <span class="code-chip">msg</span>.</div></div>
+      <div class="kv-row" style="grid-template-columns:420px 1fr;padding:20px 4px;gap:28px"><div class="k" style="text-transform:none;letter-spacing:0;font-size:21px;line-height:1.3">03 · Своё соединение на каждый запрос</div><div class="v" style="font-size:20px;line-height:1.45">Открыли, выполнили, закрыли. Значения — только через <span class="code-chip">?</span>.</div></div>
+      <div class="kv-row" style="grid-template-columns:420px 1fr;padding:20px 4px;gap:28px"><div class="k" style="text-transform:none;letter-spacing:0;font-size:21px;line-height:1.3">04 · Только <span class="code-chip">127.0.0.1</span></div><div class="v" style="font-size:20px;line-height:1.45"><span class="code-chip">fastapi dev</span>, а не <span class="code-chip">fastapi run</span>: у сервиса пока нет защиты.</div></div>
+      <div class="kv-row" style="grid-template-columns:420px 1fr;padding:20px 4px;gap:28px"><div class="k" style="text-transform:none;letter-spacing:0;font-size:21px;line-height:1.3">05 · Клиент не ждёт вечно</div><div class="v" style="font-size:20px;line-height:1.45"><span class="code-chip">timeout=5</span> в каждом запросе и понятное сообщение, если сервис молчит.</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="Демо по видеосвязи, около 3 минут, один автор. Закончите его не позже 57-й минуты: на слайде 37 нужно время, чтобы каждый сохранил файл ДЗ. Автор — тот, кого вы наметили на правке 3 (пункт 9 подготовки, слайд 2). Не наметили — попросите тех, у кого готовы правки 1–3, ответить «+» в чат группы. Остановите свою демонстрацию, чтобы автор включил свою, а после демо снова покажите слайды. Автор включает демонстрацию не всего экрана, а только окна браузера с вкладкой /docs: .env и другие файлы в кадр не попадают. Одноклассник или преподаватель диктует книгу, которую недавно читал: название, автора, год и жанр из восьми жанров анкеты. Автор сам вносит её через Try it out у POST /books — код 201 и номер книги. Потом автор находит книгу через GET /books с q и удаляет её через DELETE — код 204. Вносит книги только автор: сервис слушает 127.0.0.1, и одноклассник из своего дома к нему не подключится. Остальные пишут в чат группы, какой код пришёл на каждом шаге. Если до 57-й минуты остаётся время, пусть одноклассник предложит ещё и ошибку, например год из будущего: автор вносит её, а группа читает ответ 422. Демонстрация у автора не включилась — второго не ищите: книгу, которую диктует одноклассник, внесите сами на своём экране, в сервисе из lesson-20-demo (остановлен — запустите там fastapi dev library_api.py). Автор пусть повторит то же у себя и напишет в чат группы номер книги и коды ответов. Другая программа, которая пользуется сервисом, у каждого уже была — client.py во втором терминале в правке 4. Второго автора или вывод client.py показывайте, только если первое демо закончилось раньше 57-й минуты. Второй автор тоже включает демонстрацию только окна браузера, а вывод client.py показывают демонстрацией окна VS Code, где .env не открыт. У кого чего-то нет — по чек-листу видно, что доделать дома: промпты правок будут в файле lesson20-dz.txt, его вы пришлёте на следующем слайде. Пусть каждый сам проверит, что ключа в library_api.py нет: он только в .env.">
+<div class="sl-body">
+    <div>
+      <div class="q-label">Чек-лист</div>
+      <h2>Что должно быть к <span class="acc">55-й минуте</span></h2>
+    </div>
+    <div class="grid-2">
+      <div class="info-card" style="padding:22px 28px;font-size:19px">
+        <h3 style="font-size:26px;margin-bottom:14px;color:var(--ek-green-deep)">Готово</h3>
+        <ul class="clean" style="gap:14px;font-size:19px">
+          <li style="font-size:19px"><span><span class="code-chip">fastapi dev library_api.py</span> и документация на <span class="code-chip">/docs</span></span></li>
+          <li style="font-size:19px"><span><span class="code-chip">GET /books?q=гарри</span> и <span class="code-chip">GET /books/{book_id}</span> с ответом 404</span></li>
+          <li style="font-size:19px"><span><span class="code-chip">POST /books</span>: 201, а год 3000 — 422</span></li>
+          <li style="font-size:19px"><span><span class="code-chip">DELETE /books/{book_id}</span>: 204, потом 404</span></li>
+          <li style="font-size:19px"><span>Ключ — только в <span class="code-chip">.env</span></span></li>
+        </ul>
+      </div>
+      <div class="info-card" style="padding:22px 28px;font-size:19px">
+        <h3 style="font-size:26px;margin-bottom:14px;color:var(--ek-violet-deep)">Дома</h3>
+        <ul class="clean" style="gap:14px;font-size:19px">
+          <li style="font-size:19px"><span>Нет <span class="code-chip">client.py</span> — правка 4 из <span class="code-chip">lesson20-dz.txt</span>; «Нет связи» — строка <span class="code-chip">NO_PROXY</span> оттуда же</span></li>
+          <li style="font-size:19px"><span>По желанию — правка 5 из <span class="code-chip">lesson20-dz.txt</span>: AI-описание</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="ek-note ek-note--green" style="font-size:18px">Демо: покажите группе вкладку <span class="code-chip">/docs</span>. Одноклассник диктует книгу, которую недавно читал, — вы добавляете её через <span class="code-chip">POST /books</span>, находите через <span class="code-chip">GET /books</span> с <span class="code-chip">q</span> и удаляете через <span class="code-chip">DELETE</span>.</div>
+  </div>
+</section>
+
+<section class="slide slide--content"
+  data-notes="ДЗ примерно на 30 минут. Первым делом пришлите в чат группы файл lesson20-dz.txt (пункт 7 подготовки, слайд 2): после звонка чат группы пропадёт, а файла слайдов у учеников нет. В файле текст ДЗ с этого слайда, все промпты урока — по ним дома делают правки 4 и 5 и всё, что не успели, — и строки NO_PROXY. Попросите каждого до конца звонка скачать файл, скопировать его в lesson-20 через проводник Windows или Finder и написать в чат группы «+». Тому, кто вошёл в звонок позже, пришлите файл ещё раз. API для трекера — тот же приём на других данных. Новый чат не видит правил урока, поэтому вместе с app.py вставляем и свой library_api.py: по нему DeepSeek напишет так же — обычные def, своё соединение на каждый запрос, анкету в стиле Pydantic v2, путь к базе от Path(__file__) и без uvicorn.run в файле. tracker_api.py кладём в lesson-19/tracker, рядом с tracker.db, и запускаем из этой папки: в терминале cd tracker, потом fastapi dev tracker_api.py. Если ученик на уроке отправлял сообщение из docs_offline.txt, в его library_api.py есть код документации без интернета, и DeepSeek, скорее всего, перенесёт его в tracker_api.py. Этому коду нужна папка static рядом с файлом. Поэтому скажите вслух: у кого на уроке была документация без интернета, скопируйте папку static из lesson-20 в lesson-19/tracker через проводник Windows или Finder, как books.db перед каркасом. Назовите и запасной путь на случай, если дома /docs окажется белой: оформление Swagger берётся из интернета. Тогда открываем /openapi.json: есть JSON — сервис жив. GET-адреса проверяем в браузере, а POST и DELETE — запросом через requests: пусть ученик попросит DeepSeek написать небольшую программу с таким запросом по образцу client.py. У DELETE печатаем только код ответа: у 204 нет тела. Дыру из задания 3 так тоже видно: программа удалила книгу, никак не назвавшись. Streamlit-трекер можно держать открытым одновременно: у него свой порт. Правила анкеты — те же, что у формы урока 19: вид из списка KINDS, минуты от 1 до 600, дата не из будущего, заметка до 100 символов. Через POST вносим только настоящие тренировки: это продолжение «Недели с трекером». Клиент-библиотекарь: параметр tag в GET /books устроен как подборка по тегу в правке 3 урока 17, через LIKE: теги берутся из списка TAGS. Книги, которые вы читали, — не личные данные, их можно добавлять. Если дома client.py пишет «Нет связи» или «не ответил» либо падает с JSONDecodeError, а /books открывается в браузере, — строка NO_PROXY для своего терминала из lesson20-dz.txt, как на слайде 34. Найдите дыру: удаляем только тестовую книгу, например «Книгу от client.py». bcrypt понадобится на уроке 21 для хранения паролей — поэтому ставим заранее, тем же pip, что и FastAPI в ДЗ 19. Если pip не находится — python -m pip install bcrypt. У bcrypt есть готовые сборки для Windows и macOS, в том числе на Apple Silicon, и для Python 3.11–3.14: pip скачивает готовый файл и ничего не собирает, компилятор не нужен. Если не ставится — сначала python -m pip install --upgrade pip, потом снова pip install bcrypt: старый pip может не узнать готовую сборку. Если ошибка осталась — больше ничего не ставим, ни Rust, ни компилятор, даже если их советует DeepSeek: пусть ученик сохранит текст ошибки целиком и покажет вам в начале урока 21. Разбор — на слайде 3 урока 21. Идеи учеников соберите там же: логин, пароль, «удалять может только автор». Мостик: удалить и прочитать может любой, кто знает адрес. На уроке 21 — вход по логину и паролю, и у каждого свои данные.">
+<div class="sl-body" style="gap:8px">
+    <div>
+      <div class="q-label">Домашнее задание · около 30 минут</div>
+      <h2>API <span class="acc">для трекера</span> и дыра в защите</h2>
+    </div>
+    <div class="info-card" style="padding:10px 20px">
+      <h3 style="font-size:20px;margin-bottom:4px">Перед началом</h3>
+      <div class="grid-2" style="gap:24px">
+        <ul style="margin:0;padding-left:22px;font-size:16px;line-height:1.3"><li style="margin-bottom:3px">Сохраните до конца звонка файл <span class="code-chip" style="font-size:1em">lesson20-dz.txt</span> из чата группы: в нём всё ДЗ, промпты урока и строки <span class="code-chip" style="font-size:1em">NO_PROXY</span>.</li><li style="margin-bottom:3px">Задания 1 и 2 — через диалог с DeepSeek.</li><li style="margin-bottom:3px">Для трекера — новый чат: вставьте свой <span class="code-chip" style="font-size:1em">tracker/app.py</span> и <span class="code-chip" style="font-size:1em">library_api.py</span>, напишите «Сделай tracker_api.py для таблицы workouts так же, как library_api.py» и перечислите адреса и правила из задания 1.</li></ul>
+        <ul style="margin:0;padding-left:22px;font-size:16px;line-height:1.3"><li style="margin-bottom:3px">Запуск — в папке <span class="code-chip" style="font-size:1em">lesson-19/tracker</span>: <span class="code-chip" style="font-size:1em">fastapi dev tracker_api.py</span>.</li><li style="margin-bottom:3px">Ставили документацию без интернета — скопируйте туда и папку <span class="code-chip" style="font-size:1em">static</span> из <span class="code-chip" style="font-size:1em">lesson-20</span>.</li><li style="margin-bottom:3px">Для каталога — чат урока.</li></ul>
+      </div>
+    </div>
+    <div class="grid-3" style="gap:12px">
+      <div class="info-card" style="padding:10px 18px;font-size:16px">
+        <h3 style="font-size:20px;margin-bottom:4px">API для трекера</h3>
+        <p style="font-size:16px;line-height:1.3"><span class="code-chip" style="font-size:1em">tracker_api.py</span> рядом с <span class="code-chip" style="font-size:1em">tracker.db</span> урока 19: <span class="code-chip" style="font-size:1em">GET /workouts?days=7</span>, <span class="code-chip" style="font-size:1em">GET /stats</span> — минуты за неделю, <span class="code-chip" style="font-size:1em">POST /workouts</span> с анкетой: вид из списка, минуты от 1 до 600, дата не из будущего. Проверьте в Swagger.</p>
+      </div>
+      <div class="info-card" style="padding:10px 18px;font-size:16px">
+        <h3 style="font-size:20px;margin-bottom:4px">Клиент-библиотекарь</h3>
+        <p style="font-size:16px;line-height:1.3">Попросите добавить в <span class="code-chip" style="font-size:1em">GET /books</span> параметр <span class="code-chip" style="font-size:1em">tag</span>, как подборку по тегу в уроке 17. Потом <span class="code-chip" style="font-size:1em">client.py</span> одной командой добавляет 3 книги, которые вы читали, и печатает подборку «волшебство». «Нет связи» — строка <span class="code-chip" style="font-size:1em">NO_PROXY</span> из <span class="code-chip" style="font-size:1em">lesson20-dz.txt</span>.</p>
+      </div>
+      <div class="info-card" style="padding:10px 18px;font-size:16px">
+        <h3 style="font-size:20px;margin-bottom:4px">Найдите дыру</h3>
+        <p style="font-size:16px;line-height:1.3">Через <span class="code-chip" style="font-size:1em">/docs</span> удалите одну из тестовых книг, никак не назвавшись. Запишите 3 идеи, как сервис мог бы понять, кто вы и что вам можно. К уроку 21 установите <span class="code-chip" style="font-size:1em">bcrypt</span>: <span class="code-chip" style="font-size:1em">pip install bcrypt</span>.</p>
+      </div>
+    </div>
+    <div class="ek-note ek-note--red" style="font-size:16px;padding:10px 18px">Запускаем только <span class="code-chip" style="font-size:1em">fastapi dev</span>. <span class="code-chip" style="font-size:1em">tracker.db</span> — ваши личные данные: не пересылайте его. Ключ — только в <span class="code-chip" style="font-size:1em">.env</span>; ошибка 401 или 402 — сообщите школе.</div>
+  </div>
+</section>
+
+<section class="slide slide--green"
+  data-notes="Закройте урок. Главная мысль: API — окно для программ: метод и адрес на входе, код и JSON на выходе. И второе: сервис сам проверяет всё, что ему присылают, и честно объясняет отказ кодом 422. Напомните про ДЗ и установку bcrypt. На уроке 21 закроем дыру, которую вы сегодня нашли: появятся вход по логину и паролю и свои данные у каждого.">
+<div class="sl-orbit">
+    <i class="sl-ring"></i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:75px;top:20px;width:150px;height:150px;transform:rotate(-10deg)"><use href="#ek-i-trophy"/></svg>
+    <i class="sl-letter" style="left:466px;top:13px;width:78px;height:78px;--fs:36px">A</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1040px;top:15px;width:130px;height:130px;transform:rotate(12deg)"><use href="#ek-i-heart"/></svg>
+    <i class="sl-letter" style="left:68px;top:268px;width:100px;height:100px;--fs:46px">P</i>
+    <i class="sl-letter" style="left:1137px;top:327px;width:95px;height:95px;--fs:44px">I</i>
+    <i class="sl-letter" style="left:300px;top:590px;width:70px;height:70px;--fs:32px">R</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:102px;top:532px;width:125px;height:125px;transform:rotate(-15deg)"><use href="#ek-i-star"/></svg>
+    <i class="sl-letter" style="left:726px;top:613px;width:78px;height:78px;--fs:36px">T</i>
+    <svg class="sl-ico" viewBox="0 0 100 100" style="left:1045px;top:540px;width:110px;height:110px;transform:rotate(8deg)"><use href="#ek-i-gem"/></svg>
+  </div>
+  <div class="cover-center">
+    <div class="bubble">
+      <h1>До встречи<br>на уроке 21!</h1>
+      <p>Сегодня каталог книг получил свой REST API: адреса, проверку данных и документацию, которую никто не писал. На уроке 21 добавим вход по логину и паролю — чтобы удалять мог не кто угодно.</p>
+    </div>
+  </div>
+</section>
+</main>
+
+<div class="notes" id="notes">
+  <div class="notes__header">Заметки преподавателя &middot; N — скрыть</div>
+  <div class="notes__body" id="notesBody">—</div>
+</div>
+
+<div class="hint"><kbd>←</kbd><kbd>→</kbd> слайды &middot; <kbd>N</kbd> заметки &middot; <kbd>F</kbd> весь экран</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="ek-i-trophy" viewBox="0 0 100 100"><path fill="currentColor" d="M24 16h52v12h8c6 0 10 4 10 10 0 15-11 25-23 27-3 5-8 9-14 10v8h14c4 0 7 3 7 7v4H22v-4c0-4 3-7 7-7h14v-8c-6-1-11-5-14-10C17 63 6 53 6 38c0-6 4-10 10-10h8V16zM24 36h-7c-2 0-4 2-4 4 0 8 5 15 12 18-1-5-1-10-1-16v-6zM76 36v6c0 6 0 11-1 16 7-3 12-10 12-18 0-2-2-4-4-4h-7z"/></symbol>
+<symbol id="ek-i-heart" viewBox="0 0 100 100"><path fill="currentColor" d="M50 88C28 72 10 56 10 38 10 24 21 14 34 14c6 0 12 3 16 8 4-5 10-8 16-8 13 0 24 10 24 24 0 18-18 34-40 50z"/></symbol>
+<symbol id="ek-i-star" viewBox="0 0 100 100"><path fill="currentColor" d="M50 8l12 27 29 3-22 20 6 29-25-15-25 15 6-29L9 38l29-3z"/></symbol>
+<symbol id="ek-i-gem" viewBox="0 0 100 100"><path fill="currentColor" d="M30 12h40l18 24-38 52L12 36zM36 20l-12 16h20zM64 20l-8 16h20zM50 22l-9 14h18zM26 44l20 30-8-30zM62 44l-8 30 20-30zM46 44h8l-4 26z"/></symbol>
+</defs></svg>
+
+<script>
+/* ============ Автомасштаб сцены ============ */
+(function(){
+  'use strict';
+  var stage = document.getElementById('deck');
+  function fit(){
+    var w = window.innerWidth, h = window.innerHeight;
+    if (!w || !h) return;
+    var s = Math.min(w / 1320, h / 780);
+    if (document.fullscreenElement) s = Math.min(w / 1280, h / 720);
+    stage.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+    stage.style.borderRadius = document.fullscreenElement ? '0' : '18px';
+  }
+  window.addEventListener('resize', fit);
+  document.addEventListener('fullscreenchange', fit);
+  fit();
+})();
+
+/* ============ Навигация по слайдам ============ */
+(function(){
+  'use strict';
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var total = slides.length;
+  var idx = 0;
+  document.getElementById('total').textContent = total;
+
+  var progressEl = document.getElementById('progress');
+  var currentEl = document.getElementById('current');
+  var notesPanel = document.getElementById('notes');
+  var notesBody = document.getElementById('notesBody');
+
+  slides.forEach(function(s, i){
+    if (s.classList.contains('slide--content')) s.setAttribute('data-page', i + 1);
+  });
+
+  function render(){
+    slides.forEach(function(s, i){
+      s.classList.remove('active', 'prev');
+      if (i === idx) s.classList.add('active');
+      else if (i < idx) s.classList.add('prev');
+    });
+    progressEl.style.width = ((idx + 1) / total * 100).toFixed(2) + '%';
+    currentEl.textContent = idx + 1;
+    notesBody.textContent = slides[idx].getAttribute('data-notes') || '—';
+  }
+
+  function go(n){ idx = Math.max(0, Math.min(total - 1, n)); render(); }
+  function next(){ go(idx + 1); }
+  function prev(){ go(idx - 1); }
+
+  document.addEventListener('keydown', function(e){
+    var active = document.activeElement;
+    if (active && (active.isContentEditable || active.tagName === 'TEXTAREA' || active.tagName === 'INPUT')) return;
+    switch (e.key){
+      case 'ArrowRight': case 'PageDown': case ' ':
+        e.preventDefault(); next(); break;
+      case 'ArrowLeft': case 'PageUp':
+        e.preventDefault(); prev(); break;
+      case 'Home': e.preventDefault(); go(0); break;
+      case 'End': e.preventDefault(); go(total - 1); break;
+      case 'f': case 'F': case 'а': case 'А':
+        e.preventDefault();
+        if (!document.fullscreenElement){ if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen(); }
+        else if (document.exitFullscreen) document.exitFullscreen();
+        break;
+      case 'n': case 'N': case 'т': case 'Т':
+        e.preventDefault(); notesPanel.classList.toggle('active'); break;
+      case 'Escape':
+        if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
+        notesPanel.classList.remove('active'); break;
+    }
+  });
+
+  var tx = 0, ty = 0;
+  document.addEventListener('touchstart', function(e){ tx = e.changedTouches[0].screenX; ty = e.changedTouches[0].screenY; }, { passive: true });
+  document.addEventListener('touchend', function(e){
+    var dx = e.changedTouches[0].screenX - tx, dy = e.changedTouches[0].screenY - ty;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)){ if (dx < 0) next(); else prev(); }
+  }, { passive: true });
+
+  document.addEventListener('click', function(e){
+    if (e.target.closest('a,button,input,textarea,code,pre,[contenteditable],.code-win,.term,.prompt-card,.quiz-box,.notes')) return;
+    var x = e.clientX, w = window.innerWidth;
+    if (x < w * 0.25) prev();
+    else if (x > w * 0.75) next();
+  });
+
+  render();
+})();
+
+/* ============ Квизы: показать ответ ============ */
+(function(){
+  'use strict';
+  Array.prototype.slice.call(document.querySelectorAll('.quiz-btn')).forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var box = btn.closest('.quiz-box');
+      var reveal = box && box.querySelector('.quiz-reveal');
+      if (!reveal) return;
+      var shown = reveal.classList.toggle('show');
+      btn.textContent = shown ? 'Скрыть ответ' : 'Показать ответ';
+    });
+  });
+})();
+</script>
+</body>
+</html>
